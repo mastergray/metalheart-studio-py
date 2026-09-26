@@ -48,7 +48,7 @@ The current selectable visual vocabulary is:
 
 - palettes: `steel`, `acid`, `ember`;
 - cores: `3d`, `2d`;
-- forms (called `looks` by the reference backend): `mercury`, `wring`, `ferro`, `drip`, `split`, `fold`, `morph`, `gyro`, `chaos`;
+- forms (called `looks` by the reference backend): `mercury`, `wring`, `ferro`, `drip`, `split`, `fold`, `morph`, `gyro`, `chaos`, plus the production-owned `resonance` liquid heart;
 - cameras: `orbit`, `crane`, `dolly`, `low`, `top`, `macro`, `dutch`, `drift`;
 - toggles/quality controls: scanlines, decor, anti-aliasing, and 3D core render scale;
 - choreography controls: one or more forms and cameras, form duration, camera duration, crossfade behavior, and independent camera speed, phase, and signature intensity.
@@ -259,7 +259,7 @@ A binding maps one analyzed source to one public renderer parameter:
 
 Version 1 supports sources `bass`, `mid`, `high`, `energy`, `onset`, `beat`, `downbeat`, and `tension`; curves `linear`, `ease_in`, `ease_out`, `smoothstep`, and `square`; and scalar destinations declared by the renderer adapter.
 
-The adapter exposes the existing `Params` destinations `bass`, `mid`, `high`, and `onset`, and passes the analyzed 24-band spectrum directly to `Params.spectrum`. Because those native inputs are intentionally subtle, scenes may also map signals onto owned frame-space modulators: `pulse`, `shake`, `flash`, and `chroma`. Camera-space destinations `camera_distance`, `camera_elevation`, `camera_roll`, and `camera_kick` apply bounded transforms to the selected base-camera pose; the `camera-driven` preset provides a curated mapping. A modulator uses the same amount, bias, curve, threshold, and clamp model as a native binding. Future renderer controls should be added through a typed parameter registry rather than arbitrary dotted access into Python objects.
+The adapter exposes the existing `Params` destinations `bass`, `mid`, `high`, and `onset`, and passes the analyzed 24-band spectrum directly to `Params.spectrum`. Because those native inputs are intentionally subtle, scenes may also map signals onto owned frame-space modulators: `pulse`, `shake`, `flash`, and `chroma`. Camera-space destinations `camera_distance`, `camera_elevation`, `camera_roll`, and `camera_kick` apply bounded transforms to the selected base-camera pose; the `camera-driven` preset provides a curated mapping. Form-space destinations `form_scale`, `form_deformation`, and `form_ripple` drive the production-owned `resonance` heart from a fast weighted amplitude envelope, normalized spectral centroid, and onset envelopes. A modulator uses the same amount, bias, curve, threshold, and clamp model as a native binding. Future renderer controls should be added through a typed parameter registry rather than arbitrary dotted access into Python objects.
 
 ### 6.5 Reactivity presets
 

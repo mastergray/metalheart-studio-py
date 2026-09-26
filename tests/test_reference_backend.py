@@ -79,6 +79,25 @@ def testCameraControlsAlter3dFrame() -> None:
 
 
 # :: VOID -> NONE
+# Verifies the production-owned resonance SDF renders deterministic heart frames
+def testResonanceFrameIsDeterministic() -> None:
+    backend = ReferenceBackend.init()
+    settings = {"width": 64, "height": 64, "seed": 5}
+    scene = _scene()
+    scene["renderer"].update(
+        {"core": "3d", "forms": ["resonance"], "cameras": ["orbit"], "core_scale": 0.25}
+    )
+    scene["reactivity"] = REACTIVITY_PRESETS["resonant-heart"]
+    params = backend.createParams(_analysis(), 0, 0.0, scene["reactivity"])
+    modulators = backend.createModulators(_analysis(), 0, 0.0, scene["reactivity"])
+    first = backend.createRenderer(settings, scene).render(0.5, params, modulators)
+    second = backend.createRenderer(settings, scene).render(0.5, params, modulators)
+    assert first.shape == (64, 64, 3)
+    assert np.array_equal(first, second)
+    assert int(first.max()) > 0
+
+
+# :: VOID -> NONE
 # Verifies balanced bindings preserve normalized feature values
 def testBalancedBindingsMapAnalysisValues() -> None:
     backend = ReferenceBackend.init()
@@ -110,6 +129,19 @@ def testCameraModulatorsMapAnalysisValues() -> None:
     assert -0.08 <= modulators["camera_elevation"] <= 0.16
     assert -0.04 <= modulators["camera_roll"] <= 0.14
     assert modulators["camera_kick"] == 0.3
+
+
+# :: VOID -> NONE
+# Verifies spectral centroid and energy map onto resonance destinations
+def testResonanceModulatorsMapAnalysisValues() -> None:
+    backend = ReferenceBackend.init()
+    reactivity = REACTIVITY_PRESETS["resonant-heart"]
+    modulators = backend.createModulators(_analysis(), 0, 0.0, reactivity)
+    amplitude = 0.5 * 0.25 + 0.3 * 0.4 + 0.2 * 0.6
+    expectedScale = amplitude * amplitude * (3.0 - 2.0 * amplitude) * 0.32
+    assert abs(modulators["form_scale"] - expectedScale) < 1e-6
+    assert abs(modulators["form_deformation"] - 0.5) < 1e-6
+    assert modulators["form_ripple"] == 0.14
 
 
 # :: VOID -> NONE

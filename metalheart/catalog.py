@@ -7,11 +7,11 @@ from typing import Any, Dict  # Python 3.8-compatible collection annotations
 
 PALETTES = ["steel", "acid", "ember"]
 CORES = ["3d", "2d"]
-FORMS = ["mercury", "wring", "ferro", "drip", "split", "fold", "morph", "gyro", "chaos"]
+FORMS = ["mercury", "wring", "ferro", "drip", "split", "fold", "morph", "gyro", "chaos", "resonance"]
 LOOKS = FORMS
 CAMERAS = ["orbit", "crane", "dolly", "low", "top", "macro", "dutch", "drift"]
 CURVES = ["linear", "ease_in", "ease_out", "smoothstep", "square"]
-SOURCES = ["bass", "mid", "high", "energy", "onset", "beat", "downbeat", "tension"]
+SOURCES = ["bass", "mid", "high", "amplitude", "energy", "spectral_centroid", "onset", "beat", "downbeat", "tension"]
 DESTINATIONS = ["bass", "mid", "high", "onset"]
 MODULATORS = [
     "pulse",
@@ -22,6 +22,9 @@ MODULATORS = [
     "camera_elevation",
     "camera_roll",
     "camera_kick",
+    "form_scale",
+    "form_deformation",
+    "form_ripple",
 ]
 
 QUALITY_PROFILES: Dict[str, Dict[str, Any]] = {
@@ -166,6 +169,19 @@ REACTIVITY_PRESETS: Dict[str, Dict[str, Any]] = {
             "camera_elevation": {"source": "mid", "amount": 0.24, "bias": -0.08, "curve": "smoothstep", "clamp": [-0.08, 0.16]},
             "camera_roll": {"source": "high", "amount": 0.18, "bias": -0.04, "curve": "smoothstep", "clamp": [-0.04, 0.14]},
             "camera_kick": {"source": "onset", "amount": 0.3, "bias": 0.0, "curve": "ease_out", "threshold": 0.2, "clamp": [0.0, 0.3]},
+        },
+    },
+    "resonant-heart": {
+        "bindings": {
+            "bass": {"source": "bass", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+            "mid": {"source": "mid", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+            "high": {"source": "high", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+            "onset": {"source": "onset", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+        },
+        "modulators": {
+            "form_scale": {"source": "amplitude", "amount": 0.32, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 0.32]},
+            "form_deformation": {"source": "spectral_centroid", "amount": 1.0, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 1.0]},
+            "form_ripple": {"source": "onset", "amount": 0.14, "bias": 0.0, "curve": "ease_out", "threshold": 0.15, "clamp": [0.0, 0.14]},
         },
     },
     "manual": {"bindings": {}, "modulators": {}},

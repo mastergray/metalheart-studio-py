@@ -141,6 +141,7 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
     assert "camera_intensity" in renderer
     modulators = schema["$defs"]["scene"]["properties"]["reactivity"]["properties"]["modulators"]["additionalProperties"]
     assert modulators == {"$ref": "#/$defs/binding"}
+    assert "resonance" in renderer["forms"]["items"]["enum"]
     assert "finish" in scene
     assert "overlay" in scene
 
@@ -191,6 +192,27 @@ def testResolvesCameraDrivenPreset(tmp_path: Path) -> None:
         "camera_roll",
         "camera_kick",
     }
+
+
+# :: PATH -> NONE
+# Verifies the owned resonance form and preset resolve only on the 3D core
+def testResolvesResonantHeartPreset(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["renderer"] = {"core": "3d", "forms": ["resonance"]}
+    authored["scenes"][0]["reactivity"] = {"preset": "resonant-heart"}
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert report.isValid, report.errors
+    assert set(resolved["scenes"][0]["reactivity"]["modulators"]) == {
+        "form_scale",
+        "form_deformation",
+        "form_ripple",
+    }
+    authored["scenes"][0]["renderer"]["core"] = "2d"
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert any("resonance requires the 3d core" in error for error in report.errors)
 
 
 # :: PATH -> NONE

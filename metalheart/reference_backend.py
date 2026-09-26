@@ -14,6 +14,7 @@ import numpy as np  # Build renderer parameters and blank HUD buffers
 from metalheart.camera_choreo import CameraChoreo  # Strengthen camera timing without modifying reference code
 from metalheart.frame_effects import FrameEffects  # Apply authored audio-driven frame transforms
 from metalheart.finishing import FinishingPass  # Replace immutable finishing with authored controls
+from metalheart.resonance_core import ResonanceCore  # Install production-owned audio-driven heart geometry
 from metalheart.text_overlay import TextOverlay  # Draw configurable author text after modulation
 
 
@@ -58,6 +59,7 @@ class ReferenceRendererSession:
         self._scene = scene
         self._frameEffects = FrameEffects.init()
         self._cameraChoreo: Optional[CameraChoreo] = None
+        self._resonanceCore: Optional[ResonanceCore] = None
         overlayConfig = scene["overlay"]
         self._overlay = TextOverlay.init(overlayConfig, rendererModule.FONT_PATH)
         rendererConfig = scene["renderer"]
@@ -89,6 +91,9 @@ class ReferenceRendererSession:
                 cameraIntensity=rendererConfig["camera_intensity"],
             )
             self._renderer.choreo = self._cameraChoreo
+            if "resonance" in rendererConfig["forms"]:
+                self._resonanceCore = ResonanceCore.init(liquidModule, scene.get("seed", settings["seed"]))
+                self._renderer.core3d.core = self._resonanceCore
         self._finishing = FinishingPass.init(self._renderer, scene["finish"])
         self._renderer.post = self._finishing.apply
         self._renderer.hud_tag = "//AUDIO.REACTIVE"
@@ -104,6 +109,8 @@ class ReferenceRendererSession:
     def render(self, timeSec: float, params: Any, modulators: Dict[str, float]) -> Any:
         if self._cameraChoreo is not None:
             self._cameraChoreo.setSignals(modulators)
+        if self._resonanceCore is not None:
+            self._resonanceCore.setSignals(modulators)
         frame = self._renderer.render(timeSec, params)
         frame = self._frameEffects.apply(frame, timeSec, modulators)
         return self._overlay.apply(frame)
@@ -217,13 +224,33 @@ class ReferenceBackend:
             "bass": float(analysis.bass[index]),
             "mid": float(analysis.mid[index]),
             "high": float(analysis.high[index]),
+            "amplitude": min(
+                max(
+                    0.5 * float(analysis.bass[index])
+                    + 0.3 * float(analysis.mid[index])
+                    + 0.2 * float(analysis.high[index]),
+                    0.0,
+                ),
+                1.0,
+            ),
             "energy": float(analysis.energy[index]),
+            "spectral_centroid": self._spectralCentroid(analysis.spectrum[index]),
             "onset": float(analysis.onset[index]),
             "beat": self._eventValue(analysis.beat_times, relativeTimeSec, analysis.fps),
             "downbeat": self._eventValue(analysis.downbeat_times, relativeTimeSec, analysis.fps),
             "tension": float(analysis.energy[index]),
         }
         return index, values
+
+    # :: ANY -> FLOAT
+    # Reduces normalized spectrum energy to a stable zero-to-one brightness centroid
+    def _spectralCentroid(self, spectrum: Any) -> float:
+        values = np.maximum(np.asarray(spectrum, np.float32), 0.0)
+        if values.size == 0:
+            return 0.0
+        positions = np.linspace(0.0, 1.0, values.size, dtype=np.float32)
+        total = float(values.sum())
+        return float(np.dot(values, positions) / total) if total > 1e-9 else 0.0
 
     # :: FLOAT, ARRAY<STRING, ANY> -> FLOAT
     # Applies a resolved scalar binding to one source value

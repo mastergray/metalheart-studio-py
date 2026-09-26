@@ -314,6 +314,8 @@ class ConfigResolver:
         self._validateEnum(renderer.get("core"), CORES, "{0}.renderer.core".format(prefix), report)
         self._validateEnumList(renderer.get("forms"), FORMS, "{0}.renderer.forms".format(prefix), report)
         self._validateEnumList(renderer.get("cameras"), CAMERAS, "{0}.renderer.cameras".format(prefix), report)
+        if renderer.get("core") != "3d" and "resonance" in renderer.get("forms", []):
+            report.addError("{0}.renderer.forms: resonance requires the 3d core".format(prefix))
         for key in ("decor", "anti_alias"):
             if not isinstance(renderer.get(key), bool):
                 report.addError("{0}.renderer.{1}: expected a boolean".format(prefix, key))

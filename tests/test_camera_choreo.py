@@ -77,3 +77,18 @@ def testCameraSignalsModulatePose() -> None:
     assert pose[0][0] < 2.2
     assert pose[0][1] > 0.3
     assert abs(pose[2] - 0.3) < 1e-6
+
+
+# :: VOID -> NONE
+# Verifies owned resonance weights coexist with reference-form choreography
+def testResonanceWeightsUseOwnedFormChannel() -> None:
+    module = SimpleNamespace(
+        Choreo=_FakeChoreo,
+        camera_pose=_cameraPose,
+        MODES=["merge", "ripple"],
+        LOOKS={"mercury": {"merge": 1.0, "ripple": 0.3}},
+    )
+    choreo = CameraChoreo.init(module, ["resonance"], ["orbit"], 6.0, 9.0, 1.8, 1.0, 0.0, 1.0)
+    weights, form = choreo.weights(1.0)
+    assert form == "resonance"
+    assert weights == {"merge": 0.0, "ripple": 0.0, "resonance": 1.0}
