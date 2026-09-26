@@ -1,0 +1,46 @@
+# AI
+.claude/
+.agents/
+.codex/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Python
+.env
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Metalheart generated data
+.metalheart-cache/
+.metalheart-work/
+renders/
+work/
+*.features.npz
+
+# Render outputs (reference fixtures remain tracked)
+*.mp4
+*.mov
+*.mkv
+!ref/**/*.mp4

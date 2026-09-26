@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "audio": "../ref/audioReactive/metalheart_audio_test_small.mp4",
+  "settings": {
+    "width": 320,
+    "height": 180,
+    "fps": 12,
+    "crf": 23,
+    "seed": 3,
+    "quality": "preview",
+    "time_mode": "global"
+  },
+  "scenes": [
+    {
+      "id": "vertical-slice",
+      "name": "Three-second Metalheart smoke render",
+      "start_sec": 0.0,
+      "end_sec": 3.0,
+      "template": "builtins/mercury-intro",
+      "renderer": {
+        "core": "3d",
+        "forms": ["mercury", "ferro"],
+        "cameras": ["orbit", "crane"],
+        "form_len_sec": 1.5,
+        "camera_len_sec": 1.5,
+        "crossfade_sec": 0.5,
+        "core_scale": 0.25,
+        "anti_alias": false,
+        "decor": true
+      },
+      "reactivity": {
+        "preset": "balanced"
+      },
+      "overlay": {
+        "enabled": false
+      }
+    }
+  ],
+  "post": []
+}

@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "audio": "../ref/audioReactive/metalheart_audio_test_small.mp4",
+  "settings": {
+    "quality": "preview",
+    "seed": 3,
+    "time_mode": "scene"
+  },
+  "scenes": [
+    {
+      "id": "reactive-overlay",
+      "name": "Fixed-form audio response example",
+      "start_sec": 0.0,
+      "end_sec": 4.0,
+      "renderer": {
+        "core": "3d",
+        "palette": "steel",
+        "forms": ["ferro"],
+        "cameras": ["orbit"],
+        "form_len_sec": 8.0,
+        "camera_len_sec": 8.0,
+        "crossfade_sec": 1.0
+      },
+      "reactivity": {
+        "preset": "manual",
+        "bindings": {
+          "bass": {"source": "bass", "amount": 1.6, "curve": "ease_out", "clamp": [0.0, 1.6]},
+          "mid": {"source": "mid", "amount": 1.2, "clamp": [0.0, 1.2]},
+          "high": {"source": "high", "amount": 1.0, "clamp": [0.0, 1.0]},
+          "onset": {"source": "onset", "amount": 2.2, "curve": "ease_out", "threshold": 0.15, "clamp": [0.0, 2.2]}
+        },
+        "modulators": {
+          "pulse": {"source": "beat", "amount": 0.12, "curve": "ease_out", "clamp": [0.0, 0.12]},
+          "shake": {"source": "onset", "amount": 0.025, "curve": "ease_out", "threshold": 0.25, "clamp": [0.0, 0.025]},
+          "flash": {"source": "downbeat", "amount": 0.22, "curve": "ease_out", "clamp": [0.0, 0.22]},
+          "chroma": {"source": "onset", "amount": 0.012, "curve": "ease_out", "threshold": 0.3, "clamp": [0.0, 0.012]}
+        }
+      },
+      "overlay": {
+        "enabled": true,
+        "items": [
+          {
+            "text": "METALHEART",
+            "position": [0.05, 0.08],
+            "anchor": "top_left",
+            "size": 0.05,
+            "color": "#D8ECFF",
+            "opacity": 0.95
+          },
+          {
+            "text": "AUDIO-LINK TEST",
+            "position": [0.95, 0.92],
+            "anchor": "bottom_right",
+            "size": 0.035,
+            "color": "#FF852E",
+            "opacity": 0.9
+          }
+        ]
+      }
+    }
+  ],
+  "post": []
+}

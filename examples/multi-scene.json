@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "audio": "../ref/audioReactive/metalheart_audio_test_small.mp4",
+  "settings": {
+    "width": 320,
+    "height": 180,
+    "fps": 12,
+    "crf": 23,
+    "seed": 3,
+    "quality": "preview",
+    "time_mode": "global"
+  },
+  "scenes": [
+    {
+      "id": "calm-open",
+      "name": "Mercury opening",
+      "start_sec": 0.0,
+      "end_sec": 3.0,
+      "template": "builtins/mercury-intro",
+      "renderer": {
+        "palette": "steel",
+        "core_scale": 0.25,
+        "anti_alias": false
+      },
+      "reactivity": {
+        "preset": "ambient"
+      }
+    },
+    {
+      "id": "impact-cut",
+      "name": "Ferro impact",
+      "start_sec": 3.0,
+      "end_sec": 6.0,
+      "template": "builtins/ferro-impact",
+      "renderer": {
+        "palette": "ember",
+        "core_scale": 0.25,
+        "anti_alias": false
+      },
+      "reactivity": {
+        "preset": "ferro-impact"
+      }
+    }
+  ],
+  "post": []
+}
