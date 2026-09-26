@@ -224,9 +224,28 @@ class RenderPipeline:
             "config": config,
             "analysis": str(Path(analysisPath).resolve()),
             "backend": self._backend.version,
+            "surface_images": self._surfaceImageDigests(config),
         }
         encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
         return hashlib.sha256(encoded).hexdigest()
+
+    # :: ARRAY<STRING, ANY> -> ARRAY<STRING, STRING>
+    # Includes image contents so edited skins cannot reuse stale render chunks
+    def _surfaceImageDigests(self, config: Dict[str, Any]) -> Dict[str, str]:
+        digests: Dict[str, str] = {}
+        for scene in config.get("scenes", []):
+            image = scene.get("renderer", {}).get("surface", {}).get("image")
+            if not image or image in digests:
+                continue
+            digest = hashlib.sha256()
+            with Path(image).open("rb") as handle:
+                while True:
+                    block = handle.read(1024 * 1024)
+                    if not block:
+                        break
+                    digest.update(block)
+            digests[image] = digest.hexdigest()
+        return digests
 
     # :: INT, INT, INT, FLOAT -> [(INT, INT)]
     # Splits the exact output frame interval into stable ordered chunks

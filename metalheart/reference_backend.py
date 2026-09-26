@@ -15,6 +15,7 @@ from metalheart.audio_form_core import AudioFormCore  # Install production-owned
 from metalheart.camera_choreo import CameraChoreo  # Strengthen camera timing without modifying reference code
 from metalheart.frame_effects import FrameEffects  # Apply authored audio-driven frame transforms
 from metalheart.finishing import FinishingPass  # Replace immutable finishing with authored controls
+from metalheart.surface_skin import SurfaceSkin  # Project authored images across 3D core surfaces
 from metalheart.text_overlay import TextOverlay  # Draw configurable author text after modulation
 
 
@@ -60,6 +61,7 @@ class ReferenceRendererSession:
         self._frameEffects = FrameEffects.init()
         self._cameraChoreo: Optional[CameraChoreo] = None
         self._audioFormCore: Optional[AudioFormCore] = None
+        self._surfaceSkin: Optional[SurfaceSkin] = None
         overlayConfig = scene["overlay"]
         self._overlay = TextOverlay.init(overlayConfig, rendererModule.FONT_PATH)
         rendererConfig = scene["renderer"]
@@ -91,9 +93,12 @@ class ReferenceRendererSession:
                 cameraIntensity=rendererConfig["camera_intensity"],
             )
             self._renderer.choreo = self._cameraChoreo
-            if any(form in ("resonance", "stretch") for form in rendererConfig["forms"]):
+            if any(form in ("resonance", "radial") for form in rendererConfig["forms"]):
                 self._audioFormCore = AudioFormCore.init(liquidModule, scene.get("seed", settings["seed"]))
                 self._renderer.core3d.core = self._audioFormCore
+            if rendererConfig["surface"]["image"]:
+                self._surfaceSkin = SurfaceSkin.init(self._renderer.core3d, rendererConfig["surface"])
+                self._renderer.core3d._shade = self._surfaceSkin.shade
         self._finishing = FinishingPass.init(self._renderer, scene["finish"])
         self._renderer.post = self._finishing.apply
         self._renderer.hud_tag = "//AUDIO.REACTIVE"

@@ -1,8 +1,10 @@
 # Unit tests for audio binding evaluation and deterministic reference frames
 
+from pathlib import Path  # Type temporary image-skin paths
 from types import SimpleNamespace  # Build compact in-memory analysis fixtures
 from typing import Any, Dict  # Python 3.8-compatible config annotations
 
+import cv2  # Write deterministic image-skin fixtures
 import numpy as np  # Create feature arrays and compare rendered frames
 
 from metalheart.catalog import DEFAULT_RENDERER  # Start renderer fixtures from production defaults
@@ -10,6 +12,7 @@ from metalheart.catalog import DEFAULT_FINISH  # Supply owned finishing defaults
 from metalheart.catalog import REACTIVITY_PRESETS  # Exercise resolved audio mappings
 from metalheart.frame_effects import FrameEffects  # Exercise visible post-render modulation
 from metalheart.reference_backend import ReferenceBackend  # Adapt immutable renderer reference code
+from metalheart.surface_skin import SurfaceSkin  # Exercise resolution-independent image sampling
 
 
 # :: VOID -> ANY
@@ -145,28 +148,26 @@ def testResonanceModulatorsMapAnalysisValues() -> None:
 
 
 # :: VOID -> NONE
-# Verifies amplitude and spectral features map onto stretch geometry destinations
-def testStretchModulatorsMapAnalysisValues() -> None:
+# Verifies amplitude and spectral features map onto radial geometry destinations
+def testRadialModulatorsMapAnalysisValues() -> None:
     backend = ReferenceBackend.init()
-    reactivity = REACTIVITY_PRESETS["spectral-stretch"]
+    reactivity = REACTIVITY_PRESETS["spectral-radial"]
     modulators = backend.createModulators(_analysis(), 0, 0.0, reactivity)
-    assert 0.0 < modulators["form_length"] <= 2.2
-    assert 0.0 < modulators["form_curvature"] <= 1.25
-    assert 0.0 < modulators["form_direction"] <= 6.283185
-    assert 0.0 < modulators["form_twist"] <= 1.4
-    assert modulators["form_snap"] == 0.35
+    assert 0.0 < modulators["form_extent"] <= 0.95
+    assert 0.0 < modulators["form_rotation"] <= 6.283185
+    assert modulators["form_ripple"] == 0.12
 
 
 # :: VOID -> NONE
-# Verifies the production-owned stretch SDF renders a stable nonempty frame
-def testStretchFrameIsDeterministic() -> None:
+# Verifies the production-owned radial SDF renders a stable nonempty frame
+def testRadialFrameIsDeterministic() -> None:
     backend = ReferenceBackend.init()
     settings = {"width": 64, "height": 64, "seed": 5}
     scene = _scene()
     scene["renderer"].update(
-        {"core": "3d", "forms": ["stretch"], "cameras": ["orbit"], "core_scale": 0.25}
+        {"core": "3d", "forms": ["radial"], "cameras": ["orbit"], "core_scale": 0.25}
     )
-    scene["reactivity"] = REACTIVITY_PRESETS["spectral-stretch"]
+    scene["reactivity"] = REACTIVITY_PRESETS["spectral-radial"]
     params = backend.createParams(_analysis(), 0, 0.0, scene["reactivity"])
     modulators = backend.createModulators(_analysis(), 0, 0.0, scene["reactivity"])
     first = backend.createRenderer(settings, scene).render(0.5, params, modulators)
@@ -174,6 +175,82 @@ def testStretchFrameIsDeterministic() -> None:
     assert first.shape == (64, 64, 3)
     assert np.array_equal(first, second)
     assert int(first.max()) > 0
+
+
+# :: VOID -> NONE
+# Verifies different spectrum bands pull the radial form in different directions
+def testRadialFrameRespondsToSpectrumDirection() -> None:
+    backend = ReferenceBackend.init()
+    settings = {"width": 64, "height": 64, "seed": 5}
+    scene = _scene()
+    scene["renderer"].update(
+        {"core": "3d", "forms": ["radial"], "cameras": ["orbit"], "core_scale": 0.25}
+    )
+    scene["reactivity"] = REACTIVITY_PRESETS["spectral-radial"]
+    lowAnalysis = _analysis()
+    highAnalysis = _analysis()
+    lowAnalysis.spectrum[0] = np.linspace(1.0, 0.0, 24, dtype=np.float32)
+    highAnalysis.spectrum[0] = np.linspace(0.0, 1.0, 24, dtype=np.float32)
+    lowParams = backend.createParams(lowAnalysis, 0, 0.0, scene["reactivity"])
+    highParams = backend.createParams(highAnalysis, 0, 0.0, scene["reactivity"])
+    lowModulators = backend.createModulators(lowAnalysis, 0, 0.0, scene["reactivity"])
+    highModulators = backend.createModulators(highAnalysis, 0, 0.0, scene["reactivity"])
+    lowFrame = backend.createRenderer(settings, scene).render(0.5, lowParams, lowModulators)
+    highFrame = backend.createRenderer(settings, scene).render(0.5, highParams, highModulators)
+    assert not np.array_equal(lowFrame, highFrame)
+
+
+# :: PATH -> NONE
+# Verifies a triplanar image skin changes only the configured 3D render path
+def testImageSurfaceSkinChangesFrame(tmp_path: Path) -> None:
+    texture = np.zeros((8, 8, 3), np.uint8)
+    texture[:, :4] = [0, 0, 255]
+    texture[:, 4:] = [0, 255, 0]
+    imagePath = tmp_path / "skin.png"
+    assert cv2.imwrite(str(imagePath), texture)
+    backend = ReferenceBackend.init()
+    settings = {"width": 64, "height": 64, "seed": 5}
+    scene = _scene()
+    scene["renderer"].update(
+        {"core": "3d", "forms": ["mercury"], "cameras": ["orbit"], "core_scale": 0.25}
+    )
+    params = backend.createParams(_analysis(), 0, 0.0, scene["reactivity"])
+    modulators = backend.createModulators(_analysis(), 0, 0.0, scene["reactivity"])
+    reference = backend.createRenderer(settings, scene).render(0.5, params, modulators)
+    scene["renderer"]["surface"] = {
+        "image": str(imagePath),
+        "mapping": "triplanar",
+        "scale": 1.0,
+        "rotation_deg": 0.0,
+        "strength": 1.0,
+        "mode": "chrome_tint",
+    }
+    skinned = backend.createRenderer(settings, scene).render(0.5, params, modulators)
+    assert skinned.shape == reference.shape
+    assert not np.array_equal(skinned, reference)
+
+
+# :: PATH -> NONE
+# Verifies bilinear skin sampling supports more hit points than OpenCV remap limits
+def testImageSurfaceSkinSamplesLargeHitSet(tmp_path: Path) -> None:
+    texture = np.zeros((4, 4, 3), np.uint8)
+    texture[:, 2:] = 255
+    imagePath = tmp_path / "skin.png"
+    assert cv2.imwrite(str(imagePath), texture)
+    renderer = SimpleNamespace(_shade=lambda *arguments: arguments)
+    skin = SurfaceSkin.init(
+        renderer,
+        {
+            "image": str(imagePath),
+            "scale": 1.0,
+            "rotation_deg": 0.0,
+            "strength": 1.0,
+        },
+    )
+    coordinates = np.linspace(-2.0, 2.0, 40000, dtype=np.float32)
+    sampled = skin._sample(coordinates, coordinates)
+    assert sampled.shape == (40000, 3)
+    assert np.isfinite(sampled).all()
 
 
 # :: VOID -> NONE

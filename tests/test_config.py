@@ -142,8 +142,10 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
     modulators = schema["$defs"]["scene"]["properties"]["reactivity"]["properties"]["modulators"]["additionalProperties"]
     assert modulators == {"$ref": "#/$defs/binding"}
     assert "resonance" in renderer["forms"]["items"]["enum"]
-    assert "stretch" in renderer["forms"]["items"]["enum"]
+    assert "radial" in renderer["forms"]["items"]["enum"]
+    assert "stretch" not in renderer["forms"]["items"]["enum"]
     assert "heart" not in renderer["forms"]["items"]["enum"]
+    assert renderer["surface"] == {"$ref": "#/$defs/surface"}
     assert "finish" in scene
     assert "overlay" in scene
 
@@ -218,22 +220,46 @@ def testResolvesSpectralResonancePreset(tmp_path: Path) -> None:
 
 
 # :: PATH -> NONE
-# Verifies spectral stretch publishes every geometry-composition destination
-def testResolvesSpectralStretchPreset(tmp_path: Path) -> None:
+# Verifies spectral radial publishes multidirectional geometry destinations
+def testResolvesSpectralRadialPreset(tmp_path: Path) -> None:
     resolver = ConfigResolver.init()
     authored = _validConfig(tmp_path)
-    authored["scenes"][0]["renderer"] = {"core": "3d", "forms": ["stretch"]}
-    authored["scenes"][0]["reactivity"] = {"preset": "spectral-stretch"}
+    authored["scenes"][0]["renderer"] = {"core": "3d", "forms": ["radial"]}
+    authored["scenes"][0]["reactivity"] = {"preset": "spectral-radial"}
     resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
     report = resolver.validate(resolved)
     assert report.isValid, report.errors
     assert set(resolved["scenes"][0]["reactivity"]["modulators"]) == {
-        "form_length",
-        "form_curvature",
-        "form_direction",
-        "form_twist",
-        "form_snap",
+        "form_extent",
+        "form_rotation",
+        "form_ripple",
     }
+
+
+# :: PATH -> NONE
+# Verifies image skins resolve relative paths and require the 3D core
+def testResolvesImageSurfacePath(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    skinPath = tmp_path / "skin.png"
+    skinPath.write_bytes(b"placeholder")
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["renderer"] = {
+        "core": "3d",
+        "forms": ["radial"],
+        "surface": {"image": "skin.png", "strength": 0.6},
+    }
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert report.isValid, report.errors
+    assert resolved["scenes"][0]["renderer"]["surface"]["image"] == str(skinPath)
+    authored["scenes"][0]["renderer"]["core"] = "2d"
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert any("image skins require the 3d core" in error for error in report.errors)
+    authored["scenes"][0]["renderer"]["surface"] = "invalid"
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert any("renderer.surface: expected an object" in error for error in report.errors)
 
 
 # :: PATH -> NONE

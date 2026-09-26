@@ -123,7 +123,7 @@ class ConfigResolver:
             analysis["cache"] = self._resolvePath(analysis["cache"], basePath)
         resolved["analysis"] = analysis
         scenes = authored.get("scenes", [])
-        resolved["scenes"] = [self._resolveScene(scene, index, quality) for index, scene in enumerate(scenes)] if isinstance(scenes, list) else scenes
+        resolved["scenes"] = [self._resolveScene(scene, index, quality, basePath) for index, scene in enumerate(scenes)] if isinstance(scenes, list) else scenes
         resolved["post"] = copy.deepcopy(authored.get("post", []))
         resolved["_meta"] = {
             "config_path": str(Path(configPath).resolve()),
@@ -179,9 +179,9 @@ class ConfigResolver:
         path = Path(value).expanduser()
         return str((basePath / path).resolve()) if not path.is_absolute() else str(path.resolve())
 
-    # :: ARRAY<STRING, ANY>, INT, STRING -> ARRAY<STRING, ANY>
+    # :: ARRAY<STRING, ANY>, INT, STRING, PATH -> ARRAY<STRING, ANY>
     # Resolves one scene template, renderer defaults, and reactivity preset
-    def _resolveScene(self, authored: Any, index: int, quality: str) -> Any:
+    def _resolveScene(self, authored: Any, index: int, quality: str, basePath: Path) -> Any:
         if not isinstance(authored, dict):
             return authored
         templateId = authored.get("template")
@@ -196,6 +196,9 @@ class ConfigResolver:
         scene["name"] = scene.get("name", str(scene["id"]))
         rendererDefaults = self._deepMerge(DEFAULT_RENDERER, QUALITY_RENDERER_PROFILES.get(quality, QUALITY_RENDERER_PROFILES["final"]))
         scene["renderer"] = self._deepMerge(rendererDefaults, scene.get("renderer", {}))
+        surface = scene["renderer"].get("surface")
+        if isinstance(surface, dict) and surface.get("image"):
+            surface["image"] = self._resolvePath(surface["image"], basePath)
         legacyFinish = self._deepMerge(templateFinish, authoredFinish)
         scene["finish"] = self._deepMerge(DEFAULT_FINISH, self._deepMerge(legacyFinish, scene.get("finish", {})))
         reactivity = copy.deepcopy(scene.get("reactivity", {}))
@@ -314,7 +317,7 @@ class ConfigResolver:
         self._validateEnum(renderer.get("core"), CORES, "{0}.renderer.core".format(prefix), report)
         self._validateEnumList(renderer.get("forms"), FORMS, "{0}.renderer.forms".format(prefix), report)
         self._validateEnumList(renderer.get("cameras"), CAMERAS, "{0}.renderer.cameras".format(prefix), report)
-        ownedForms = {"resonance", "stretch"}.intersection(renderer.get("forms", []))
+        ownedForms = {"resonance", "radial"}.intersection(renderer.get("forms", []))
         if renderer.get("core") != "3d" and ownedForms:
             report.addError("{0}.renderer.forms: {1} requires the 3d core".format(prefix, sorted(ownedForms)[0]))
         for key in ("decor", "anti_alias"):
@@ -336,6 +339,34 @@ class ConfigResolver:
         coreScale = renderer.get("core_scale")
         if isinstance(coreScale, (int, float)) and not 0.1 <= coreScale <= 1.0:
             report.addError("{0}.renderer.core_scale: expected 0.1 through 1.0".format(prefix))
+        surface = renderer.get("surface")
+        if not isinstance(surface, dict):
+            report.addError("{0}.renderer.surface: expected an object".format(prefix))
+        else:
+            self._validateSurface(surface, renderer.get("core"), prefix, report)
+
+    # :: ARRAY<STRING, ANY>, ANY, STRING, validationReport -> NONE
+    # Validates optional object-space image skinning controls
+    def _validateSurface(self, surface: Dict[str, Any], core: Any, prefix: str, report: ValidationReport) -> None:
+        surfacePath = prefix + ".renderer.surface"
+        image = surface.get("image")
+        if image is not None and (not isinstance(image, str) or not image):
+            report.addError("{0}.image: expected a non-empty path or null".format(surfacePath))
+        elif isinstance(image, str) and not Path(image).is_file():
+            report.addError("{0}.image: file not found: {1}".format(surfacePath, image))
+        if image and core != "3d":
+            report.addError("{0}.image: image skins require the 3d core".format(surfacePath))
+        self._validateEnum(surface.get("mapping"), ["triplanar"], surfacePath + ".mapping", report)
+        self._validateEnum(surface.get("mode"), ["chrome_tint"], surfacePath + ".mode", report)
+        ranges = {
+            "scale": (0.05, 100.0),
+            "rotation_deg": (-3600.0, 3600.0),
+            "strength": (0.0, 1.0),
+        }
+        for key, limits in ranges.items():
+            value = surface.get(key)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not limits[0] <= value <= limits[1]:
+                report.addError("{0}.{1}: expected {2} through {3}".format(surfacePath, key, limits[0], limits[1]))
 
     # :: ARRAY<STRING, ANY>, STRING, validationReport -> NONE
     # Validates the owned finishing controls and their safe numeric ranges

@@ -91,19 +91,19 @@ def testResonanceWeightsUseOwnedFormChannel() -> None:
     choreo = CameraChoreo.init(module, ["resonance"], ["orbit"], 6.0, 9.0, 1.8, 1.0, 0.0, 1.0)
     weights, form = choreo.weights(1.0)
     assert form == "resonance"
-    assert weights == {"merge": 0.0, "ripple": 0.0, "resonance": 1.0, "stretch": 0.0}
+    assert weights == {"merge": 0.0, "ripple": 0.0, "resonance": 1.0, "radial": 0.0}
 
 
 # :: VOID -> NONE
-# Verifies stretch uses an independent owned-form weight channel
-def testStretchWeightsUseOwnedFormChannel() -> None:
+# Verifies radial deformation uses an independent owned-form weight channel
+def testRadialWeightsUseOwnedFormChannel() -> None:
     module = SimpleNamespace(
         Choreo=_FakeChoreo,
         camera_pose=_cameraPose,
         MODES=["merge", "ripple"],
         LOOKS={"mercury": {"merge": 1.0, "ripple": 0.3}},
     )
-    choreo = CameraChoreo.init(module, ["stretch"], ["orbit"], 6.0, 9.0, 1.8, 1.0, 0.0, 1.0)
+    choreo = CameraChoreo.init(module, ["radial"], ["orbit"], 6.0, 9.0, 1.8, 1.0, 0.0, 1.0)
     weights, form = choreo.weights(1.0)
-    assert form == "stretch"
-    assert weights == {"merge": 0.0, "ripple": 0.0, "resonance": 0.0, "stretch": 1.0}
+    assert form == "radial"
+    assert weights == {"merge": 0.0, "ripple": 0.0, "resonance": 0.0, "radial": 1.0}

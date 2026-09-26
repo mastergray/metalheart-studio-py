@@ -16,7 +16,7 @@ def _smoothMinimum(first: Any, second: Any, radius: float) -> Any:
     return second * (1.0 - blend) + first * blend - radius * blend * (1.0 - blend)
 
 
-# Adds spectrum-sculpted resonance and elastic stretch forms to the reference core
+# Adds spectrum-sculpted resonance and radial forms to the reference core
 class AudioFormCore:
 
     # CONSTRUCTOR :: moduleType, INT -> audioFormCore
@@ -26,7 +26,15 @@ class AudioFormCore:
         self._signals: Dict[str, float] = {}
         random = np.random.default_rng(seed + 1701)
         directions = random.normal(size=(3, 3)).astype(np.float32)
-        self._directions = directions / np.maximum(np.linalg.norm(directions, axis=1, keepdims=True), 1e-6)
+        self._resonanceDirections = directions / np.maximum(np.linalg.norm(directions, axis=1, keepdims=True), 1e-6)
+        count = 24
+        indices = np.arange(count, dtype=np.float32) + 0.5
+        polar = np.arccos(1.0 - 2.0 * indices / count)
+        azimuth = math.pi * (1.0 + math.sqrt(5.0)) * indices + random.uniform(0.0, 2.0 * math.pi)
+        self._radialDirections = np.stack(
+            [np.cos(azimuth) * np.sin(polar), np.cos(polar), np.sin(azimuth) * np.sin(polar)],
+            axis=1,
+        ).astype(np.float32)
 
     #
     # Instance Methods
@@ -41,18 +49,16 @@ class AudioFormCore:
                 "form_scale",
                 "form_deformation",
                 "form_ripple",
-                "form_length",
-                "form_curvature",
-                "form_direction",
-                "form_twist",
-                "form_snap",
+                "form_extent",
+                "form_rotation",
             )
         }
 
     # :: FLOAT, ARRAY<STRING, FLOAT>, ANY -> ARRAY<STRING, ANY>
-    # Precomputes reference, spectrum, resonance, and stretch state for one frame
+    # Precomputes reference, spectrum, resonance, and radial state for one frame
     def frame(self, timeSec: float, weights: Dict[str, float], params: Any) -> Dict[str, Any]:
-        spectrum = np.asarray(params.spectrum, np.float32)
+        spectrumValue = getattr(params, "spectrum", None)
+        spectrum = np.asarray(spectrumValue if spectrumValue is not None else [], np.float32).reshape(-1)
         if spectrum.size < 3:
             spectrum = np.pad(spectrum, (0, max(0, 3 - spectrum.size)))
         thirds = np.array_split(spectrum, 3)
@@ -62,39 +68,39 @@ class AudioFormCore:
         scale = min(max(self._signals.get("form_scale", 0.0), 0.0), 0.45)
         deformation = min(max(self._signals.get("form_deformation", 0.0), 0.0), 1.0)
         ripple = min(max(self._signals.get("form_ripple", 0.0), 0.0), 0.35)
+        radialSpectrum = self._radialSpectrum(spectrum)
         return {
             "base": self._base.frame(timeSec, weights, params),
             "resonance": min(max(float(weights.get("resonance", 0.0)), 0.0), 1.0),
-            "stretch": min(max(float(weights.get("stretch", 0.0)), 0.0), 1.0),
+            "radial": min(max(float(weights.get("radial", 0.0)), 0.0), 1.0),
             "time": timeSec,
             "scale": 0.62 + scale,
             "density": 4.0 + 11.0 * deformation,
             "depth": 0.006 + 0.018 * deformation,
             "phase": timeSec * (2.4 + 1.8 * mid) + ripple * 8.0,
+            "ripple": ripple,
             "low": low,
             "mid": mid,
             "high": high,
-            "length": min(max(self._signals.get("form_length", 0.0), 0.0), 2.4),
-            "curvature": min(max(self._signals.get("form_curvature", 0.0), 0.0), 1.5),
-            "direction": float(self._signals.get("form_direction", 0.0)) % (2.0 * math.pi),
-            "twist": min(max(self._signals.get("form_twist", 0.0), -2.5), 2.5),
-            "snap": min(max(self._signals.get("form_snap", 0.0), 0.0), 0.5),
+            "extent": min(max(self._signals.get("form_extent", 0.0), 0.0), 1.2),
+            "rotation": float(self._signals.get("form_rotation", 0.0)) % (2.0 * math.pi),
+            "radial_spectrum": radialSpectrum,
         }
 
     # :: ANY, ANY, ANY, ARRAY<STRING, ANY> -> ANY
     # Blends reference and owned distance fields through authored form weights
     def sdf(self, x: Any, y: Any, z: Any, frame: Dict[str, Any]) -> Any:
         resonanceWeight = frame["resonance"]
-        stretchWeight = frame["stretch"]
-        ownedWeight = min(resonanceWeight + stretchWeight, 1.0)
+        radialWeight = frame["radial"]
+        ownedWeight = min(resonanceWeight + radialWeight, 1.0)
         if ownedWeight <= 0.0:
             return self._base.sdf(x, y, z, frame["base"])
         result = None
         if resonanceWeight > 0.0:
             result = self._resonanceDistance(x, y, z, frame) * resonanceWeight
-        if stretchWeight > 0.0:
-            stretchDistance = self._stretchDistance(x, y, z, frame) * stretchWeight
-            result = stretchDistance if result is None else result + stretchDistance
+        if radialWeight > 0.0:
+            radialDistance = self._radialDistance(x, y, z, frame) * radialWeight
+            result = radialDistance if result is None else result + radialDistance
         if ownedWeight < 1.0:
             baseDistance = self._base.sdf(x, y, z, frame["base"])
             result = baseDistance * (1.0 - ownedWeight) + result
@@ -113,7 +119,7 @@ class AudioFormCore:
         qz = z / (scale * (0.88 + 0.32 * frame["high"]))
         distance = np.sqrt(qx * qx + qy * qy + qz * qz) - 0.62
         strengths = (frame["low"], frame["mid"], frame["high"])
-        for direction, strength in zip(self._directions, strengths):
+        for direction, strength in zip(self._resonanceDirections, strengths):
             offset = direction * (0.42 + 0.62 * strength)
             radius = 0.21 + 0.28 * strength
             lobe = np.sqrt(
@@ -134,34 +140,42 @@ class AudioFormCore:
         return (distance + frame["depth"] * (carrier + harmonics / normalization)) * scale
 
     # :: ANY, ANY, ANY, ARRAY<STRING, ANY> -> ANY
-    # Builds an amplitude-lengthened capsule curved and twisted by spectral content
-    def _stretchDistance(self, x: Any, y: Any, z: Any, frame: Dict[str, Any]) -> Any:
-        halfLength = 0.48 + 0.44 * frame["length"]
-        normalized = np.clip(x / halfLength, -1.0, 1.0)
-        axis = normalized * halfLength
-        bend = frame["curvature"] * halfLength * 0.42 * normalized * normalized
-        direction = frame["direction"]
-        centerY = bend * math.cos(direction)
-        centerZ = bend * math.sin(direction)
-        snapWave = frame["snap"] * halfLength * 0.22 * np.sin(math.pi * normalized + frame["time"] * 8.0)
-        centerY = centerY + snapWave * math.cos(direction + math.pi * 0.5)
-        centerZ = centerZ + snapWave * math.sin(direction + math.pi * 0.5)
-        localX = x - axis
-        localY = y - centerY
-        localZ = z - centerZ
-        twistAngle = frame["twist"] * normalized + frame["time"] * 0.12
-        cosine = np.cos(twistAngle)
-        sine = np.sin(twistAngle)
-        twistedY = localY * cosine - localZ * sine
-        twistedZ = localY * sine + localZ * cosine
-        taper = 0.72 + 0.28 * np.cos(normalized * math.pi * 0.5)
-        radius = (0.27 + 0.045 * frame["length"]) * taper
-        radial = np.sqrt((twistedY / 0.82) ** 2 + (twistedZ / 1.18) ** 2)
-        distance = np.sqrt(localX * localX + radial * radial) - radius
-        ridges = 0.009 * (0.3 + 0.7 * frame["high"]) * np.sin(
-            8.0 * normalized - frame["time"] * 3.0 + direction
+    # Builds multidirectional extensions whose directions follow individual spectrum bands
+    def _radialDistance(self, x: Any, y: Any, z: Any, frame: Dict[str, Any]) -> Any:
+        scale = 0.76
+        qx, qy, qz = x / scale, y / scale, z / scale
+        radial = np.sqrt(qx * qx + qy * qy + qz * qz) + 1e-6
+        normalX, normalY, normalZ = qx / radial, qy / radial, qz / radial
+        cosine = math.cos(frame["rotation"])
+        sine = math.sin(frame["rotation"])
+        rotatedX = normalX * cosine - normalZ * sine
+        rotatedZ = normalX * sine + normalZ * cosine
+        directional = np.zeros_like(radial)
+        for direction, strength in zip(self._radialDirections, frame["radial_spectrum"]):
+            alignment = np.clip(
+                rotatedX * direction[0] + normalY * direction[1] + rotatedZ * direction[2],
+                0.0,
+                1.0,
+            )
+            directional = np.maximum(directional, float(strength) ** 0.7 * alignment ** 11)
+        targetRadius = 0.56 + frame["extent"] * (0.12 + 1.02 * directional)
+        wave = frame["depth"] * 0.5 * np.sin(
+            12.0 * radial - frame["time"] * 5.5 + directional * 7.0
         )
-        return distance + ridges
+        wave += frame["ripple"] * 0.35 * np.sin(
+            8.0 * radial - frame["time"] * 7.0
+        )
+        return (radial - targetRadius + wave) * scale * 0.72
+
+    # :: ANY -> ANY
+    # Resamples and gently smooths arbitrary spectrum lengths onto 24 spatial directions
+    def _radialSpectrum(self, spectrum: Any) -> Any:
+        values = np.clip(np.asarray(spectrum, np.float32).reshape(-1), 0.0, 1.0)
+        if values.size != 24:
+            source = np.linspace(0.0, 1.0, max(values.size, 1), dtype=np.float32)
+            target = np.linspace(0.0, 1.0, 24, dtype=np.float32)
+            values = np.interp(target, source, values if values.size else np.zeros(1, np.float32)).astype(np.float32)
+        return values * 0.6 + np.roll(values, 1) * 0.2 + np.roll(values, -1) * 0.2
 
     #
     # Class Methods

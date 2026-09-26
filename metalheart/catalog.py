@@ -7,7 +7,7 @@ from typing import Any, Dict  # Python 3.8-compatible collection annotations
 
 PALETTES = ["steel", "acid", "ember"]
 CORES = ["3d", "2d"]
-FORMS = ["mercury", "wring", "ferro", "drip", "split", "fold", "morph", "gyro", "chaos", "resonance", "stretch"]
+FORMS = ["mercury", "wring", "ferro", "drip", "split", "fold", "morph", "gyro", "chaos", "resonance", "radial"]
 LOOKS = FORMS
 CAMERAS = ["orbit", "crane", "dolly", "low", "top", "macro", "dutch", "drift"]
 CURVES = ["linear", "ease_in", "ease_out", "smoothstep", "square"]
@@ -25,11 +25,8 @@ MODULATORS = [
     "form_scale",
     "form_deformation",
     "form_ripple",
-    "form_length",
-    "form_curvature",
-    "form_direction",
-    "form_twist",
-    "form_snap",
+    "form_extent",
+    "form_rotation",
 ]
 
 QUALITY_PROFILES: Dict[str, Dict[str, Any]] = {
@@ -72,6 +69,14 @@ DEFAULT_RENDERER: Dict[str, Any] = {
     "decor": True,
     "anti_alias": True,
     "core_scale": 0.5,
+    "surface": {
+        "image": None,
+        "mapping": "triplanar",
+        "scale": 1.0,
+        "rotation_deg": 0.0,
+        "strength": 0.75,
+        "mode": "chrome_tint",
+    },
 }
 
 DEFAULT_OVERLAY: Dict[str, Any] = {
@@ -189,7 +194,7 @@ REACTIVITY_PRESETS: Dict[str, Dict[str, Any]] = {
             "form_ripple": {"source": "onset", "amount": 0.14, "bias": 0.0, "curve": "ease_out", "threshold": 0.15, "clamp": [0.0, 0.14]},
         },
     },
-    "spectral-stretch": {
+    "spectral-radial": {
         "bindings": {
             "bass": {"source": "bass", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
             "mid": {"source": "mid", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
@@ -197,11 +202,9 @@ REACTIVITY_PRESETS: Dict[str, Dict[str, Any]] = {
             "onset": {"source": "onset", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
         },
         "modulators": {
-            "form_length": {"source": "amplitude", "amount": 2.2, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 2.2]},
-            "form_curvature": {"source": "spectral_centroid", "amount": 1.25, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 1.25]},
-            "form_direction": {"source": "spectral_centroid", "amount": 6.283185, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 6.283185]},
-            "form_twist": {"source": "high", "amount": 1.4, "bias": 0.0, "curve": "ease_out", "clamp": [0.0, 1.4]},
-            "form_snap": {"source": "onset", "amount": 0.35, "bias": 0.0, "curve": "ease_out", "threshold": 0.15, "clamp": [0.0, 0.35]},
+            "form_extent": {"source": "amplitude", "amount": 0.95, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 0.95]},
+            "form_rotation": {"source": "spectral_centroid", "amount": 6.283185, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 6.283185]},
+            "form_ripple": {"source": "onset", "amount": 0.12, "bias": 0.0, "curve": "ease_out", "threshold": 0.15, "clamp": [0.0, 0.12]},
         },
     },
     "manual": {"bindings": {}, "modulators": {}},
@@ -296,6 +299,19 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                 "decor": {"type": "boolean"},
                 "anti_alias": {"type": "boolean"},
                 "core_scale": {"type": "number", "minimum": 0.1, "maximum": 1.0},
+                "surface": {"$ref": "#/$defs/surface"},
+            },
+            "additionalProperties": True,
+        },
+        "surface": {
+            "type": "object",
+            "properties": {
+                "image": {"type": ["string", "null"]},
+                "mapping": {"const": "triplanar"},
+                "scale": {"type": "number", "minimum": 0.05, "maximum": 100.0},
+                "rotation_deg": {"type": "number", "minimum": -3600.0, "maximum": 3600.0},
+                "strength": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "mode": {"const": "chrome_tint"},
             },
             "additionalProperties": True,
         },

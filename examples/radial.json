@@ -8,20 +8,20 @@
   },
   "scenes": [
     {
-      "id": "spectral-stretch",
-      "name": "Amplitude and frequency-composed stretch",
+      "id": "spectral-radial",
+      "name": "Multidirectional spectrum field",
       "start_sec": 0.0,
       "end_sec": 4.0,
       "renderer": {
         "core": "3d",
         "palette": "steel",
-        "forms": ["stretch"],
+        "forms": ["radial"],
         "cameras": ["orbit"],
         "camera_speed": 0.35,
         "decor": false
       },
       "reactivity": {
-        "preset": "spectral-stretch"
+        "preset": "spectral-radial"
       },
       "overlay": {
         "enabled": false

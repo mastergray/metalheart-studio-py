@@ -48,7 +48,7 @@ The current selectable visual vocabulary is:
 
 - palettes: `steel`, `acid`, `ember`;
 - cores: `3d`, `2d`;
-- forms (called `looks` by the reference backend): `mercury`, `wring`, `ferro`, `drip`, `split`, `fold`, `morph`, `gyro`, `chaos`, plus the production-owned abstract `resonance` and `stretch` geometries;
+- forms (called `looks` by the reference backend): `mercury`, `wring`, `ferro`, `drip`, `split`, `fold`, `morph`, `gyro`, `chaos`, plus the production-owned abstract `resonance` and `radial` geometries;
 - cameras: `orbit`, `crane`, `dolly`, `low`, `top`, `macro`, `dutch`, `drift`;
 - toggles/quality controls: scanlines, decor, anti-aliasing, and 3D core render scale;
 - choreography controls: one or more forms and cameras, form duration, camera duration, crossfade behavior, and independent camera speed, phase, and signature intensity.
@@ -259,7 +259,7 @@ A binding maps one analyzed source to one public renderer parameter:
 
 Version 1 supports sources `bass`, `mid`, `high`, `amplitude`, `energy`, `spectral_centroid`, `onset`, `beat`, `downbeat`, and `tension`; curves `linear`, `ease_in`, `ease_out`, `smoothstep`, and `square`; and scalar destinations declared by the renderer adapter.
 
-The adapter exposes the existing `Params` destinations `bass`, `mid`, `high`, and `onset`, and passes the analyzed 24-band spectrum directly to `Params.spectrum`. Because those native inputs are intentionally subtle, scenes may also map signals onto owned frame-space modulators: `pulse`, `shake`, `flash`, and `chroma`. Camera-space destinations `camera_distance`, `camera_elevation`, `camera_roll`, and `camera_kick` apply bounded transforms to the selected base-camera pose; the `camera-driven` preset provides a curated mapping. Form-space destinations `form_scale`, `form_deformation`, and `form_ripple` drive the abstract `resonance` mass from fast amplitude, normalized spectral centroid, and onset envelopes. The `stretch` form adds `form_length`, `form_curvature`, `form_direction`, `form_twist`, and `form_snap`; its preset maps amplitude to length, frequency balance to curvature and bend plane, high energy to twist, and onsets to recoil. A modulator uses the same amount, bias, curve, threshold, and clamp model as a native binding. Future renderer controls should be added through a typed parameter registry rather than arbitrary dotted access into Python objects.
+The adapter exposes the existing `Params` destinations `bass`, `mid`, `high`, and `onset`, and passes the analyzed 24-band spectrum directly to `Params.spectrum`. Because those native inputs are intentionally subtle, scenes may also map signals onto owned frame-space modulators: `pulse`, `shake`, `flash`, and `chroma`. Camera-space destinations `camera_distance`, `camera_elevation`, `camera_roll`, and `camera_kick` apply bounded transforms to the selected base-camera pose; the `camera-driven` preset provides a curated mapping. Form-space destinations `form_scale`, `form_deformation`, and `form_ripple` drive the abstract `resonance` mass from fast amplitude, normalized spectral centroid, and onset envelopes. The `radial` form adds `form_extent` and `form_rotation`; amplitude controls overall reach, the individual 24 spectrum bands control extensions distributed across the sphere, spectral centroid rotates the field, and onsets propagate surface waves. A modulator uses the same amount, bias, curve, threshold, and clamp model as a native binding. Future renderer controls should be added through a typed parameter registry rather than arbitrary dotted access into Python objects.
 
 ### 6.5 Reactivity presets
 
@@ -277,6 +277,10 @@ Presets expand to ordinary bindings in the resolved render profile so renders re
 ### 6.6 Visible modulation
 
 Audio-reactive behavior is authored per scene. Time-based form or camera choreography must not be presented as audio response. For evaluation, a fixed form and fixed camera can isolate whether detected beats and transients visibly alter the frame. Presets may supply conservative defaults, while an author can explicitly bind beat or downbeat impulses when a pronounced synchronized response is wanted.
+
+### 6.7 Image surface skins
+
+An optional `renderer.surface` block may assign a config-relative image to any 3D core. Version 1 uses object-space `triplanar` mapping so animated or topologically changing forms do not require authored UV coordinates. `scale` controls repetition, `rotation_deg` rotates the projection around the vertical axis, and `strength` blends the image with the original chrome through the `chrome_tint` mode. The skin applies only to core hits; ribbons and plates retain their reference materials. Resolved paths and image-content digests participate in render fingerprints so editing an image invalidates resumable chunks.
 
 ## 7. Timeline format
 
@@ -330,6 +334,14 @@ Audio-reactive behavior is authored per scene. Time-based form or camera choreog
         "decor": true,
         "anti_alias": true,
         "core_scale": 0.5,
+        "surface": {
+          "image": "./assets/surface.png",
+          "mapping": "triplanar",
+          "scale": 1.0,
+          "rotation_deg": 0.0,
+          "strength": 0.75,
+          "mode": "chrome_tint"
+        },
         "hud": false
       },
       "reactivity": {

@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "audio": "../ref/audioReactive/metalheart_audio_test_small.mp4",
+  "settings": {
+    "quality": "preview",
+    "seed": 3,
+    "time_mode": "scene"
+  },
+  "scenes": [
+    {
+      "id": "image-skinned-radial",
+      "name": "Triplanar image skin",
+      "start_sec": 0.0,
+      "end_sec": 4.0,
+      "renderer": {
+        "core": "3d",
+        "palette": "steel",
+        "forms": ["radial"],
+        "cameras": ["orbit"],
+        "camera_speed": 0.35,
+        "decor": false,
+        "surface": {
+          "image": "../ref/metalheart_3d_scene_angles.png",
+          "mapping": "triplanar",
+          "scale": 1.0,
+          "rotation_deg": 0.0,
+          "strength": 0.75,
+          "mode": "chrome_tint"
+        }
+      },
+      "reactivity": {
+        "preset": "spectral-radial"
+      },
+      "overlay": {
+        "enabled": false
+      }
+    }
+  ],
+  "post": []
+}
