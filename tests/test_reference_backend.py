@@ -59,6 +59,26 @@ def testFixedSeedFrameIsDeterministic() -> None:
 
 
 # :: VOID -> NONE
+# Verifies owned camera timing controls visibly alter a real reference 3D frame
+def testCameraControlsAlter3dFrame() -> None:
+    backend = ReferenceBackend.init()
+    settings = {"width": 64, "height": 64, "seed": 5}
+    scene = _scene()
+    scene["renderer"].update(
+        {"core": "3d", "forms": ["mercury"], "cameras": ["dolly"], "core_scale": 0.25}
+    )
+    params = backend.createParams(_analysis(), 0, 0.0, scene["reactivity"])
+    modulators = backend.createModulators(_analysis(), 0, 0.0, scene["reactivity"])
+    reference = backend.createRenderer(settings, scene).render(1.0, params, modulators)
+    scene["renderer"].update(
+        {"camera_speed": 3.0, "camera_phase_sec": 2.0, "camera_intensity": 1.8}
+    )
+    strengthened = backend.createRenderer(settings, scene).render(1.0, params, modulators)
+    assert strengthened.shape == reference.shape
+    assert not np.array_equal(strengthened, reference)
+
+
+# :: VOID -> NONE
 # Verifies balanced bindings preserve normalized feature values
 def testBalancedBindingsMapAnalysisValues() -> None:
     backend = ReferenceBackend.init()

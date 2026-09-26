@@ -51,7 +51,7 @@ The current selectable visual vocabulary is:
 - forms (called `looks` by the reference backend): `mercury`, `wring`, `ferro`, `drip`, `split`, `fold`, `morph`, `gyro`, `chaos`;
 - cameras: `orbit`, `crane`, `dolly`, `low`, `top`, `macro`, `dutch`, `drift`;
 - toggles/quality controls: scanlines, decor, anti-aliasing, and 3D core render scale;
-- choreography controls: one or more forms and cameras, form duration, camera duration, and crossfade behavior.
+- choreography controls: one or more forms and cameras, form duration, camera duration, crossfade behavior, and independent camera speed, phase, and signature intensity.
 
 The authoring concepts map to Glitzle/Dazzle as follows:
 
@@ -323,6 +323,9 @@ Audio-reactive behavior is authored per scene. Time-based form or camera choreog
         "cameras": ["orbit", "crane"],
         "form_len_sec": 6.0,
         "camera_len_sec": 9.0,
+        "camera_speed": 1.0,
+        "camera_phase_sec": 0.0,
+        "camera_intensity": 1.0,
         "crossfade_sec": 1.8,
         "decor": true,
         "anti_alias": true,

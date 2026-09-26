@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional, Tuple  # Python 3.8-compatible type anno
 
 import numpy as np  # Build renderer parameters and blank HUD buffers
 
+from metalheart.camera_choreo import CameraChoreo  # Strengthen camera timing without modifying reference code
 from metalheart.frame_effects import FrameEffects  # Apply authored audio-driven frame transforms
 from metalheart.finishing import FinishingPass  # Replace immutable finishing with authored controls
 from metalheart.text_overlay import TextOverlay  # Draw configurable author text after modulation
@@ -75,12 +76,16 @@ class ReferenceRendererSession:
             aa=rendererConfig["anti_alias"],
         )
         if rendererConfig["core"] == "3d":
-            self._renderer.choreo = liquidModule.Choreo(
-                looks=rendererConfig["forms"],
-                cams=rendererConfig["cameras"],
-                look_len=rendererConfig["form_len_sec"],
-                cam_len=rendererConfig["camera_len_sec"],
-                xfade=rendererConfig["crossfade_sec"],
+            self._renderer.choreo = CameraChoreo.init(
+                liquidModule=liquidModule,
+                forms=rendererConfig["forms"],
+                cameras=rendererConfig["cameras"],
+                formLenSec=rendererConfig["form_len_sec"],
+                cameraLenSec=rendererConfig["camera_len_sec"],
+                crossfadeSec=rendererConfig["crossfade_sec"],
+                cameraSpeed=rendererConfig["camera_speed"],
+                cameraPhaseSec=rendererConfig["camera_phase_sec"],
+                cameraIntensity=rendererConfig["camera_intensity"],
             )
         self._finishing = FinishingPass.init(self._renderer, scene["finish"])
         self._renderer.post = self._finishing.apply

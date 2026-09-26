@@ -82,6 +82,9 @@ def testResolvesNamedQualityProfile(tmp_path: Path) -> None:
     assert resolved["settings"]["crf"] == 20
     assert resolved["scenes"][0]["renderer"]["core_scale"] == 0.5
     assert resolved["scenes"][0]["renderer"]["anti_alias"]
+    assert resolved["scenes"][0]["renderer"]["camera_speed"] == 1.0
+    assert resolved["scenes"][0]["renderer"]["camera_phase_sec"] == 0.0
+    assert resolved["scenes"][0]["renderer"]["camera_intensity"] == 1.0
 
 
 # :: PATH -> NONE
@@ -133,6 +136,9 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
     assert "palette" in renderer
     assert "looks" not in renderer
     assert "preset" not in renderer
+    assert "camera_speed" in renderer
+    assert "camera_phase_sec" in renderer
+    assert "camera_intensity" in renderer
     assert "finish" in scene
     assert "overlay" in scene
 
@@ -149,6 +155,22 @@ def testRejectsInvalidRendererSettings(tmp_path: Path) -> None:
     assert not report.isValid
     assert any("settings.width" in error for error in report.errors)
     assert any("renderer.forms[0]" in error for error in report.errors)
+
+
+# :: PATH -> NONE
+# Verifies camera timing and signature controls reject unsafe authored ranges
+def testRejectsInvalidCameraControls(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["renderer"].update(
+        {"camera_speed": 9.0, "camera_phase_sec": -1.0, "camera_intensity": 3.1}
+    )
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert not report.isValid
+    assert any("renderer.camera_speed" in error for error in report.errors)
+    assert any("renderer.camera_phase_sec" in error for error in report.errors)
+    assert any("renderer.camera_intensity" in error for error in report.errors)
 
 
 # :: PATH -> NONE

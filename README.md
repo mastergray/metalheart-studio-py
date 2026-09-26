@@ -19,7 +19,7 @@ Quality profiles now have concrete defaults: `preview` is 320×180 at 12 fps, `d
 
 Each scene may define resolution-independent `overlay.items` with text, position, anchor, size, color, and opacity. `overlay.enabled: false` is the master no-text switch and suppresses both custom items and the reference technical HUD. When overlays are enabled, `overlay.reference_hud` opts into that reference HUD. Reactivity presets expand both native renderer `bindings` and visible frame-space `modulators`: `pulse`, `shake`, `flash`, and `chroma`. See `examples/reactive-overlay.json` for explicit per-scene mappings.
 
-The public renderer vocabulary is `palette`, `forms`, `form_len_sec`, and `cameras`. Legacy `preset`, `looks`, and `look_len_sec` inputs are accepted during resolution but never appear in resolved profiles. Per-scene `finish` controls own bloom, streaks, flash, chroma, slice glitches, vignette, scanlines, and grain without modifying `ref/`.
+The public renderer vocabulary is `palette`, `forms`, `form_len_sec`, and `cameras`. Camera motion may be tuned independently from form animation with `camera_speed`, `camera_phase_sec`, and `camera_intensity`; defaults preserve the reference behavior. Legacy `preset`, `looks`, and `look_len_sec` inputs are accepted during resolution but never appear in resolved profiles. Per-scene `finish` controls own bloom, streaks, flash, chroma, slice glitches, vignette, scanlines, and grain without modifying `ref/`.
 
 Renders split into deterministic chunks. `settings.workers` defaults conservatively to `auto`, `chunk_sec` defaults to four seconds, and completed chunks are retained under `.metalheart-work/` for automatic resume. CLI overrides are available through `--workers`, `--chunk-sec`, and `--no-resume`.
 

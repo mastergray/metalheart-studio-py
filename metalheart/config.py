@@ -321,6 +321,15 @@ class ConfigResolver:
             value = renderer.get(key)
             if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
                 report.addError("{0}.renderer.{1}: expected a positive number".format(prefix, key))
+        cameraRanges = {
+            "camera_speed": (0.0, 8.0),
+            "camera_phase_sec": (0.0, 120.0),
+            "camera_intensity": (0.0, 3.0),
+        }
+        for key, limits in cameraRanges.items():
+            value = renderer.get(key)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not limits[0] <= value <= limits[1]:
+                report.addError("{0}.renderer.{1}: expected {2} through {3}".format(prefix, key, limits[0], limits[1]))
         coreScale = renderer.get("core_scale")
         if isinstance(coreScale, (int, float)) and not 0.1 <= coreScale <= 1.0:
             report.addError("{0}.renderer.core_scale: expected 0.1 through 1.0".format(prefix))
