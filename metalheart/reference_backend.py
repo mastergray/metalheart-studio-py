@@ -57,6 +57,7 @@ class ReferenceRendererSession:
         self._settings = settings
         self._scene = scene
         self._frameEffects = FrameEffects.init()
+        self._cameraChoreo: Optional[CameraChoreo] = None
         overlayConfig = scene["overlay"]
         self._overlay = TextOverlay.init(overlayConfig, rendererModule.FONT_PATH)
         rendererConfig = scene["renderer"]
@@ -76,7 +77,7 @@ class ReferenceRendererSession:
             aa=rendererConfig["anti_alias"],
         )
         if rendererConfig["core"] == "3d":
-            self._renderer.choreo = CameraChoreo.init(
+            self._cameraChoreo = CameraChoreo.init(
                 liquidModule=liquidModule,
                 forms=rendererConfig["forms"],
                 cameras=rendererConfig["cameras"],
@@ -87,6 +88,7 @@ class ReferenceRendererSession:
                 cameraPhaseSec=rendererConfig["camera_phase_sec"],
                 cameraIntensity=rendererConfig["camera_intensity"],
             )
+            self._renderer.choreo = self._cameraChoreo
         self._finishing = FinishingPass.init(self._renderer, scene["finish"])
         self._renderer.post = self._finishing.apply
         self._renderer.hud_tag = "//AUDIO.REACTIVE"
@@ -100,6 +102,8 @@ class ReferenceRendererSession:
     # :: FLOAT, ANY, ARRAY<STRING, FLOAT> -> ANY
     # Renders, visibly modulates, and overlays one BGR frame
     def render(self, timeSec: float, params: Any, modulators: Dict[str, float]) -> Any:
+        if self._cameraChoreo is not None:
+            self._cameraChoreo.setSignals(modulators)
         frame = self._renderer.render(timeSec, params)
         frame = self._frameEffects.apply(frame, timeSec, modulators)
         return self._overlay.apply(frame)

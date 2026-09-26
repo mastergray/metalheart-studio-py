@@ -101,6 +101,18 @@ def testBalancedModulatorsMapAnalysisValues() -> None:
 
 
 # :: VOID -> NONE
+# Verifies camera destinations use the same typed audio binding evaluator
+def testCameraModulatorsMapAnalysisValues() -> None:
+    backend = ReferenceBackend.init()
+    reactivity = REACTIVITY_PRESETS["camera-driven"]
+    modulators = backend.createModulators(_analysis(), 0, 0.0, reactivity)
+    assert 0.0 < modulators["camera_distance"] <= 0.28
+    assert -0.08 <= modulators["camera_elevation"] <= 0.16
+    assert -0.04 <= modulators["camera_roll"] <= 0.14
+    assert modulators["camera_kick"] == 0.3
+
+
+# :: VOID -> NONE
 # Verifies a frame-space pulse visibly changes pixels without changing dimensions
 def testFrameEffectsApplyVisiblePulse() -> None:
     frame = np.zeros((32, 32, 3), np.uint8)

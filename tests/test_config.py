@@ -139,6 +139,8 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
     assert "camera_speed" in renderer
     assert "camera_phase_sec" in renderer
     assert "camera_intensity" in renderer
+    modulators = schema["$defs"]["scene"]["properties"]["reactivity"]["properties"]["modulators"]["additionalProperties"]
+    assert modulators == {"$ref": "#/$defs/binding"}
     assert "finish" in scene
     assert "overlay" in scene
 
@@ -171,6 +173,24 @@ def testRejectsInvalidCameraControls(tmp_path: Path) -> None:
     assert any("renderer.camera_speed" in error for error in report.errors)
     assert any("renderer.camera_phase_sec" in error for error in report.errors)
     assert any("renderer.camera_intensity" in error for error in report.errors)
+
+
+# :: PATH -> NONE
+# Verifies the camera-driven preset expands into supported camera destinations
+def testResolvesCameraDrivenPreset(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["reactivity"] = {"preset": "camera-driven"}
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    modulators = resolved["scenes"][0]["reactivity"]["modulators"]
+    assert report.isValid, report.errors
+    assert set(modulators) == {
+        "camera_distance",
+        "camera_elevation",
+        "camera_roll",
+        "camera_kick",
+    }
 
 
 # :: PATH -> NONE

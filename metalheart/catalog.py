@@ -13,7 +13,16 @@ CAMERAS = ["orbit", "crane", "dolly", "low", "top", "macro", "dutch", "drift"]
 CURVES = ["linear", "ease_in", "ease_out", "smoothstep", "square"]
 SOURCES = ["bass", "mid", "high", "energy", "onset", "beat", "downbeat", "tension"]
 DESTINATIONS = ["bass", "mid", "high", "onset"]
-MODULATORS = ["pulse", "shake", "flash", "chroma"]
+MODULATORS = [
+    "pulse",
+    "shake",
+    "flash",
+    "chroma",
+    "camera_distance",
+    "camera_elevation",
+    "camera_roll",
+    "camera_kick",
+]
 
 QUALITY_PROFILES: Dict[str, Dict[str, Any]] = {
     "preview": {"width": 320, "height": 180, "fps": 12, "crf": 23},
@@ -143,6 +152,20 @@ REACTIVITY_PRESETS: Dict[str, Dict[str, Any]] = {
             "shake": {"source": "onset", "amount": 0.025, "bias": 0.0, "curve": "ease_out", "threshold": 0.25, "clamp": [0.0, 0.025]},
             "flash": {"source": "onset", "amount": 0.3, "bias": 0.0, "curve": "ease_out", "threshold": 0.3, "clamp": [0.0, 0.3]},
             "chroma": {"source": "onset", "amount": 0.012, "bias": 0.0, "curve": "ease_out", "threshold": 0.35, "clamp": [0.0, 0.012]},
+        },
+    },
+    "camera-driven": {
+        "bindings": {
+            "bass": {"source": "bass", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+            "mid": {"source": "mid", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+            "high": {"source": "high", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+            "onset": {"source": "onset", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+        },
+        "modulators": {
+            "camera_distance": {"source": "bass", "amount": 0.28, "bias": 0.0, "curve": "ease_out", "clamp": [0.0, 0.28]},
+            "camera_elevation": {"source": "mid", "amount": 0.24, "bias": -0.08, "curve": "smoothstep", "clamp": [-0.08, 0.16]},
+            "camera_roll": {"source": "high", "amount": 0.18, "bias": -0.04, "curve": "smoothstep", "clamp": [-0.04, 0.14]},
+            "camera_kick": {"source": "onset", "amount": 0.3, "bias": 0.0, "curve": "ease_out", "threshold": 0.2, "clamp": [0.0, 0.3]},
         },
     },
     "manual": {"bindings": {}, "modulators": {}},

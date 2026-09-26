@@ -60,3 +60,20 @@ def testCameraIntensityStrengthensPoseDifference() -> None:
     assert np.allclose(pose[1], [2.0, 0.0, 0.0])
     assert abs(pose[2] - 0.4) < 1e-6
     assert abs(pose[3] - 0.6) < 1e-6
+
+
+# :: VOID -> NONE
+# Verifies audio signals alter camera space without changing the base choreography
+def testCameraSignalsModulatePose() -> None:
+    module = SimpleNamespace(Choreo=_FakeChoreo, camera_pose=_cameraPose)
+    choreo = CameraChoreo.init(module, ["mercury"], ["dolly"], 6.0, 9.0, 1.8, 1.0, 0.0, 1.0)
+    choreo.setSignals(
+        {"camera_distance": 0.25, "camera_elevation": 0.2, "camera_roll": 0.1}
+    )
+    pose, camera = choreo.pose(1.0, SimpleNamespace())
+    assert camera == "dolly"
+    assert np.allclose(pose[1], [1.0, 0.0, 0.0])
+    assert abs(np.linalg.norm(pose[0] - pose[1]) - 1.2) < 1e-6
+    assert pose[0][0] < 2.2
+    assert pose[0][1] > 0.3
+    assert abs(pose[2] - 0.3) < 1e-6
