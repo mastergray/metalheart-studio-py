@@ -11,10 +11,10 @@ from typing import Any, Dict, Optional, Tuple  # Python 3.8-compatible type anno
 
 import numpy as np  # Build renderer parameters and blank HUD buffers
 
+from metalheart.audio_form_core import AudioFormCore  # Install production-owned audio-composed geometry
 from metalheart.camera_choreo import CameraChoreo  # Strengthen camera timing without modifying reference code
 from metalheart.frame_effects import FrameEffects  # Apply authored audio-driven frame transforms
 from metalheart.finishing import FinishingPass  # Replace immutable finishing with authored controls
-from metalheart.resonance_core import ResonanceCore  # Install production-owned audio-driven heart geometry
 from metalheart.text_overlay import TextOverlay  # Draw configurable author text after modulation
 
 
@@ -59,7 +59,7 @@ class ReferenceRendererSession:
         self._scene = scene
         self._frameEffects = FrameEffects.init()
         self._cameraChoreo: Optional[CameraChoreo] = None
-        self._resonanceCore: Optional[ResonanceCore] = None
+        self._audioFormCore: Optional[AudioFormCore] = None
         overlayConfig = scene["overlay"]
         self._overlay = TextOverlay.init(overlayConfig, rendererModule.FONT_PATH)
         rendererConfig = scene["renderer"]
@@ -91,9 +91,9 @@ class ReferenceRendererSession:
                 cameraIntensity=rendererConfig["camera_intensity"],
             )
             self._renderer.choreo = self._cameraChoreo
-            if "resonance" in rendererConfig["forms"]:
-                self._resonanceCore = ResonanceCore.init(liquidModule, scene.get("seed", settings["seed"]))
-                self._renderer.core3d.core = self._resonanceCore
+            if any(form in ("resonance", "stretch") for form in rendererConfig["forms"]):
+                self._audioFormCore = AudioFormCore.init(liquidModule, scene.get("seed", settings["seed"]))
+                self._renderer.core3d.core = self._audioFormCore
         self._finishing = FinishingPass.init(self._renderer, scene["finish"])
         self._renderer.post = self._finishing.apply
         self._renderer.hud_tag = "//AUDIO.REACTIVE"
@@ -109,8 +109,8 @@ class ReferenceRendererSession:
     def render(self, timeSec: float, params: Any, modulators: Dict[str, float]) -> Any:
         if self._cameraChoreo is not None:
             self._cameraChoreo.setSignals(modulators)
-        if self._resonanceCore is not None:
-            self._resonanceCore.setSignals(modulators)
+        if self._audioFormCore is not None:
+            self._audioFormCore.setSignals(modulators)
         frame = self._renderer.render(timeSec, params)
         frame = self._frameEffects.apply(frame, timeSec, modulators)
         return self._overlay.apply(frame)

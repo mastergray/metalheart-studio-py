@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "audio": "../ref/audioReactive/metalheart_audio_test_small.mp4",
+  "settings": {
+    "quality": "preview",
+    "seed": 3,
+    "time_mode": "scene"
+  },
+  "scenes": [
+    {
+      "id": "spectral-stretch",
+      "name": "Amplitude and frequency-composed stretch",
+      "start_sec": 0.0,
+      "end_sec": 4.0,
+      "renderer": {
+        "core": "3d",
+        "palette": "steel",
+        "forms": ["stretch"],
+        "cameras": ["orbit"],
+        "camera_speed": 0.35,
+        "decor": false
+      },
+      "reactivity": {
+        "preset": "spectral-stretch"
+      },
+      "overlay": {
+        "enabled": false
+      }
+    }
+  ],
+  "post": []
+}

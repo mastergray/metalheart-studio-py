@@ -7,7 +7,7 @@ from typing import Any, Dict  # Python 3.8-compatible collection annotations
 
 PALETTES = ["steel", "acid", "ember"]
 CORES = ["3d", "2d"]
-FORMS = ["mercury", "wring", "ferro", "drip", "split", "fold", "morph", "gyro", "chaos", "resonance"]
+FORMS = ["mercury", "wring", "ferro", "drip", "split", "fold", "morph", "gyro", "chaos", "resonance", "stretch"]
 LOOKS = FORMS
 CAMERAS = ["orbit", "crane", "dolly", "low", "top", "macro", "dutch", "drift"]
 CURVES = ["linear", "ease_in", "ease_out", "smoothstep", "square"]
@@ -25,6 +25,11 @@ MODULATORS = [
     "form_scale",
     "form_deformation",
     "form_ripple",
+    "form_length",
+    "form_curvature",
+    "form_direction",
+    "form_twist",
+    "form_snap",
 ]
 
 QUALITY_PROFILES: Dict[str, Dict[str, Any]] = {
@@ -171,7 +176,7 @@ REACTIVITY_PRESETS: Dict[str, Dict[str, Any]] = {
             "camera_kick": {"source": "onset", "amount": 0.3, "bias": 0.0, "curve": "ease_out", "threshold": 0.2, "clamp": [0.0, 0.3]},
         },
     },
-    "resonant-heart": {
+    "spectral-resonance": {
         "bindings": {
             "bass": {"source": "bass", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
             "mid": {"source": "mid", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
@@ -182,6 +187,21 @@ REACTIVITY_PRESETS: Dict[str, Dict[str, Any]] = {
             "form_scale": {"source": "amplitude", "amount": 0.32, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 0.32]},
             "form_deformation": {"source": "spectral_centroid", "amount": 1.0, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 1.0]},
             "form_ripple": {"source": "onset", "amount": 0.14, "bias": 0.0, "curve": "ease_out", "threshold": 0.15, "clamp": [0.0, 0.14]},
+        },
+    },
+    "spectral-stretch": {
+        "bindings": {
+            "bass": {"source": "bass", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+            "mid": {"source": "mid", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+            "high": {"source": "high", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+            "onset": {"source": "onset", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+        },
+        "modulators": {
+            "form_length": {"source": "amplitude", "amount": 2.2, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 2.2]},
+            "form_curvature": {"source": "spectral_centroid", "amount": 1.25, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 1.25]},
+            "form_direction": {"source": "spectral_centroid", "amount": 6.283185, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 6.283185]},
+            "form_twist": {"source": "high", "amount": 1.4, "bias": 0.0, "curve": "ease_out", "clamp": [0.0, 1.4]},
+            "form_snap": {"source": "onset", "amount": 0.35, "bias": 0.0, "curve": "ease_out", "threshold": 0.15, "clamp": [0.0, 0.35]},
         },
     },
     "manual": {"bindings": {}, "modulators": {}},

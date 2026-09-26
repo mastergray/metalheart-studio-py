@@ -142,6 +142,8 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
     modulators = schema["$defs"]["scene"]["properties"]["reactivity"]["properties"]["modulators"]["additionalProperties"]
     assert modulators == {"$ref": "#/$defs/binding"}
     assert "resonance" in renderer["forms"]["items"]["enum"]
+    assert "stretch" in renderer["forms"]["items"]["enum"]
+    assert "heart" not in renderer["forms"]["items"]["enum"]
     assert "finish" in scene
     assert "overlay" in scene
 
@@ -196,11 +198,11 @@ def testResolvesCameraDrivenPreset(tmp_path: Path) -> None:
 
 # :: PATH -> NONE
 # Verifies the owned resonance form and preset resolve only on the 3D core
-def testResolvesResonantHeartPreset(tmp_path: Path) -> None:
+def testResolvesSpectralResonancePreset(tmp_path: Path) -> None:
     resolver = ConfigResolver.init()
     authored = _validConfig(tmp_path)
     authored["scenes"][0]["renderer"] = {"core": "3d", "forms": ["resonance"]}
-    authored["scenes"][0]["reactivity"] = {"preset": "resonant-heart"}
+    authored["scenes"][0]["reactivity"] = {"preset": "spectral-resonance"}
     resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
     report = resolver.validate(resolved)
     assert report.isValid, report.errors
@@ -213,6 +215,25 @@ def testResolvesResonantHeartPreset(tmp_path: Path) -> None:
     resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
     report = resolver.validate(resolved)
     assert any("resonance requires the 3d core" in error for error in report.errors)
+
+
+# :: PATH -> NONE
+# Verifies spectral stretch publishes every geometry-composition destination
+def testResolvesSpectralStretchPreset(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["renderer"] = {"core": "3d", "forms": ["stretch"]}
+    authored["scenes"][0]["reactivity"] = {"preset": "spectral-stretch"}
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert report.isValid, report.errors
+    assert set(resolved["scenes"][0]["reactivity"]["modulators"]) == {
+        "form_length",
+        "form_curvature",
+        "form_direction",
+        "form_twist",
+        "form_snap",
+    }
 
 
 # :: PATH -> NONE

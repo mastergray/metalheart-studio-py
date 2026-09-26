@@ -8,8 +8,8 @@
   },
   "scenes": [
     {
-      "id": "resonant-heart",
-      "name": "Spectrum-driven liquid heart",
+      "id": "spectral-resonance",
+      "name": "Spectrum-sculpted liquid mass",
       "start_sec": 0.0,
       "end_sec": 4.0,
       "renderer": {
@@ -21,7 +21,7 @@
         "decor": false
       },
       "reactivity": {
-        "preset": "resonant-heart"
+        "preset": "spectral-resonance"
       },
       "overlay": {
         "enabled": false

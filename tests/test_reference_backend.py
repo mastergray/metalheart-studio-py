@@ -79,7 +79,7 @@ def testCameraControlsAlter3dFrame() -> None:
 
 
 # :: VOID -> NONE
-# Verifies the production-owned resonance SDF renders deterministic heart frames
+# Verifies the production-owned resonance SDF renders deterministic abstract frames
 def testResonanceFrameIsDeterministic() -> None:
     backend = ReferenceBackend.init()
     settings = {"width": 64, "height": 64, "seed": 5}
@@ -87,7 +87,7 @@ def testResonanceFrameIsDeterministic() -> None:
     scene["renderer"].update(
         {"core": "3d", "forms": ["resonance"], "cameras": ["orbit"], "core_scale": 0.25}
     )
-    scene["reactivity"] = REACTIVITY_PRESETS["resonant-heart"]
+    scene["reactivity"] = REACTIVITY_PRESETS["spectral-resonance"]
     params = backend.createParams(_analysis(), 0, 0.0, scene["reactivity"])
     modulators = backend.createModulators(_analysis(), 0, 0.0, scene["reactivity"])
     first = backend.createRenderer(settings, scene).render(0.5, params, modulators)
@@ -135,13 +135,45 @@ def testCameraModulatorsMapAnalysisValues() -> None:
 # Verifies spectral centroid and energy map onto resonance destinations
 def testResonanceModulatorsMapAnalysisValues() -> None:
     backend = ReferenceBackend.init()
-    reactivity = REACTIVITY_PRESETS["resonant-heart"]
+    reactivity = REACTIVITY_PRESETS["spectral-resonance"]
     modulators = backend.createModulators(_analysis(), 0, 0.0, reactivity)
     amplitude = 0.5 * 0.25 + 0.3 * 0.4 + 0.2 * 0.6
     expectedScale = amplitude * amplitude * (3.0 - 2.0 * amplitude) * 0.32
     assert abs(modulators["form_scale"] - expectedScale) < 1e-6
     assert abs(modulators["form_deformation"] - 0.5) < 1e-6
     assert modulators["form_ripple"] == 0.14
+
+
+# :: VOID -> NONE
+# Verifies amplitude and spectral features map onto stretch geometry destinations
+def testStretchModulatorsMapAnalysisValues() -> None:
+    backend = ReferenceBackend.init()
+    reactivity = REACTIVITY_PRESETS["spectral-stretch"]
+    modulators = backend.createModulators(_analysis(), 0, 0.0, reactivity)
+    assert 0.0 < modulators["form_length"] <= 2.2
+    assert 0.0 < modulators["form_curvature"] <= 1.25
+    assert 0.0 < modulators["form_direction"] <= 6.283185
+    assert 0.0 < modulators["form_twist"] <= 1.4
+    assert modulators["form_snap"] == 0.35
+
+
+# :: VOID -> NONE
+# Verifies the production-owned stretch SDF renders a stable nonempty frame
+def testStretchFrameIsDeterministic() -> None:
+    backend = ReferenceBackend.init()
+    settings = {"width": 64, "height": 64, "seed": 5}
+    scene = _scene()
+    scene["renderer"].update(
+        {"core": "3d", "forms": ["stretch"], "cameras": ["orbit"], "core_scale": 0.25}
+    )
+    scene["reactivity"] = REACTIVITY_PRESETS["spectral-stretch"]
+    params = backend.createParams(_analysis(), 0, 0.0, scene["reactivity"])
+    modulators = backend.createModulators(_analysis(), 0, 0.0, scene["reactivity"])
+    first = backend.createRenderer(settings, scene).render(0.5, params, modulators)
+    second = backend.createRenderer(settings, scene).render(0.5, params, modulators)
+    assert first.shape == (64, 64, 3)
+    assert np.array_equal(first, second)
+    assert int(first.max()) > 0
 
 
 # :: VOID -> NONE

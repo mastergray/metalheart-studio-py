@@ -23,7 +23,7 @@ class CameraChoreo:
         self._formLenSec = formLenSec
         self._crossfadeSec = crossfadeSec
         self._signals: Dict[str, float] = {}
-        referenceForms = ["mercury" if form == "resonance" else form for form in forms]
+        referenceForms = ["mercury" if form in ("resonance", "stretch") else form for form in forms]
         self._choreo = liquidModule.Choreo(
             looks=referenceForms,
             cams=cameras,
@@ -39,8 +39,8 @@ class CameraChoreo:
     # :: FLOAT -> (ARRAY<STRING, FLOAT>, STRING)
     # Preserves the reference form schedule at unmodified renderer time
     def weights(self, timeSec: float) -> Tuple[Dict[str, float], str]:
-        if "resonance" in self._forms:
-            return self._resonanceWeights(timeSec)
+        if any(form in ("resonance", "stretch") for form in self._forms):
+            return self._ownedWeights(timeSec)
         return self._choreo.weights(timeSec)
 
     # :: ARRAY<STRING, FLOAT> -> NONE
@@ -114,7 +114,7 @@ class CameraChoreo:
 
     # :: FLOAT -> (ARRAY<STRING, FLOAT>, STRING)
     # Resolves reference and owned forms through the reference crossfade schedule
-    def _resonanceWeights(self, timeSec: float) -> Tuple[Dict[str, float], str]:
+    def _ownedWeights(self, timeSec: float) -> Tuple[Dict[str, float], str]:
         formCount = len(self._forms)
         segment = int(math.floor(timeSec / self._formLenSec))
         progress = (timeSec - (segment + 1) * self._formLenSec + self._crossfadeSec) / self._crossfadeSec
@@ -124,7 +124,7 @@ class CameraChoreo:
         second = self._forms[(segment + 1) % formCount]
         firstWeights = self._formWeights(first)
         secondWeights = self._formWeights(second)
-        modes = list(self._liquidModule.MODES) + ["resonance"]
+        modes = list(self._liquidModule.MODES) + ["resonance", "stretch"]
         weights = {
             mode: firstWeights.get(mode, 0.0) * (1.0 - progress) + secondWeights.get(mode, 0.0) * progress
             for mode in modes
@@ -134,8 +134,8 @@ class CameraChoreo:
     # :: STRING -> ARRAY<STRING, FLOAT>
     # Returns owned or reference mode weights for one public form
     def _formWeights(self, form: str) -> Dict[str, float]:
-        if form == "resonance":
-            return {"resonance": 1.0}
+        if form in ("resonance", "stretch"):
+            return {form: 1.0}
         return dict(self._liquidModule.LOOKS[form])
 
     #
