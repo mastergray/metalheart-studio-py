@@ -146,6 +146,10 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
     assert "stretch" not in renderer["forms"]["items"]["enum"]
     assert "heart" not in renderer["forms"]["items"]["enum"]
     assert renderer["surface"] == {"$ref": "#/$defs/surface"}
+    surface = schema["$defs"]["surface"]["properties"]
+    assert surface["sampling"]["enum"] == ["bilinear", "nearest"]
+    assert "texel_steps" in surface
+    assert "lighting_steps" in surface
     assert "finish" in scene
     assert "overlay" in scene
 
@@ -253,6 +257,9 @@ def testResolvesImageSurfacePath(tmp_path: Path) -> None:
     assert report.isValid, report.errors
     assert resolved["scenes"][0]["renderer"]["surface"]["image"] == str(skinPath)
     assert resolved["scenes"][0]["renderer"]["surface"]["material"] == "matte"
+    assert resolved["scenes"][0]["renderer"]["surface"]["sampling"] == "bilinear"
+    assert resolved["scenes"][0]["renderer"]["surface"]["texel_steps"] == 0
+    assert resolved["scenes"][0]["renderer"]["surface"]["lighting_steps"] == 0
     authored["scenes"][0]["renderer"]["core"] = "2d"
     resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
     report = resolver.validate(resolved)
@@ -261,6 +268,30 @@ def testResolvesImageSurfacePath(tmp_path: Path) -> None:
     resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
     report = resolver.validate(resolved)
     assert any("renderer.surface: expected an object" in error for error in report.errors)
+
+
+# :: PATH -> NONE
+# Verifies PSX-style surface controls reject unsupported modes and unsafe steps
+def testRejectsInvalidSurfaceStyleControls(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    skinPath = tmp_path / "skin.png"
+    skinPath.write_bytes(b"placeholder")
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["renderer"] = {
+        "core": "3d",
+        "surface": {
+            "image": "skin.png",
+            "sampling": "cubic",
+            "texel_steps": 1,
+            "lighting_steps": 65,
+        },
+    }
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert not report.isValid
+    assert any("surface.sampling" in error for error in report.errors)
+    assert any("surface.texel_steps" in error for error in report.errors)
+    assert any("surface.lighting_steps" in error for error in report.errors)
 
 
 # :: PATH -> NONE

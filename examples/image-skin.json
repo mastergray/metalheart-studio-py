@@ -24,7 +24,10 @@
           "mapping": "triplanar",
           "scale": 1.0,
           "rotation_deg": 0.0,
-          "material": "metallic"
+          "material": "metallic",
+          "sampling": "bilinear",
+          "texel_steps": 0,
+          "lighting_steps": 0
         }
       },
       "reactivity": {

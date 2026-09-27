@@ -358,6 +358,7 @@ class ConfigResolver:
             report.addError("{0}.image: image skins require the 3d core".format(surfacePath))
         self._validateEnum(surface.get("mapping"), ["triplanar"], surfacePath + ".mapping", report)
         self._validateEnum(surface.get("material"), ["metallic", "matte"], surfacePath + ".material", report)
+        self._validateEnum(surface.get("sampling"), ["bilinear", "nearest"], surfacePath + ".sampling", report)
         ranges = {
             "scale": (0.05, 100.0),
             "rotation_deg": (-3600.0, 3600.0),
@@ -366,6 +367,17 @@ class ConfigResolver:
             value = surface.get(key)
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not limits[0] <= value <= limits[1]:
                 report.addError("{0}.{1}: expected {2} through {3}".format(surfacePath, key, limits[0], limits[1]))
+        stepRanges = {"texel_steps": (2, 1024), "lighting_steps": (2, 64)}
+        for key, limits in stepRanges.items():
+            value = surface.get(key)
+            if isinstance(value, bool) or not isinstance(value, int) or (
+                value != 0 and not limits[0] <= value <= limits[1]
+            ):
+                report.addError(
+                    "{0}.{1}: expected 0 or an integer from {2} through {3}".format(
+                        surfacePath, key, limits[0], limits[1]
+                    )
+                )
 
     # :: ARRAY<STRING, ANY>, STRING, validationReport -> NONE
     # Validates the owned finishing controls and their safe numeric ranges

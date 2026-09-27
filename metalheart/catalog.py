@@ -75,6 +75,9 @@ DEFAULT_RENDERER: Dict[str, Any] = {
         "scale": 1.0,
         "rotation_deg": 0.0,
         "material": "metallic",
+        "sampling": "bilinear",
+        "texel_steps": 0,
+        "lighting_steps": 0,
     },
 }
 
@@ -310,6 +313,19 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                 "scale": {"type": "number", "minimum": 0.05, "maximum": 100.0},
                 "rotation_deg": {"type": "number", "minimum": -3600.0, "maximum": 3600.0},
                 "material": {"enum": ["metallic", "matte"]},
+                "sampling": {"enum": ["bilinear", "nearest"]},
+                "texel_steps": {
+                    "anyOf": [
+                        {"const": 0},
+                        {"type": "integer", "minimum": 2, "maximum": 1024},
+                    ],
+                },
+                "lighting_steps": {
+                    "anyOf": [
+                        {"const": 0},
+                        {"type": "integer", "minimum": 2, "maximum": 64},
+                    ],
+                },
             },
             "additionalProperties": True,
         },

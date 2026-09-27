@@ -278,6 +278,63 @@ def testImageSurfaceSkinReplacesPaletteColor(tmp_path: Path) -> None:
         assert output[0, 2] == 0.0
 
 
+# :: PATH -> NONE
+# Verifies nearest sampling and coordinate steps create stable visible texels
+def testImageSurfaceSkinQuantizesTextureSampling(tmp_path: Path) -> None:
+    texture = np.zeros((8, 8, 3), np.uint8)
+    for column in range(8):
+        texture[:, column] = [column * 20, column * 10, column * 30]
+    imagePath = tmp_path / "skin.png"
+    assert cv2.imwrite(str(imagePath), texture)
+    renderer = SimpleNamespace(_shade=lambda *arguments: arguments)
+    baseConfig = {
+        "image": str(imagePath),
+        "scale": 1.0,
+        "rotation_deg": 0.0,
+        "material": "matte",
+        "texel_steps": 0,
+        "lighting_steps": 0,
+    }
+    bilinear = SurfaceSkin.init(renderer, dict(baseConfig, sampling="bilinear"))
+    nearest = SurfaceSkin.init(renderer, dict(baseConfig, sampling="nearest"))
+    horizontal = np.array([0.01], np.float32)
+    vertical = np.array([0.01], np.float32)
+    assert not np.array_equal(
+        bilinear._sample(horizontal, vertical), nearest._sample(horizontal, vertical)
+    )
+    stepped = SurfaceSkin.init(
+        renderer, dict(baseConfig, sampling="nearest", texel_steps=2)
+    )
+    sampled = stepped._sample(
+        np.array([0.01, 0.2], np.float32), np.array([0.01, 0.2], np.float32)
+    )
+    assert np.array_equal(sampled[0], sampled[1])
+
+
+# :: PATH -> NONE
+# Verifies lighting steps reduce smooth shading to deterministic bands
+def testImageSurfaceSkinQuantizesLighting(tmp_path: Path) -> None:
+    imagePath = tmp_path / "skin.png"
+    assert cv2.imwrite(str(imagePath), np.zeros((2, 2, 3), np.uint8))
+    renderer = SimpleNamespace(_shade=lambda *arguments: arguments)
+    baseConfig = {
+        "image": str(imagePath),
+        "scale": 1.0,
+        "rotation_deg": 0.0,
+        "material": "matte",
+        "sampling": "bilinear",
+        "texel_steps": 0,
+    }
+    chrome = np.array([[0.1, 0.1, 0.1], [0.12, 0.12, 0.12]], np.float32)
+    texture = np.ones((2, 3), np.float32)
+    smooth = SurfaceSkin.init(renderer, dict(baseConfig, lighting_steps=0))
+    stepped = SurfaceSkin.init(renderer, dict(baseConfig, lighting_steps=4))
+    smoothOutput = smooth._applyMaterial(chrome, texture)
+    steppedOutput = stepped._applyMaterial(chrome, texture)
+    assert not np.array_equal(smoothOutput[0], smoothOutput[1])
+    assert np.array_equal(steppedOutput[0], steppedOutput[1])
+
+
 # :: VOID -> NONE
 # Verifies a frame-space pulse visibly changes pixels without changing dimensions
 def testFrameEffectsApplyVisiblePulse() -> None:

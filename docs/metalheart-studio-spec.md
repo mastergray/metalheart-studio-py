@@ -280,7 +280,7 @@ Audio-reactive behavior is authored per scene. Time-based form or camera choreog
 
 ### 6.7 Image surface skins
 
-An optional `renderer.surface` block may assign a config-relative image to any 3D core. Version 1 uses object-space `triplanar` mapping so animated or topologically changing forms do not require authored UV coordinates. `scale` controls repetition, and `rotation_deg` rotates the projection around the vertical axis. The image replaces the core palette color rather than tinting it. `material` selects `metallic`, which adds neutral reflections and highlights, or `matte`, which applies diffuse lighting without reflective highlights. The palette continues to control the environment and unskinned geometry. The skin applies only to core hits; ribbons and plates retain their reference materials. Resolved paths and image-content digests participate in render fingerprints so editing an image invalidates resumable chunks.
+An optional `renderer.surface` block may assign a config-relative image to any 3D core. Version 1 uses object-space `triplanar` mapping so animated or topologically changing forms do not require authored UV coordinates. `scale` controls repetition, and `rotation_deg` rotates the projection around the vertical axis. The image replaces the core palette color rather than tinting it. `material` selects `metallic`, which adds neutral reflections and highlights, or `matte`, which applies diffuse lighting without reflective highlights. `sampling` selects smooth `bilinear` or hard-edged `nearest` texture sampling. A nonzero `texel_steps` value snaps each repeating projection to a stable object-space grid, while a nonzero `lighting_steps` value reduces smooth illumination to a fixed number of bands. Zero disables either quantizer and preserves the original output. The palette continues to control the environment and unskinned geometry. The skin applies only to core hits; ribbons and plates retain their reference materials. Resolved paths and image-content digests participate in render fingerprints so editing an image invalidates resumable chunks.
 
 ## 7. Timeline format
 
@@ -339,7 +339,10 @@ An optional `renderer.surface` block may assign a config-relative image to any 3
           "mapping": "triplanar",
           "scale": 1.0,
           "rotation_deg": 0.0,
-          "material": "metallic"
+          "material": "metallic",
+          "sampling": "nearest",
+          "texel_steps": 48,
+          "lighting_steps": 6
         },
         "hud": false
       },

@@ -5,7 +5,7 @@ from __future__ import annotations  # Preserve forward-compatible annotations on
 import math  # Rotate object-space texture coordinates
 from typing import Any, Dict, Tuple  # Type renderer, configuration, and computed normals
 
-import cv2  # Load and bilinearly sample authored image skins
+import cv2  # Load authored image skins
 import numpy as np  # Blend triplanar samples across raymarched surface normals
 
 
@@ -25,6 +25,9 @@ class SurfaceSkin:
         self._scale = float(config["scale"])
         self._rotation = math.radians(float(config["rotation_deg"]))
         self._material = str(config["material"])
+        self._sampling = str(config.get("sampling", "bilinear"))
+        self._texelSteps = int(config.get("texel_steps", 0))
+        self._lightingSteps = int(config.get("lighting_steps", 0))
 
     #
     # Instance Methods
@@ -56,12 +59,22 @@ class SurfaceSkin:
     def _applyMaterial(self, chrome: Any, texture: Any) -> Any:
         luminance = chrome @ np.array([0.2126, 0.7152, 0.0722], np.float32)
         if self._material == "matte":
-            diffuse = 0.38 + 0.52 * np.clip(luminance, 0.0, 1.0)
+            light = self._quantize(np.clip(luminance, 0.0, 1.0), 1.0, self._lightingSteps)
+            diffuse = 0.38 + 0.52 * light
             return texture * diffuse[:, None]
-        reflection = np.clip(luminance, 0.0, 1.2)
+        reflection = self._quantize(np.clip(luminance, 0.0, 1.2), 1.2, self._lightingSteps)
         base = texture * (0.2 + 0.75 * reflection)[:, None]
         highlight = np.clip((luminance - 0.52) * 1.8, 0.0, 1.1)
+        highlight = self._quantize(highlight, 1.1, self._lightingSteps)
         return base + highlight[:, None] * 0.65
+
+    # :: ANY, FLOAT, INTEGER -> ANY
+    # Reduces a bounded scalar field to a fixed number of stable levels
+    def _quantize(self, values: Any, maximum: float, steps: int) -> Any:
+        if steps == 0:
+            return values
+        intervals = float(steps - 1)
+        return np.round(np.clip(values / maximum, 0.0, 1.0) * intervals) * maximum / intervals
 
     # :: ANY, ANY, ANY, ANY, ANY -> (ANY, ANY, ANY)
     # Reconstructs surface normals using the reference tetrahedral estimator
@@ -96,13 +109,20 @@ class SurfaceSkin:
         )
 
     # :: ANY, ANY -> ANY
-    # Samples one repeating planar projection with bilinear filtering
+    # Samples one repeating planar projection with configurable stable quantization
     def _sample(self, horizontal: Any, vertical: Any) -> Any:
         height, width = self._texture.shape[:2]
-        mapX = np.mod(horizontal * self._scale + 0.5, 1.0) * width
-        mapY = np.mod(vertical * self._scale + 0.5, 1.0) * height
+        normalizedX = np.mod(horizontal * self._scale + 0.5, 1.0)
+        normalizedY = np.mod(vertical * self._scale + 0.5, 1.0)
+        if self._texelSteps:
+            normalizedX = (np.floor(normalizedX * self._texelSteps) + 0.5) / self._texelSteps
+            normalizedY = (np.floor(normalizedY * self._texelSteps) + 0.5) / self._texelSteps
+        mapX = normalizedX * width
+        mapY = normalizedY * height
         firstX = np.floor(mapX).astype(np.int32) % width
         firstY = np.floor(mapY).astype(np.int32) % height
+        if self._sampling == "nearest":
+            return self._texture[firstY, firstX]
         secondX = (firstX + 1) % width
         secondY = (firstY + 1) % height
         fractionX = (mapX - np.floor(mapX)).reshape(-1, 1)

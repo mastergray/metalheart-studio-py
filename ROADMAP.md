@@ -22,21 +22,24 @@ The following rules apply across the roadmap:
 
 | Area | Current behavior | Important limitation |
 | --- | --- | --- |
-| Form skins | A config-relative image replaces the 3D core color through object-space triplanar projection. `metallic` and `matte` lighting are supported. | Sampling and lighting remain smooth, which produces a modern rendered appearance. Skins do not apply to ribbons or plates. |
+| Form skins | A config-relative image replaces the 3D core color through object-space triplanar projection. `metallic` and `matte` lighting plus optional nearest sampling, texture-coordinate steps, and lighting steps are supported. | The PSX treatment is surface-only. Skins do not apply to ribbons or plates, and faceted normals and color-depth reduction are not yet supported. |
 | Forms | Reference forms plus the audio-driven `resonance` and `radial` forms are supported. | Geometry and reconstructed normals are smooth. There is no shared faceting, jaggedness, or roughness control. |
 | Background | The reference renderer builds a palette gradient with moving procedural noise, a dot field, blurred foreground ghosts, and a drop shadow. | There is no public `background` block, image skin, or dedicated audio-reactive background destination. The global onset flash is not a background-only pulse. |
 | Ribbons and plates | `decor: true` creates seeded ribbons and plates. In 3D, bass subtly widens ribbons and moves plates while mid energy changes ribbon twist speed. | Ribbons and plates are bundled behind one boolean. Counts, materials, skins, motion, and reactivity are not independently authorable. |
 | Retro finishing | Grain, scanlines, chroma offsets, slice glitches, bloom, streaks, flash, and vignette are configurable. | There is no coherent PSX-style preset, nearest-neighbor upscale, color quantization, or ordered dithering. |
 
-## Milestone 1: PSX-inspired texture and finish language
+## Milestone 1: PSX-inspired texture and finish language (in progress)
 
-Start with a controlled visual study using the same audio, form, camera, source image, and frame times. Compare the current result with several deliberately rough treatments before fixing schema names or defaults.
+The first controlled study uses the same audio, form, camera, source image, and frame times to compare the smooth baseline with a deliberately rough surface treatment.
 
-Candidate surface controls:
+Implemented surface controls:
 
 - nearest-neighbor texture sampling as an alternative to bilinear filtering;
-- quantized texture coordinates or projection wobble, stable enough to avoid random shimmer;
-- stepped rather than continuous lighting;
+- quantized texture coordinates, stable enough to avoid random shimmer;
+- stepped rather than continuous lighting.
+
+Remaining candidate surface controls:
+
 - faceted normal shading independent of silhouette changes;
 - configurable texture resolution or texel density;
 - optional texture color-depth reduction.
