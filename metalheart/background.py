@@ -59,11 +59,18 @@ class BackgroundPass:
         if self._foreground is None:
             return referenceImage
         foreground, alpha, focus = self._foreground
-        background = self._palette(timeSec, pulse)
+        horizontal, vertical = self._coordinates(pulse)
+        surface = self._rippleSurface(timeSec, params)
+        if surface is not None:
+            horizontal = horizontal + surface[0]
+            vertical = vertical + surface[1]
+        background = self._palette(timeSec, horizontal, vertical)
         if self._texture is not None:
-            image, imageAlpha = self._image(pulse)
+            image, imageAlpha = self._image(horizontal, vertical)
             opacity = float(self._config["opacity"]) * imageAlpha[..., None]
             background = background * (1.0 - opacity) + image * opacity
+        if surface is not None:
+            background = self._lightSurface(background, surface[2], surface[3], surface[4])
         if self._config["dots"]:
             background = background + self._renderer.dots[..., None] * np.asarray(
                 self._renderer.pal["hud"], np.float32
@@ -118,10 +125,9 @@ class BackgroundPass:
         sine = math.sin(rotation)
         return horizontal * cosine + vertical * sine, -horizontal * sine + vertical * cosine
 
-    # :: FLOAT, FLOAT -> ANY
+    # :: FLOAT, ANY, ANY -> ANY
     # Recreates the reference palette gradient and moving nebula without foreground effects
-    def _palette(self, timeSec: float, pulse: float) -> Any:
-        horizontal, vertical = self._coordinates(pulse)
+    def _palette(self, timeSec: float, horizontal: Any, vertical: Any) -> Any:
         radius = np.sqrt(horizontal * horizontal + (vertical * 1.3) ** 2)
         gradient = _smoothstep(0.0, 0.95, radius)[..., None]
         palette = self._renderer.pal
@@ -135,9 +141,9 @@ class BackgroundPass:
         )
         return background * (0.75 + 0.3 * np.clip(nebula, -1.0, 2.0)[..., None])
 
-    # :: FLOAT -> (ANY, ANY)
+    # :: ANY, ANY -> (ANY, ANY)
     # Samples the configured image with cover, contain, or repeating tile behavior
-    def _image(self, pulse: float) -> Tuple[Any, Any]:
+    def _image(self, horizontal: Any, vertical: Any) -> Tuple[Any, Any]:
         if self._texture is None:
             raise RuntimeError("background image is unavailable")
         sourceHeight, sourceWidth = self._texture.shape[:2]
@@ -152,7 +158,6 @@ class BackgroundPass:
         else:
             fitScale = min(outputWidth / sourceWidth, outputHeight / sourceHeight)
             borderMode = cv2.BORDER_WRAP
-        horizontal, vertical = self._coordinates(pulse)
         mapX = sourceWidth / 2.0 + horizontal * outputHeight / fitScale
         mapY = sourceHeight / 2.0 + vertical * outputHeight / fitScale
         image = cv2.remap(
@@ -172,6 +177,113 @@ class BackgroundPass:
             borderMode=cv2.BORDER_CONSTANT,
         )
         return image, np.clip(mask, 0.0, 1.0)
+
+    # :: FLOAT, ANY -> (ANY, ANY, ANY, ANY, ANY)?
+    # Builds spectrum-directed displacement and reconstructed sheet normals
+    def _rippleSurface(self, timeSec: float, params: Any) -> Optional[Tuple[Any, Any, Any, Any, Any]]:
+        ripple = self._config["ripple"]
+        material = self._config["material"]
+        if not ripple["enabled"] and material == "flat":
+            return None
+        amountSignal = min(max(float(self._signals.get("background_ripple", 0.0)), 0.0), 1.0)
+        impactSignal = min(max(float(self._signals.get("background_ripple_impact", 0.0)), 0.0), 1.0)
+        scaleSignal = min(max(float(self._signals.get("background_ripple_scale", 0.5)), 0.0), 1.0)
+        horizontal = self._renderer.u
+        vertical = self._renderer.v
+        height = np.zeros_like(horizontal, np.float32)
+        amount = float(ripple["amount"])
+        scale = float(ripple["scale"]) * (0.75 + 0.5 * scaleSignal)
+        travel = float(ripple["travel_speed"])
+        if ripple["enabled"] and amountSignal > 0.0:
+            bands = self._spectrumBands(params, 8)
+            normalization = max(float(np.sqrt(np.sum(bands * bands))), 1.0)
+            for index, energy in enumerate(bands):
+                position = index / max(len(bands) - 1, 1)
+                angle = index * math.pi * (3.0 - math.sqrt(5.0))
+                direction = horizontal * math.cos(angle) + vertical * math.sin(angle)
+                frequency = scale * (0.55 + 1.45 * position)
+                phase = (
+                    direction * math.tau * frequency
+                    - timeSec * math.tau * travel * (0.35 + 0.65 * position)
+                    + index * 0.73
+                )
+                height += np.sin(phase).astype(np.float32) * float(energy)
+            height *= amount * amountSignal / normalization
+            bass = min(max(float(getattr(params, "bass", 0.0)), 0.0), 1.0)
+            height += (
+                np.sin(
+                    (horizontal * 0.8 + vertical * 0.35) * math.tau * scale * 0.45
+                    - timeSec * math.tau * travel * 0.3
+                ).astype(np.float32)
+                * amount
+                * amountSignal
+                * bass
+                * 0.3
+            )
+        if ripple["enabled"] and impactSignal > 0.0:
+            center = self._config["pulse_center"]
+            centerX = (float(center[0]) * self._renderer.W - self._renderer.W / 2.0) / self._renderer.H
+            centerY = float(center[1]) - 0.5
+            radius = np.sqrt((horizontal - centerX) ** 2 + (vertical - centerY) ** 2)
+            height += (
+                np.sin(
+                    radius * math.tau * scale * 1.4
+                    - timeSec * math.tau * max(travel, 0.05) * 1.8
+                ).astype(np.float32)
+                * amount
+                * impactSignal
+                * 0.8
+            )
+        gradientX = cv2.Sobel(height, cv2.CV_32F, 1, 0, ksize=3) * self._renderer.H / 8.0
+        gradientY = cv2.Sobel(height, cv2.CV_32F, 0, 1, ksize=3) * self._renderer.H / 8.0
+        inverseLength = 1.0 / np.sqrt(gradientX * gradientX + gradientY * gradientY + 1.0)
+        normalX = -gradientX * inverseLength
+        normalY = -gradientY * inverseLength
+        normalZ = inverseLength
+        warp = float(ripple["warp"])
+        return normalX * warp, normalY * warp, normalX, normalY, normalZ
+
+    # :: ANY, INT -> ANY
+    # Reduces the live spectrum to directional sheet-wave weights
+    def _spectrumBands(self, params: Any, count: int) -> Any:
+        spectrum = np.asarray(getattr(params, "spectrum", []), np.float32).reshape(-1)
+        if spectrum.size == 0:
+            spectrum = np.asarray(
+                [
+                    getattr(params, "bass", 0.0),
+                    getattr(params, "mid", 0.0),
+                    getattr(params, "high", 0.0),
+                ],
+                np.float32,
+            )
+        bands = np.interp(
+            np.linspace(0.0, spectrum.size - 1, count),
+            np.arange(spectrum.size),
+            spectrum,
+        ).astype(np.float32)
+        peak = max(float(np.max(np.abs(bands))), 1e-6)
+        return np.clip(bands / peak, 0.0, 1.0)
+
+    # :: ANY, ANY, ANY, ANY -> ANY
+    # Relights displaced albedo with neutral matte or metallic illumination
+    def _lightSurface(self, image: Any, normalX: Any, normalY: Any, normalZ: Any) -> Any:
+        material = self._config["material"]
+        if material == "flat":
+            return image
+        light = np.asarray([-0.42, -0.48, 0.77], np.float32)
+        light /= np.linalg.norm(light)
+        diffuse = np.clip(
+            normalX * light[0] + normalY * light[1] + normalZ * light[2],
+            0.0,
+            1.0,
+        )
+        if material == "matte":
+            return image * (0.72 + 0.36 * diffuse[..., None])
+        roughness = float(self._config["ripple"]["roughness"])
+        exponent = 8.0 + (1.0 - roughness) * 88.0
+        highlight = np.power(diffuse, exponent)[..., None]
+        specular = float(self._config["ripple"]["specular"])
+        return image * (0.64 + 0.46 * diffuse[..., None]) + highlight * specular
 
     # :: ANY, ANY, ANY -> ANY
     # Adds optional enlarged blurred foreground echoes behind the primary form

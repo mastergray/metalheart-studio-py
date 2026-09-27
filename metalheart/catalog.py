@@ -30,6 +30,9 @@ MODULATORS = [
     "form_jaggedness",
     "form_jagged_scale",
     "background_pulse",
+    "background_ripple",
+    "background_ripple_scale",
+    "background_ripple_impact",
 ]
 
 QUALITY_PROFILES: Dict[str, Dict[str, Any]] = {
@@ -107,6 +110,16 @@ DEFAULT_BACKGROUND: Dict[str, Any] = {
     "pulse_brightness": 0.35,
     "pulse_scale": 0.08,
     "pulse_center": [0.5, 0.5],
+    "material": "flat",
+    "ripple": {
+        "enabled": False,
+        "amount": 0.035,
+        "scale": 5.0,
+        "travel_speed": 0.4,
+        "warp": 0.012,
+        "specular": 0.45,
+        "roughness": 0.65,
+    },
     "dots": True,
     "ghosts": True,
     "shadow": True,
@@ -448,6 +461,20 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                     "minItems": 2,
                     "maxItems": 2,
                     "items": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                },
+                "material": {"enum": ["flat", "matte", "metallic"]},
+                "ripple": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {"type": "boolean"},
+                        "amount": {"type": "number", "minimum": 0.0, "maximum": 0.5},
+                        "scale": {"type": "number", "minimum": 0.25, "maximum": 24.0},
+                        "travel_speed": {"type": "number", "minimum": 0.0, "maximum": 4.0},
+                        "warp": {"type": "number", "minimum": 0.0, "maximum": 0.2},
+                        "specular": {"type": "number", "minimum": 0.0, "maximum": 2.0},
+                        "roughness": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                    },
+                    "additionalProperties": True,
                 },
                 "dots": {"type": "boolean"},
                 "ghosts": {"type": "boolean"},

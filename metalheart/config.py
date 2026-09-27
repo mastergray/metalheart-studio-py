@@ -314,10 +314,15 @@ class ConfigResolver:
             isinstance(renderer, dict)
             and renderer.get("core") != "3d"
             and isinstance(reactivity, dict)
-            and "background_pulse" in reactivity.get("modulators", {})
+            and {
+                "background_pulse",
+                "background_ripple",
+                "background_ripple_scale",
+                "background_ripple_impact",
+            }.intersection(reactivity.get("modulators", {}))
         ):
             report.addError(
-                "{0}.reactivity.modulators.background_pulse: requires the 3d core".format(prefix)
+                "{0}.reactivity.modulators: background modulation requires the 3d core".format(prefix)
             )
         overlay = scene.get("overlay")
         if not isinstance(overlay, dict):
@@ -346,6 +351,12 @@ class ConfigResolver:
         image = background.get("image")
         self._validateEnum(source, ["palette", "image"], backgroundPath + ".source", report)
         self._validateEnum(background.get("fit"), ["cover", "contain", "tile"], backgroundPath + ".fit", report)
+        self._validateEnum(
+            background.get("material"),
+            ["flat", "matte", "metallic"],
+            backgroundPath + ".material",
+            report,
+        )
         if image is not None and (not isinstance(image, str) or not image):
             report.addError("{0}.image: expected a non-empty path or null".format(backgroundPath))
         elif isinstance(image, str) and not Path(image).is_file():
@@ -384,6 +395,31 @@ class ConfigResolver:
         for key in ("dots", "ghosts", "shadow"):
             if not isinstance(background.get(key), bool):
                 report.addError("{0}.{1}: expected a boolean".format(backgroundPath, key))
+        ripple = background.get("ripple")
+        if not isinstance(ripple, dict):
+            report.addError("{0}.ripple: expected an object".format(backgroundPath))
+            return
+        if not isinstance(ripple.get("enabled"), bool):
+            report.addError("{0}.ripple.enabled: expected a boolean".format(backgroundPath))
+        rippleRanges = {
+            "amount": (0.0, 0.5),
+            "scale": (0.25, 24.0),
+            "travel_speed": (0.0, 4.0),
+            "warp": (0.0, 0.2),
+            "specular": (0.0, 2.0),
+            "roughness": (0.0, 1.0),
+        }
+        for key, limits in rippleRanges.items():
+            value = ripple.get(key)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not limits[0] <= value <= limits[1]:
+                report.addError(
+                    "{0}.ripple.{1}: expected {2} through {3}".format(
+                        backgroundPath,
+                        key,
+                        limits[0],
+                        limits[1],
+                    )
+                )
 
     # :: ARRAY<STRING, ANY>, STRING, validationReport -> NONE
     # Validates renderer enums, booleans, and numeric controls

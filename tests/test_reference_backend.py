@@ -171,8 +171,8 @@ def testJaggedRadialModulatorsMapAnalysisValues() -> None:
 
 
 # :: VOID -> NONE
-# Verifies background pulse uses the ordinary typed binding evaluator
-def testBackgroundPulseMapsAnalysisValues() -> None:
+# Verifies background surface controls use the ordinary typed binding evaluator
+def testBackgroundSurfaceModulatorsMapAnalysisValues() -> None:
     backend = ReferenceBackend.init()
     reactivity = {
         "modulators": {
@@ -182,11 +182,29 @@ def testBackgroundPulseMapsAnalysisValues() -> None:
                 "bias": 0.0,
                 "curve": "linear",
                 "clamp": [0.0, 1.0],
-            }
+            },
+            "background_ripple": {
+                "source": "amplitude",
+                "amount": 1.0,
+                "clamp": [0.0, 1.0],
+            },
+            "background_ripple_scale": {
+                "source": "spectral_centroid",
+                "amount": 1.0,
+                "clamp": [0.0, 1.0],
+            },
+            "background_ripple_impact": {
+                "source": "onset",
+                "amount": 1.0,
+                "clamp": [0.0, 1.0],
+            },
         }
     }
     modulators = backend.createModulators(_analysis(), 1, 0.25, reactivity)
     assert modulators["background_pulse"] == 0.75
+    assert 0.0 < modulators["background_ripple"] < 1.0
+    assert modulators["background_ripple_scale"] == 0.5
+    assert modulators["background_ripple_impact"] == 0.0
 
 
 # :: VOID -> NONE
@@ -364,13 +382,88 @@ def testImageBackgroundFitModes(tmp_path: Path) -> None:
     layers = {}
     for fit in ("cover", "contain", "tile"):
         config = dict(DEFAULT_BACKGROUND, source="image", image=str(imagePath), fit=fit)
-        layers[fit] = BackgroundPass.init(renderer, config)._image(0.0)
+        background = BackgroundPass.init(renderer, config)
+        horizontal, vertical = background._coordinates(0.0)
+        layers[fit] = background._image(horizontal, vertical)
         assert layers[fit][0].shape == (height, width, 3)
         assert layers[fit][1].shape == (height, width)
     assert np.all(layers["cover"][1] == 1.0)
     assert np.all(layers["tile"][1] == 1.0)
     assert np.any(layers["contain"][1] == 0.0)
     assert np.any(layers["contain"][1] == 1.0)
+
+
+# :: PATH -> NONE
+# Verifies spectrum reshapes only the exposed reactive metallic sheet
+def testImageBackgroundRippleUsesSpectrumWithoutMovingForeground(tmp_path: Path) -> None:
+    texture = np.zeros((24, 24, 3), np.uint8)
+    texture[::2, :] = [0, 0, 255]
+    texture[:, ::3] = [0, 255, 255]
+    imagePath = tmp_path / "background.png"
+    assert cv2.imwrite(str(imagePath), texture)
+    backend = ReferenceBackend.init()
+    settings = {"width": 64, "height": 64, "seed": 5}
+    scene = _scene()
+    scene["renderer"].update(
+        {"core": "3d", "forms": ["mercury"], "cameras": ["orbit"], "core_scale": 0.25}
+    )
+    scene["background"] = dict(
+        DEFAULT_BACKGROUND,
+        source="image",
+        image=str(imagePath),
+        material="metallic",
+        ripple={
+            "enabled": True,
+            "amount": 0.1,
+            "scale": 5.0,
+            "travel_speed": 0.4,
+            "warp": 0.04,
+            "specular": 0.8,
+            "roughness": 0.3,
+        },
+        dots=False,
+        ghosts=False,
+        shadow=False,
+    )
+    scene["finish"].update(
+        {
+            "bloom": 0.0,
+            "wide_bloom": 0.0,
+            "streaks": 0.0,
+            "onset_streaks": 0.0,
+            "flash": 0.0,
+            "chroma": 0.0,
+            "chroma_onset": 0.0,
+            "vignette": 0.0,
+            "grain": 0.0,
+            "grain_high": 0.0,
+        }
+    )
+    lowAnalysis = _analysis()
+    highAnalysis = _analysis()
+    lowAnalysis.spectrum[1] = np.linspace(1.0, 0.0, 24, dtype=np.float32)
+    highAnalysis.spectrum[1] = np.linspace(0.0, 1.0, 24, dtype=np.float32)
+    lowParams = backend.createParams(lowAnalysis, 1, 0.5, scene["reactivity"])
+    highParams = backend.createParams(highAnalysis, 1, 0.5, scene["reactivity"])
+    signals = {
+        "background_ripple": 1.0,
+        "background_ripple_scale": 0.5,
+        "background_ripple_impact": 0.0,
+    }
+    session = backend.createRenderer(settings, scene)
+    lowFrame = session.render(0.5, lowParams, signals)
+    highFrame = session.render(0.5, highParams, signals)
+    repeated = backend.createRenderer(settings, scene).render(0.5, lowParams, signals)
+    assert session._background is not None
+    assert session._background._foreground is not None
+    alpha = session._background._foreground[1]
+    opaque = alpha >= 0.999
+    exposed = alpha <= 0.001
+    assert np.any(opaque)
+    assert np.any(exposed)
+    assert np.array_equal(lowFrame, repeated)
+    assert np.array_equal(lowFrame[opaque], highFrame[opaque])
+    assert not np.array_equal(lowFrame[exposed], highFrame[exposed])
 
 
 # :: PATH -> NONE

@@ -159,6 +159,10 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
         "contain",
         "tile",
     ]
+    background = schema["$defs"]["background"]["properties"]
+    assert background["material"]["enum"] == ["flat", "matte", "metallic"]
+    assert "amount" in background["ripple"]["properties"]
+    assert "roughness" in background["ripple"]["properties"]
 
 
 # :: PATH -> NONE
@@ -326,6 +330,16 @@ def testResolvesImageBackgroundPath(tmp_path: Path) -> None:
         "image": "background.png",
         "fit": "contain",
         "pulse_scale": 0.2,
+        "material": "metallic",
+        "ripple": {
+            "enabled": True,
+            "amount": 0.1,
+            "scale": 6.0,
+            "travel_speed": 0.5,
+            "warp": 0.03,
+            "specular": 0.9,
+            "roughness": 0.25,
+        },
     }
     authored["scenes"][0]["reactivity"] = {
         "preset": "spectral-radial",
@@ -334,7 +348,12 @@ def testResolvesImageBackgroundPath(tmp_path: Path) -> None:
                 "source": "bass",
                 "amount": 1.0,
                 "clamp": [0.0, 1.0],
-            }
+            },
+            "background_ripple": {
+                "source": "amplitude",
+                "amount": 1.0,
+                "clamp": [0.0, 1.0],
+            },
         },
     }
     resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
@@ -342,11 +361,39 @@ def testResolvesImageBackgroundPath(tmp_path: Path) -> None:
     assert report.isValid, report.errors
     assert resolved["scenes"][0]["background"]["image"] == str(backgroundPath)
     assert resolved["scenes"][0]["background"]["fit"] == "contain"
+    assert resolved["scenes"][0]["background"]["ripple"]["enabled"]
     authored["scenes"][0]["renderer"]["core"] = "2d"
     resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
     report = resolver.validate(resolved)
     assert any("customized backgrounds require the 3d core" in error for error in report.errors)
-    assert any("background_pulse: requires the 3d core" in error for error in report.errors)
+    assert any("background modulation requires the 3d core" in error for error in report.errors)
+
+
+# :: PATH -> NONE
+# Verifies unsafe background material and ripple values fail before rendering
+def testRejectsInvalidBackgroundRippleControls(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["renderer"] = {"core": "3d"}
+    authored["scenes"][0]["background"] = {
+        "material": "glass",
+        "ripple": {
+            "enabled": "yes",
+            "amount": 0.6,
+            "scale": 0.0,
+            "travel_speed": 5.0,
+            "warp": 0.3,
+            "specular": 3.0,
+            "roughness": 1.5,
+        },
+    }
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert not report.isValid
+    assert any("background.material" in error for error in report.errors)
+    assert any("ripple.enabled" in error for error in report.errors)
+    for key in ("amount", "scale", "travel_speed", "warp", "specular", "roughness"):
+        assert any("ripple.{0}".format(key) in error for error in report.errors)
 
 
 # :: PATH -> NONE

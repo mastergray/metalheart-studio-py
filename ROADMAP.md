@@ -24,7 +24,7 @@ The following rules apply across the roadmap:
 | --- | --- | --- |
 | Form skins | A config-relative image replaces the 3D core color through object-space triplanar projection. `metallic` and `matte` lighting plus optional nearest sampling, texture-coordinate steps, and lighting steps are supported. | The PSX treatment is surface-only. Skins do not apply to ribbons or plates, and faceted normals and color-depth reduction are not yet supported. |
 | Forms | Reference forms plus the audio-driven `resonance` and `radial` forms are supported. Radial has opt-in faceting, object-space jaggedness, and continuous geometric steps. | Form styling currently targets Radial; it is not yet shared by reference forms or Resonance. |
-| Background | A public per-scene block selects the procedural palette or a fitted image, controls dots/ghosts/shadow, and exposes an isolated `background_pulse`. | The first slice is 3D-only and does not yet include drift, color reduction, dithering, or background warp/offset destinations. |
+| Background | A public per-scene block selects the procedural palette or a fitted image, controls dots/ghosts/shadow, and exposes isolated pulse and spectrum-directed ripple systems. Image backgrounds can behave as flat, matte, or metallic 2.5D sheets. | The first slice is 3D-only and does not yet include drift, color reduction, dithering, or general background warp/offset destinations. |
 | Ribbons and plates | `decor: true` creates seeded ribbons and plates. In 3D, bass subtly widens ribbons and moves plates while mid energy changes ribbon twist speed. | Ribbons and plates are bundled behind one boolean. Counts, materials, skins, motion, and reactivity are not independently authorable. |
 | Retro finishing | Grain, scanlines, chroma offsets, slice glitches, bloom, streaks, flash, and vignette are configurable. | There is no coherent PSX-style preset, nearest-neighbor upscale, color quantization, or ordered dithering. |
 
@@ -90,11 +90,13 @@ The implemented per-scene `background` object supports:
 - image fit modes such as `cover`, `contain`, and `tile`;
 - scale, rotation, offset, and opacity;
 - independent enabling of the dot field, foreground ghosts, and drop shadow;
-- a bounded `background_pulse` that changes background brightness and scale without pulsing the foreground form.
+- a bounded `background_pulse` that changes background brightness and scale without pulsing the foreground form;
+- spectrum-directed surface displacement, UV bending, reconstructed normals, and neutral matte or metallic relighting;
+- separate amplitude, spectral-scale, and transient-impact ripple destinations.
 
 Slow drift, deterministic color reduction and dithering, background warp/offset destinations, and non-3D composition remain future work.
 
-The initial audio-reactive destination should be a bounded `background_pulse`. It should change background brightness and/or scale around a configurable center without pulsing the foreground form. Additional destinations can follow only if they produce meaningfully different results, such as background warp or image offset. They must use the existing reactivity binding model so a scene can map amplitude, a frequency band, beats, or onsets explicitly.
+The bounded `background_pulse` provides global background brightness and scale. The separate ripple system provides meaningfully different local deformation and relighting. Both use the existing reactivity binding model, so a scene can map amplitude, spectral centroid, beats, or onsets explicitly without affecting the foreground form.
 
 Provisional authoring shape:
 
@@ -106,22 +108,32 @@ Provisional authoring shape:
     "fit": "cover",
     "scale": 1.0,
     "opacity": 1.0,
+    "material": "metallic",
+    "ripple": {
+      "enabled": true,
+      "amount": 0.035,
+      "scale": 5.0,
+      "travel_speed": 0.4,
+      "warp": 0.012,
+      "specular": 0.45,
+      "roughness": 0.65
+    },
     "ghosts": true,
     "shadow": true
   },
   "reactivity": {
     "modulators": {
-      "background_pulse": {
-        "source": "bass",
-        "amount": 0.2,
-        "clamp": [0.0, 0.2]
+      "background_ripple": {
+        "source": "amplitude",
+        "amount": 1.0,
+        "clamp": [0.0, 1.0]
       }
     }
   }
 }
 ```
 
-This shape is now part of the version 1 schema. The full object additionally exposes rotation, offset, pulse brightness, pulse scale, pulse center, and the dot-field switch.
+This shape is part of the version 1 schema. The full object additionally exposes rotation, offset, pulse brightness, pulse scale, pulse center, the dot-field switch, and typed ripple scale and impact mappings.
 
 Layer order should be explicit and tested: base background or image, background-only modulation, optional ghosts and shadow, foreground geometry, whole-frame finishing, then overlays.
 
@@ -129,7 +141,7 @@ Acceptance criteria:
 
 - the image path is resolved and fingerprinted like form skins;
 - a zero signal exactly preserves the authored background state;
-- pulse tests change background pixels while keeping isolated foreground pixels stable;
+- pulse and spectrum-ripple tests change background pixels while keeping isolated foreground pixels stable;
 - fit modes behave consistently across aspect ratios;
 - disabling overlays still guarantees no text;
 - background skins do not implicitly recolor form or ribbon skins.

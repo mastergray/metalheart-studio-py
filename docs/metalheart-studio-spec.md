@@ -286,7 +286,9 @@ An optional `renderer.surface` block may assign a config-relative image to any 3
 
 A 3D scene may define a `background` block whose `source` is either the existing procedural `palette` or a config-relative `image`. Image backgrounds support `cover`, `contain`, and repeating `tile` fit modes. `scale`, `rotation_deg`, normalized `offset`, and `opacity` control image placement without changing the foreground form. The dot field, blurred foreground ghosts, and drop shadow are independently enabled by `dots`, `ghosts`, and `shadow`.
 
-The `background_pulse` modulator is a bounded zero-to-one control. It scales the background around `pulse_center` by at most `pulse_scale` and raises its brightness by at most `pulse_brightness`. It is composed before ghosts, shadow, and foreground geometry, so it does not resize or brighten fully opaque foreground pixels. Whole-frame finishing still follows composition, and overlays remain last. Background image paths and content digests participate in render fingerprints. Version 1 background customization is limited to the 3D core because that renderer provides the isolated foreground alpha needed to preserve this layer contract.
+The `background_pulse` modulator is a bounded zero-to-one control. It scales the background around `pulse_center` by at most `pulse_scale` and raises its brightness by at most `pulse_brightness`. The optional `ripple` object instead treats the background as a displaced 2.5D sheet. Its traveling height field combines directional weights reduced from the live spectrum, a broad bass wave, and an onset-accented radial wave. Reconstructed normals displace the source-image coordinates and provide neutral `matte` or `metallic` lighting without replacing the image's colors. `amount`, `scale`, `travel_speed`, `warp`, `specular`, and `roughness` bound the authored treatment. The typed `background_ripple`, `background_ripple_scale`, and `background_ripple_impact` modulators control deformation strength, spectral scale, and transient radial impact.
+
+Both background effects are composed before ghosts, shadow, and foreground geometry, so they do not resize, warp, or relight fully opaque foreground pixels. Whole-frame finishing still follows composition, and overlays remain last. Background image paths and content digests participate in render fingerprints. Version 1 background customization is limited to the 3D core because that renderer provides the isolated foreground alpha needed to preserve this layer contract.
 
 ## 7. Timeline format
 
@@ -370,7 +372,9 @@ The `background_pulse` modulator is a bounded zero-to-one control. It scales the
           "shake": {"source": "onset", "amount": 0.02, "threshold": 0.3},
           "flash": {"source": "downbeat", "amount": 0.2},
           "chroma": {"source": "high", "amount": 0.008, "threshold": 0.5},
-          "background_pulse": {"source": "bass", "amount": 1.0, "clamp": [0.0, 1.0]}
+          "background_ripple": {"source": "amplitude", "amount": 1.0, "clamp": [0.0, 1.0]},
+          "background_ripple_scale": {"source": "spectral_centroid", "amount": 1.0, "clamp": [0.0, 1.0]},
+          "background_ripple_impact": {"source": "onset", "amount": 1.0, "clamp": [0.0, 1.0]}
         }
       },
       "background": {
@@ -381,6 +385,16 @@ The `background_pulse` modulator is a bounded zero-to-one control. It scales the
         "rotation_deg": 0.0,
         "offset": [0.0, 0.0],
         "opacity": 1.0,
+        "material": "metallic",
+        "ripple": {
+          "enabled": true,
+          "amount": 0.035,
+          "scale": 5.0,
+          "travel_speed": 0.4,
+          "warp": 0.012,
+          "specular": 0.45,
+          "roughness": 0.65
+        },
         "pulse_brightness": 0.35,
         "pulse_scale": 0.08,
         "pulse_center": [0.5, 0.5],

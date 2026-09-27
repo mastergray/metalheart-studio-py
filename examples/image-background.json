@@ -9,7 +9,7 @@
   "scenes": [
     {
       "id": "image-background",
-      "name": "Image background with isolated bass pulse",
+      "name": "Audio-reactive metallic image background",
       "start_sec": 0.0,
       "end_sec": 4.0,
       "renderer": {
@@ -32,8 +32,16 @@
         "fit": "cover",
         "scale": 1.0,
         "opacity": 1.0,
-        "pulse_brightness": 0.4,
-        "pulse_scale": 0.12,
+        "material": "metallic",
+        "ripple": {
+          "enabled": true,
+          "amount": 0.035,
+          "scale": 5.0,
+          "travel_speed": 0.4,
+          "warp": 0.012,
+          "specular": 0.45,
+          "roughness": 0.65
+        },
         "pulse_center": [0.5, 0.5],
         "dots": false,
         "ghosts": false,
@@ -42,10 +50,23 @@
       "reactivity": {
         "preset": "spectral-radial-jagged",
         "modulators": {
-          "background_pulse": {
-            "source": "bass",
+          "background_ripple": {
+            "source": "amplitude",
             "amount": 1.0,
             "curve": "ease_out",
+            "clamp": [0.0, 1.0]
+          },
+          "background_ripple_scale": {
+            "source": "spectral_centroid",
+            "amount": 1.0,
+            "curve": "smoothstep",
+            "clamp": [0.0, 1.0]
+          },
+          "background_ripple_impact": {
+            "source": "onset",
+            "amount": 1.0,
+            "curve": "ease_out",
+            "threshold": 0.3,
             "clamp": [0.0, 1.0]
           }
         }
