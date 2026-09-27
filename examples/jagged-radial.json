@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "audio": "../ref/audioReactive/metalheart_audio_test_small.mp4",
+  "settings": {
+    "quality": "preview",
+    "seed": 3,
+    "time_mode": "scene"
+  },
+  "scenes": [
+    {
+      "id": "jagged-radial",
+      "name": "Jagged audio-reactive radial form",
+      "start_sec": 0.0,
+      "end_sec": 4.0,
+      "renderer": {
+        "core": "3d",
+        "palette": "steel",
+        "forms": ["radial"],
+        "cameras": ["orbit"],
+        "camera_speed": 0.35,
+        "decor": false,
+        "form_style": {
+          "faceting": 0.7,
+          "jaggedness": 0.04,
+          "jagged_scale": 4.0,
+          "geometry_steps": 6
+        },
+        "surface": {
+          "image": "../ref/metalheart_3d_scene_angles.png",
+          "mapping": "triplanar",
+          "scale": 1.0,
+          "rotation_deg": 0.0,
+          "material": "metallic",
+          "sampling": "nearest",
+          "texel_steps": 48,
+          "lighting_steps": 6
+        }
+      },
+      "reactivity": {
+        "preset": "spectral-radial-jagged"
+      },
+      "overlay": {
+        "enabled": false
+      }
+    }
+  ],
+  "post": []
+}

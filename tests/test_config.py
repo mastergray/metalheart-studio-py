@@ -146,6 +146,7 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
     assert "stretch" not in renderer["forms"]["items"]["enum"]
     assert "heart" not in renderer["forms"]["items"]["enum"]
     assert renderer["surface"] == {"$ref": "#/$defs/surface"}
+    assert renderer["form_style"] == {"$ref": "#/$defs/formStyle"}
     surface = schema["$defs"]["surface"]["properties"]
     assert surface["sampling"]["enum"] == ["bilinear", "nearest"]
     assert "texel_steps" in surface
@@ -238,6 +239,42 @@ def testResolvesSpectralRadialPreset(tmp_path: Path) -> None:
         "form_rotation",
         "form_ripple",
     }
+
+
+# :: PATH -> NONE
+# Verifies jagged radial styles and their explicit audio destinations resolve safely
+def testResolvesJaggedRadialStyle(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["renderer"] = {
+        "core": "3d",
+        "forms": ["radial"],
+        "form_style": {
+            "faceting": 0.55,
+            "jaggedness": 0.02,
+            "jagged_scale": 4.0,
+            "geometry_steps": 6,
+        },
+    }
+    authored["scenes"][0]["reactivity"] = {"preset": "spectral-radial-jagged"}
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert report.isValid, report.errors
+    assert set(resolved["scenes"][0]["reactivity"]["modulators"]) == {
+        "form_extent",
+        "form_rotation",
+        "form_ripple",
+        "form_jaggedness",
+        "form_jagged_scale",
+    }
+    authored["scenes"][0]["renderer"]["core"] = "2d"
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert any("form styling requires the 3d core" in error for error in report.errors)
+    authored["scenes"][0]["renderer"].update({"core": "3d", "forms": ["mercury"]})
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert any("form styling currently requires the radial form" in error for error in report.errors)
 
 
 # :: PATH -> NONE

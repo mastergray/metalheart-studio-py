@@ -94,7 +94,11 @@ class ReferenceRendererSession:
             )
             self._renderer.choreo = self._cameraChoreo
             if any(form in ("resonance", "radial") for form in rendererConfig["forms"]):
-                self._audioFormCore = AudioFormCore.init(liquidModule, scene.get("seed", settings["seed"]))
+                self._audioFormCore = AudioFormCore.init(
+                    liquidModule,
+                    scene.get("seed", settings["seed"]),
+                    rendererConfig["form_style"],
+                )
                 self._renderer.core3d.core = self._audioFormCore
             if rendererConfig["surface"]["image"]:
                 self._surfaceSkin = SurfaceSkin.init(self._renderer.core3d, rendererConfig["surface"])

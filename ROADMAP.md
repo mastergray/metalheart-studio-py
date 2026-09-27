@@ -23,7 +23,7 @@ The following rules apply across the roadmap:
 | Area | Current behavior | Important limitation |
 | --- | --- | --- |
 | Form skins | A config-relative image replaces the 3D core color through object-space triplanar projection. `metallic` and `matte` lighting plus optional nearest sampling, texture-coordinate steps, and lighting steps are supported. | The PSX treatment is surface-only. Skins do not apply to ribbons or plates, and faceted normals and color-depth reduction are not yet supported. |
-| Forms | Reference forms plus the audio-driven `resonance` and `radial` forms are supported. | Geometry and reconstructed normals are smooth. There is no shared faceting, jaggedness, or roughness control. |
+| Forms | Reference forms plus the audio-driven `resonance` and `radial` forms are supported. Radial has opt-in faceting, object-space jaggedness, and continuous geometric steps. | Form styling currently targets Radial; it is not yet shared by reference forms or Resonance. |
 | Background | The reference renderer builds a palette gradient with moving procedural noise, a dot field, blurred foreground ghosts, and a drop shadow. | There is no public `background` block, image skin, or dedicated audio-reactive background destination. The global onset flash is not a background-only pulse. |
 | Ribbons and plates | `decor: true` creates seeded ribbons and plates. In 3D, bass subtly widens ribbons and moves plates while mid energy changes ribbon twist speed. | Ribbons and plates are bundled behind one boolean. Counts, materials, skins, motion, and reactivity are not independently authorable. |
 | Retro finishing | Grain, scanlines, chroma offsets, slice glitches, bloom, streaks, flash, and vignette are configurable. | There is no coherent PSX-style preset, nearest-neighbor upscale, color quantization, or ordered dithering. |
@@ -62,9 +62,9 @@ Acceptance criteria:
 - a no-effect configuration is frame-equivalent to the current baseline;
 - visual fixtures cover surface-only, finish-only, and combined treatments.
 
-## Milestone 2: Configurable jagged and faceted forms
+## Milestone 2: Configurable jagged and faceted forms (Radial slice implemented)
 
-Add a form-style layer that can affect any supported 3D form without creating a new explicit heart form. The first study should distinguish three different ideas that should not be collapsed into one slider:
+Add a form-style layer without creating a new explicit heart form. The first Radial study distinguishes three different ideas that are not collapsed into one slider:
 
 1. **Faceting** quantizes normals or spatial directions, changing how broad planes catch light.
 2. **Jaggedness** displaces the silhouette with deterministic object-space noise.
@@ -74,7 +74,7 @@ Controls should include magnitude and scale, with conservative bounds that keep 
 
 Acceptance criteria:
 
-- controls work on at least Mercury, Resonance, and Radial in the first slice;
+- the completed first slice works on Radial; later generalization covers Mercury and Resonance;
 - changes affect the form visibly at a fixed camera;
 - audio modulation can be isolated from time-based motion in a test render;
 - silhouettes do not develop persistent holes, missing ray hits, or explosive spikes;

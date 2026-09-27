@@ -27,6 +27,8 @@ MODULATORS = [
     "form_ripple",
     "form_extent",
     "form_rotation",
+    "form_jaggedness",
+    "form_jagged_scale",
 ]
 
 QUALITY_PROFILES: Dict[str, Dict[str, Any]] = {
@@ -78,6 +80,12 @@ DEFAULT_RENDERER: Dict[str, Any] = {
         "sampling": "bilinear",
         "texel_steps": 0,
         "lighting_steps": 0,
+    },
+    "form_style": {
+        "faceting": 0.0,
+        "jaggedness": 0.0,
+        "jagged_scale": 4.0,
+        "geometry_steps": 0,
     },
 }
 
@@ -209,6 +217,21 @@ REACTIVITY_PRESETS: Dict[str, Dict[str, Any]] = {
             "form_ripple": {"source": "onset", "amount": 0.12, "bias": 0.0, "curve": "ease_out", "threshold": 0.15, "clamp": [0.0, 0.12]},
         },
     },
+    "spectral-radial-jagged": {
+        "bindings": {
+            "bass": {"source": "bass", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+            "mid": {"source": "mid", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+            "high": {"source": "high", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+            "onset": {"source": "onset", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
+        },
+        "modulators": {
+            "form_extent": {"source": "amplitude", "amount": 0.95, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 0.95]},
+            "form_rotation": {"source": "spectral_centroid", "amount": 6.283185, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 6.283185]},
+            "form_ripple": {"source": "onset", "amount": 0.12, "bias": 0.0, "curve": "ease_out", "threshold": 0.15, "clamp": [0.0, 0.12]},
+            "form_jaggedness": {"source": "amplitude", "amount": 0.06, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 0.06]},
+            "form_jagged_scale": {"source": "spectral_centroid", "amount": 6.0, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 6.0]},
+        },
+    },
     "manual": {"bindings": {}, "modulators": {}},
 }
 
@@ -302,6 +325,7 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                 "anti_alias": {"type": "boolean"},
                 "core_scale": {"type": "number", "minimum": 0.1, "maximum": 1.0},
                 "surface": {"$ref": "#/$defs/surface"},
+                "form_style": {"$ref": "#/$defs/formStyle"},
             },
             "additionalProperties": True,
         },
@@ -324,6 +348,21 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                     "anyOf": [
                         {"const": 0},
                         {"type": "integer", "minimum": 2, "maximum": 64},
+                    ],
+                },
+            },
+            "additionalProperties": True,
+        },
+        "formStyle": {
+            "type": "object",
+            "properties": {
+                "faceting": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "jaggedness": {"type": "number", "minimum": 0.0, "maximum": 0.12},
+                "jagged_scale": {"type": "number", "minimum": 1.0, "maximum": 16.0},
+                "geometry_steps": {
+                    "anyOf": [
+                        {"const": 0},
+                        {"type": "integer", "minimum": 2, "maximum": 32},
                     ],
                 },
             },

@@ -344,6 +344,41 @@ class ConfigResolver:
             report.addError("{0}.renderer.surface: expected an object".format(prefix))
         else:
             self._validateSurface(surface, renderer.get("core"), prefix, report)
+        formStyle = renderer.get("form_style")
+        if not isinstance(formStyle, dict):
+            report.addError("{0}.renderer.form_style: expected an object".format(prefix))
+        else:
+            self._validateFormStyle(formStyle, renderer, prefix, report)
+
+    # :: ARRAY<STRING, ANY>, ARRAY<STRING, ANY>, STRING, validationReport -> NONE
+    # Validates the first radial faceting, jaggedness, and geometry-step controls
+    def _validateFormStyle(
+        self,
+        formStyle: Dict[str, Any],
+        renderer: Dict[str, Any],
+        prefix: str,
+        report: ValidationReport,
+    ) -> None:
+        stylePath = prefix + ".renderer.form_style"
+        ranges = {
+            "faceting": (0.0, 1.0),
+            "jaggedness": (0.0, 0.12),
+            "jagged_scale": (1.0, 16.0),
+        }
+        for key, limits in ranges.items():
+            value = formStyle.get(key)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not limits[0] <= value <= limits[1]:
+                report.addError("{0}.{1}: expected {2} through {3}".format(stylePath, key, limits[0], limits[1]))
+        geometrySteps = formStyle.get("geometry_steps")
+        if isinstance(geometrySteps, bool) or not isinstance(geometrySteps, int) or (
+            geometrySteps != 0 and not 2 <= geometrySteps <= 32
+        ):
+            report.addError("{0}.geometry_steps: expected 0 or an integer from 2 through 32".format(stylePath))
+        enabled = bool(formStyle.get("faceting") or formStyle.get("jaggedness") or geometrySteps)
+        if enabled and renderer.get("core") != "3d":
+            report.addError("{0}: form styling requires the 3d core".format(stylePath))
+        if enabled and "radial" not in renderer.get("forms", []):
+            report.addError("{0}: form styling currently requires the radial form".format(stylePath))
 
     # :: ARRAY<STRING, ANY>, ANY, STRING, validationReport -> NONE
     # Validates optional object-space image skinning controls

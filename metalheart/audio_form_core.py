@@ -19,12 +19,15 @@ def _smoothMinimum(first: Any, second: Any, radius: float) -> Any:
 # Adds spectrum-sculpted resonance and radial forms to the reference core
 class AudioFormCore:
 
-    # CONSTRUCTOR :: moduleType, INT -> audioFormCore
+    # CONSTRUCTOR :: moduleType, INT, ARRAY<STRING, ANY> -> audioFormCore
     # Wraps the immutable reference core for mixed owned/reference choreography
-    def __init__(self, liquidModule: ModuleType, seed: int) -> None:
+    def __init__(self, liquidModule: ModuleType, seed: int, formStyle: Dict[str, Any]) -> None:
         self._base = liquidModule.LiquidCore(seed)
+        self._formStyle = formStyle
         self._signals: Dict[str, float] = {}
         random = np.random.default_rng(seed + 1701)
+        jaggedRandom = np.random.default_rng(seed + 2719)
+        self._jaggedPhases = jaggedRandom.uniform(0.0, 2.0 * math.pi, 3).astype(np.float32)
         directions = random.normal(size=(3, 3)).astype(np.float32)
         self._resonanceDirections = directions / np.maximum(np.linalg.norm(directions, axis=1, keepdims=True), 1e-6)
         count = 24
@@ -51,6 +54,8 @@ class AudioFormCore:
                 "form_ripple",
                 "form_extent",
                 "form_rotation",
+                "form_jaggedness",
+                "form_jagged_scale",
             )
         }
 
@@ -85,6 +90,24 @@ class AudioFormCore:
             "extent": min(max(self._signals.get("form_extent", 0.0), 0.0), 1.2),
             "rotation": float(self._signals.get("form_rotation", 0.0)) % (2.0 * math.pi),
             "radial_spectrum": radialSpectrum,
+            "faceting": min(max(float(self._formStyle["faceting"]), 0.0), 1.0),
+            "jaggedness": min(
+                max(
+                    float(self._formStyle["jaggedness"])
+                    + self._signals.get("form_jaggedness", 0.0),
+                    0.0,
+                ),
+                0.12,
+            ),
+            "jagged_scale": min(
+                max(
+                    float(self._formStyle["jagged_scale"])
+                    + self._signals.get("form_jagged_scale", 0.0),
+                    1.0,
+                ),
+                16.0,
+            ),
+            "geometry_steps": int(self._formStyle["geometry_steps"]),
         }
 
     # :: ANY, ANY, ANY, ARRAY<STRING, ANY> -> ANY
@@ -151,14 +174,25 @@ class AudioFormCore:
         rotatedX = normalX * cosine - normalZ * sine
         rotatedZ = normalX * sine + normalZ * cosine
         directional = np.zeros_like(radial)
+        facetAlignment = np.zeros_like(radial)
         for direction, strength in zip(self._radialDirections, frame["radial_spectrum"]):
-            alignment = np.clip(
-                rotatedX * direction[0] + normalY * direction[1] + rotatedZ * direction[2],
-                0.0,
-                1.0,
-            )
+            rawAlignment = rotatedX * direction[0] + normalY * direction[1] + rotatedZ * direction[2]
+            facetAlignment = np.maximum(facetAlignment, rawAlignment)
+            alignment = np.clip(rawAlignment, 0.0, 1.0)
             directional = np.maximum(directional, float(strength) ** 0.7 * alignment ** 11)
+        if frame["geometry_steps"]:
+            directional = self._stepField(directional, frame["geometry_steps"])
         targetRadius = 0.56 + frame["extent"] * (0.12 + 1.02 * directional)
+        if frame["faceting"]:
+            facetRadius = targetRadius * 0.9 / np.maximum(facetAlignment, 0.82)
+            targetRadius = (
+                targetRadius * (1.0 - frame["faceting"])
+                + facetRadius * frame["faceting"]
+            )
+        if frame["jaggedness"]:
+            targetRadius += frame["jaggedness"] * self._jaggedField(
+                qx, qy, qz, frame["jagged_scale"]
+            )
         wave = frame["depth"] * 0.5 * np.sin(
             12.0 * radial - frame["time"] * 5.5 + directional * 7.0
         )
@@ -166,6 +200,36 @@ class AudioFormCore:
             8.0 * radial - frame["time"] * 7.0
         )
         return (radial - targetRadius + wave) * scale * 0.72
+
+    # :: ANY, ANY, ANY, FLOAT -> ANY
+    # Builds deterministic piecewise-linear object-space ridges for the radial silhouette
+    def _jaggedField(self, x: Any, y: Any, z: Any, scale: float) -> Any:
+        first = self._triangle(
+            (x * 0.83 + y * 0.37 + z * 0.61) * scale + self._jaggedPhases[0]
+        )
+        second = self._triangle(
+            (x * -0.29 + y * 0.91 + z * 0.43) * scale + self._jaggedPhases[1]
+        )
+        third = self._triangle(
+            (x * 0.47 + y * -0.53 + z * 0.79) * scale + self._jaggedPhases[2]
+        )
+        return (first + second + third) / 3.0
+
+    # :: ANY -> ANY
+    # Produces a sharp deterministic triangle wave without random frame noise
+    def _triangle(self, values: Any) -> Any:
+        return np.arcsin(np.sin(values)) * (2.0 / math.pi)
+
+    # :: ANY, INTEGER -> ANY
+    # Forms stable plateaus with continuous ramps so tracing does not cross jumps
+    def _stepField(self, values: Any, steps: int) -> Any:
+        intervals = float(steps - 1)
+        scaled = np.clip(values, 0.0, 1.0) * intervals
+        lower = np.floor(scaled)
+        fraction = scaled - lower
+        transition = np.clip((fraction - 0.35) / 0.3, 0.0, 1.0)
+        transition = transition * transition * (3.0 - 2.0 * transition)
+        return np.minimum((lower + transition) / intervals, 1.0)
 
     # :: ANY -> ANY
     # Resamples and gently smooths arbitrary spectrum lengths onto 24 spatial directions
@@ -181,8 +245,8 @@ class AudioFormCore:
     # Class Methods
     #
 
-    # Class Factory Method :: moduleType, INT -> audioFormCore
+    # Class Factory Method :: moduleType, INT, ARRAY<STRING, ANY> -> audioFormCore
     # Creates a production-owned audio geometry adapter
     @classmethod
-    def init(cls, liquidModule: ModuleType, seed: int) -> AudioFormCore:
-        return cls(liquidModule, seed)
+    def init(cls, liquidModule: ModuleType, seed: int, formStyle: Dict[str, Any]) -> AudioFormCore:
+        return cls(liquidModule, seed, formStyle)

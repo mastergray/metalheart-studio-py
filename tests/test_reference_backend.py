@@ -159,6 +159,16 @@ def testRadialModulatorsMapAnalysisValues() -> None:
 
 
 # :: VOID -> NONE
+# Verifies amplitude and centroid map onto bounded jagged radial controls
+def testJaggedRadialModulatorsMapAnalysisValues() -> None:
+    backend = ReferenceBackend.init()
+    reactivity = REACTIVITY_PRESETS["spectral-radial-jagged"]
+    modulators = backend.createModulators(_analysis(), 0, 0.0, reactivity)
+    assert 0.0 < modulators["form_jaggedness"] <= 0.06
+    assert 0.0 < modulators["form_jagged_scale"] <= 6.0
+
+
+# :: VOID -> NONE
 # Verifies the production-owned radial SDF renders a stable nonempty frame
 def testRadialFrameIsDeterministic() -> None:
     backend = ReferenceBackend.init()
@@ -175,6 +185,37 @@ def testRadialFrameIsDeterministic() -> None:
     assert first.shape == (64, 64, 3)
     assert np.array_equal(first, second)
     assert int(first.max()) > 0
+
+
+# :: VOID -> NONE
+# Verifies opt-in faceting, jaggedness, and stepping visibly change Radial
+def testJaggedRadialFrameIsDistinctAndDeterministic() -> None:
+    backend = ReferenceBackend.init()
+    settings = {"width": 64, "height": 64, "seed": 5}
+    scene = _scene()
+    scene["renderer"].update(
+        {
+            "core": "3d",
+            "forms": ["radial"],
+            "cameras": ["orbit"],
+            "core_scale": 0.25,
+            "form_style": {
+                "faceting": 0.55,
+                "jaggedness": 0.02,
+                "jagged_scale": 4.0,
+                "geometry_steps": 6,
+            },
+        }
+    )
+    scene["reactivity"] = REACTIVITY_PRESETS["spectral-radial-jagged"]
+    params = backend.createParams(_analysis(), 0, 0.0, scene["reactivity"])
+    baseModulators = backend.createModulators(_analysis(), 0, 0.0, scene["reactivity"])
+    flatModulators = dict(baseModulators, form_jaggedness=0.0, form_jagged_scale=0.0)
+    first = backend.createRenderer(settings, scene).render(0.5, params, baseModulators)
+    second = backend.createRenderer(settings, scene).render(0.5, params, baseModulators)
+    flat = backend.createRenderer(settings, scene).render(0.5, params, flatModulators)
+    assert np.array_equal(first, second)
+    assert not np.array_equal(first, flat)
 
 
 # :: VOID -> NONE
