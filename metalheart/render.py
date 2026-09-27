@@ -6,6 +6,7 @@ import copy  # Resolve runtime seed values without mutating caller configuration
 import hashlib  # Address resumable work by complete resolved render inputs
 import json  # Write render manifests
 import os  # Atomically replace completed output files
+import re  # Convert scene identifiers into safe ordered clip filenames
 import secrets  # Resolve exploratory null seeds before rendering
 import shutil  # Locate tools and clean successful temporary renders
 import subprocess  # Stream frames to FFmpeg and mux source audio
@@ -151,52 +152,62 @@ class RenderPipeline:
         ranges = self._sceneRanges(resolved["scenes"], fps)
         firstFrame = ranges[0][0]
         lastFrame = ranges[-1][1]
-        frameCount = lastFrame - firstFrame
-        startSec = firstFrame / float(fps)
-        durationSec = frameCount / float(fps)
-        cacheRoot = Path(resolved["_meta"]["config_path"]).parent / ".metalheart-cache"
-        cache = AudioAnalysisCache.init(self._backend, cacheRoot)
-        bpmHint = resolved.get("analysis", {}).get("bpm_hint")
-        explicitCache = resolved.get("analysis", {}).get("cache")
-        print("[analysis] {0:.3f}s–{1:.3f}s at {2} fps".format(startSec, startSec + durationSec, fps), file=sys.stderr, flush=True)
-        analysisResult = cache.get(resolved["audio"], fps, startSec, durationSec, bpmHint, explicitCache)
-        print("[analysis] {0}: {1}".format("cache hit" if analysisResult.cacheHit else "computed", analysisResult.cachePath), file=sys.stderr, flush=True)
+        analysisResult = self._analyzeTimeline(resolved, firstFrame, lastFrame)
         renderFingerprint = self._renderFingerprint(resolved, analysisResult.cachePath)
-        workPath = output.parent / ".metalheart-work" / "{0}-{1}".format(output.stem, renderFingerprint[:16])
-        workPath.mkdir(parents=True, exist_ok=True)
-        silentPath = workPath / "video.mp4"
-        partialHandle = tempfile.NamedTemporaryFile(prefix=".{0}.".format(output.name), suffix=".partial.mp4", dir=str(output.parent), delete=False)
-        partialPath = Path(partialHandle.name)
-        partialHandle.close()
-        started = time.monotonic()
-        try:
-            chunkRanges = self._chunkRanges(firstFrame, lastFrame, fps, float(settings["chunk_sec"]))
-            workers = self._workerCount(settings["workers"], len(chunkRanges))
-            chunkPaths, reusedChunks = self._renderChunks(
-                resolved,
-                analysisResult,
-                ranges,
-                firstFrame,
-                chunkRanges,
-                workPath,
-                renderFingerprint,
-                workers,
-                bool(settings["resume"]),
+        return self._renderRange(
+            resolved,
+            resolved,
+            analysisResult,
+            ranges,
+            firstFrame,
+            firstFrame,
+            lastFrame,
+            output,
+            renderFingerprint,
+        )
+
+    # :: ARRAY<STRING, ANY>, STRING -> [renderResult]
+    # Renders every scene as an independently playable audio-synchronized clip
+    def renderScenes(self, config: Dict[str, Any], outputDirectory: str) -> List[RenderResult]:
+        self._validateTools()
+        report = self._resolver.validate(config)
+        if not report.isValid:
+            raise ConfigError("render config is invalid:\n- " + "\n- ".join(report.errors))
+        resolved = copy.deepcopy(config)
+        if resolved["settings"].get("seed") is None:
+            resolved["settings"]["seed"] = secrets.randbelow(2 ** 31)
+        directory = Path(outputDirectory).resolve()
+        directory.mkdir(parents=True, exist_ok=True)
+        fps = int(resolved["settings"]["fps"])
+        ranges = self._sceneRanges(resolved["scenes"], fps)
+        analysisFirstFrame = ranges[0][0]
+        analysisResult = self._analyzeTimeline(resolved, analysisFirstFrame, ranges[-1][1])
+        renderFingerprint = self._renderFingerprint(resolved, analysisResult.cachePath)
+        results = []
+        sceneCount = len(resolved["scenes"])
+        for index, (firstFrame, lastFrame, scene) in enumerate(ranges):
+            sceneConfig = copy.deepcopy(resolved)
+            sceneConfig["scenes"] = [copy.deepcopy(scene)]
+            output = self._sceneClipPath(directory, index, scene)
+            print(
+                "[scene-clips] {0}/{1}: {2}".format(index + 1, sceneCount, output.name),
+                file=sys.stderr,
+                flush=True,
             )
-            self._concatChunks(chunkPaths, workPath, silentPath)
-            self._muxAudio(silentPath, resolved["audio"], startSec, durationSec, partialPath)
-            os.replace(str(partialPath), str(output))
-            elapsedSec = time.monotonic() - started
-            profilePath = output.with_suffix(output.suffix + ".profile.json")
-            manifestPath = output.with_suffix(output.suffix + ".manifest.json")
-            self._resolver.write(resolved, str(profilePath))
-            self._writeManifest(resolved, output, manifestPath, analysisResult, frameCount, startSec, durationSec, elapsedSec, len(chunkRanges), reusedChunks, workers, str(workPath))
-            return RenderResult(str(output), str(profilePath), str(manifestPath), frameCount, elapsedSec, analysisResult.cacheHit, len(chunkRanges), reusedChunks, workers)
-        except Exception:
-            print("[render] failed; resumable intermediates preserved at {0}".format(workPath), file=sys.stderr, flush=True)
-            if partialPath.exists() and partialPath.stat().st_size == 0:
-                partialPath.unlink()
-            raise
+            results.append(
+                self._renderRange(
+                    resolved,
+                    sceneConfig,
+                    analysisResult,
+                    ranges,
+                    analysisFirstFrame,
+                    firstFrame,
+                    lastFrame,
+                    output,
+                    renderFingerprint,
+                )
+            )
+        return results
 
     #
     # Protected Methods
@@ -208,6 +219,120 @@ class RenderPipeline:
         for name, executable in (("ffmpeg", self._ffmpeg), ("ffprobe", self._ffprobe)):
             if shutil.which(executable) is None:
                 raise ConfigError("{0} executable not found: {1}".format(name, executable))
+
+    # :: PATH, INT, ARRAY<STRING, ANY> -> PATH
+    # Builds a traversal-safe ordered filename from a scene identifier
+    def _sceneClipPath(self, directory: Path, index: int, scene: Dict[str, Any]) -> Path:
+        identifier = str(scene.get("id", "scene")).lower()
+        slug = re.sub(r"[^a-z0-9._-]+", "-", identifier).strip("._-") or "scene"
+        return directory / "{0:03d}-{1}.mp4".format(index + 1, slug)
+
+    # :: ARRAY<STRING, ANY>, INT, INT -> analysisResult
+    # Loads or computes one shared analysis covering the authored timeline
+    def _analyzeTimeline(self, config: Dict[str, Any], firstFrame: int, lastFrame: int) -> AnalysisResult:
+        fps = int(config["settings"]["fps"])
+        frameCount = lastFrame - firstFrame
+        startSec = firstFrame / float(fps)
+        durationSec = frameCount / float(fps)
+        cacheRoot = Path(config["_meta"]["config_path"]).parent / ".metalheart-cache"
+        cache = AudioAnalysisCache.init(self._backend, cacheRoot)
+        bpmHint = config.get("analysis", {}).get("bpm_hint")
+        explicitCache = config.get("analysis", {}).get("cache")
+        print(
+            "[analysis] {0:.3f}s–{1:.3f}s at {2} fps".format(startSec, startSec + durationSec, fps),
+            file=sys.stderr,
+            flush=True,
+        )
+        result = cache.get(config["audio"], fps, startSec, durationSec, bpmHint, explicitCache)
+        print(
+            "[analysis] {0}: {1}".format("cache hit" if result.cacheHit else "computed", result.cachePath),
+            file=sys.stderr,
+            flush=True,
+        )
+        return result
+
+    # :: ARRAY<STRING, ANY>, ARRAY<STRING, ANY>, analysisResult, [(INT, INT, ARRAY<STRING, ANY>)], INT, INT, INT, PATH, STRING -> renderResult
+    # Renders one exact frame interval using shared timeline analysis and scheduling
+    def _renderRange(
+        self,
+        frameConfig: Dict[str, Any],
+        profileConfig: Dict[str, Any],
+        analysisResult: AnalysisResult,
+        sceneRanges: List[Tuple[int, int, Dict[str, Any]]],
+        analysisFirstFrame: int,
+        firstFrame: int,
+        lastFrame: int,
+        output: Path,
+        renderFingerprint: str,
+    ) -> RenderResult:
+        settings = frameConfig["settings"]
+        fps = int(settings["fps"])
+        frameCount = lastFrame - firstFrame
+        startSec = firstFrame / float(fps)
+        durationSec = frameCount / float(fps)
+        workPath = output.parent / ".metalheart-work" / "{0}-{1}".format(output.stem, renderFingerprint[:16])
+        workPath.mkdir(parents=True, exist_ok=True)
+        silentPath = workPath / "video.mp4"
+        partialHandle = tempfile.NamedTemporaryFile(
+            prefix=".{0}.".format(output.name),
+            suffix=".partial.mp4",
+            dir=str(output.parent),
+            delete=False,
+        )
+        partialPath = Path(partialHandle.name)
+        partialHandle.close()
+        started = time.monotonic()
+        try:
+            chunkRanges = self._chunkRanges(firstFrame, lastFrame, fps, float(settings["chunk_sec"]))
+            workers = self._workerCount(settings["workers"], len(chunkRanges))
+            chunkPaths, reusedChunks = self._renderChunks(
+                frameConfig,
+                analysisResult,
+                sceneRanges,
+                analysisFirstFrame,
+                chunkRanges,
+                workPath,
+                renderFingerprint,
+                workers,
+                bool(settings["resume"]),
+            )
+            self._concatChunks(chunkPaths, workPath, silentPath)
+            self._muxAudio(silentPath, frameConfig["audio"], startSec, durationSec, partialPath)
+            os.replace(str(partialPath), str(output))
+            elapsedSec = time.monotonic() - started
+            profilePath = output.with_suffix(output.suffix + ".profile.json")
+            manifestPath = output.with_suffix(output.suffix + ".manifest.json")
+            self._resolver.write(profileConfig, str(profilePath))
+            self._writeManifest(
+                profileConfig,
+                output,
+                manifestPath,
+                analysisResult,
+                frameCount,
+                startSec,
+                durationSec,
+                elapsedSec,
+                len(chunkRanges),
+                reusedChunks,
+                workers,
+                str(workPath),
+            )
+            return RenderResult(
+                str(output),
+                str(profilePath),
+                str(manifestPath),
+                frameCount,
+                elapsedSec,
+                analysisResult.cacheHit,
+                len(chunkRanges),
+                reusedChunks,
+                workers,
+            )
+        except Exception:
+            print("[render] failed; resumable intermediates preserved at {0}".format(workPath), file=sys.stderr, flush=True)
+            if partialPath.exists() and partialPath.stat().st_size == 0:
+                partialPath.unlink()
+            raise
 
     # :: [ARRAY<STRING, ANY>], INT -> [(INT, INT, ARRAY<STRING, ANY>)]
     # Maps scene time boundaries to exact global output-frame ranges

@@ -11,6 +11,7 @@ python3 studio.py analyze /path/to/song.wav -o song.metalheart.json --quality pr
 python3 studio.py validate examples/minimal.json
 python3 studio.py resolve examples/minimal.json
 python3 studio.py render examples/minimal.json -o renders/minimal.mp4 --workers auto
+python3 studio.py render examples/multi-scene.json --scene-clips renders/scenes
 ```
 
 `analyze` detects tempo, downbeats, and energy, divides the track into contiguous phrase-aligned scenes, and writes a neutral config skeleton that can be edited or rendered directly. It does not infer sentiment or select aesthetics from audio. Use `--bars-per-scene` and `--max-scene-sec` to tune boundaries, and `--template` to choose the explicit default assigned to every generated scene.
@@ -26,6 +27,8 @@ A 3D scene may also replace the procedural palette background with a config-rela
 Three-dimensional ribbons and plates are independently authorable through `renderer.decor`. Each family has its own enable switch, deterministic count, metallic or matte material, and optional image surface. Ribbon images use longitudinal/twisted-width coordinates that bend with the blade; plate images use planar object-local coordinates. The destinations `ribbon_width`, `ribbon_twist`, `ribbon_wave`, `ribbon_speed`, `plate_orbit`, and `plate_displacement` expose decor motion to ordinary audio bindings. Legacy `decor: true|false` remains valid and preserves the reference defaults; see `examples/decor.json`.
 
 Renders split into deterministic chunks. `settings.workers` defaults conservatively to `auto`, `chunk_sec` defaults to four seconds, and completed chunks are retained under `.metalheart-work/` for automatic resume. CLI overrides are available through `--workers`, `--chunk-sec`, and `--no-resume`.
+
+`render CONFIG --scene-clips DIRECTORY` skips assembled-timeline output and renders every scene as an independently playable, audio-synchronized clip. Files use stable ordered names such as `001-intro.mp4`; each receives its own resolved profile and render manifest. Scene-local form skins, background images, ribbon skins, and plate skins remain independent in the exported clips. Global animation time retains the scene's original timeline phase, while scene time still begins at zero.
 
 The minimal example renders three seconds at preview quality. `examples/multi-scene.json` demonstrates an explicit hard cut from Mercury to an Ember/Ferro impact template. Both use the existing audio-reactive reference fixture.
 

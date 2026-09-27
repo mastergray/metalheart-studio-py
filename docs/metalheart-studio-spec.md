@@ -619,6 +619,8 @@ Version 1 has no browser application, local API server, or interactive editor. T
 
 All commands support `--json` for machine-readable output where applicable. Normal progress goes to stderr so stdout can safely carry JSON.
 
+`render CONFIG --scene-clips DIRECTORY` is the non-assembly render mode. It writes every scene as an independently playable clip named with its timeline index and sanitized scene ID, trims and muxes the matching source-audio interval, and writes a resolved profile and manifest beside each clip. It does not add transition frames or change scene boundaries. Each isolated scene retains its own form image skin, background image, ribbon skin, and plate skin. Global time preserves the scene's position in the authored timeline; scene time restarts at zero as usual.
+
 ### 11.2 Config templates
 
 The repository ships with small, commented-by-documentation example configs:
@@ -812,7 +814,6 @@ Phases 0 through 2 constitute version 1. Later phases are explicitly outside the
 
 ### Phase 3 — advanced headless authoring, after v1
 
-- transitions between scenes;
 - keyframes and automation lanes;
 - audio-bound post-effect properties;
 - user-defined reactivity presets;
@@ -831,7 +832,7 @@ The following decisions are accepted for the initial build:
 3. Use timeline JSON plus a separate NPZ audio-feature cache.
 4. Default to 1920×1080 at 30 fps; preserve arbitrary even dimensions and common frame rates.
 5. Default animation time to global song time, with a per-scene restart option.
-6. Start with hard cuts; defer transitions until the core pipeline is stable.
+6. Use hard cuts between scenes; transitions are not part of the authoring model.
 7. Port a curated, tested subset of Glitzle's post catalog rather than all recipes at once.
 8. Treat `ref/` as the baseline and create a production-owned renderer package.
 9. Design the default templates for 16:9 landscape while continuing to accept arbitrary even dimensions.

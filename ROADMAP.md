@@ -198,6 +198,8 @@ The integration render should use the existing 30-second audio clip and demonstr
 - ribbons with an independent skin and explicit reactivity;
 - one combined scene used to identify interactions and performance limits.
 
+Multi-scene work uses hard cuts. Transition authoring is not planned. The implemented `--scene-clips` mode exports every scene as an independent, audio-synchronized clip without changing its scene-local form, background, ribbon, or plate image skins.
+
 ## Test and review requirements
 
 Every milestone requires more than confirming that a render completes:

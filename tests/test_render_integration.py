@@ -7,7 +7,7 @@ import struct  # Pack generated PCM samples into a WAV fixture
 import subprocess  # Inspect rendered output with ffprobe
 import wave  # Write generated mono PCM without external audio libraries
 from pathlib import Path  # Manage temporary configs, audio, and output files
-from typing import Any, Dict  # Python 3.8-compatible config annotations
+from typing import Any, Dict, List  # Python 3.8-compatible config annotations
 
 import pytest  # Mark media integration coverage
 
@@ -36,6 +36,19 @@ def _writeAudio(path: Path, durationSec: float = 2.0) -> None:
         handle.setsampwidth(2)
         handle.setframerate(sampleRate)
         handle.writeframes(b"".join(samples))
+
+
+# :: PATH -> [STRING]
+# Returns decoded video-frame hashes independently of container timestamps
+def _frameHashes(path: Path) -> List[str]:
+    result = subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", str(path), "-map", "0:v:0", "-f", "framemd5", "-"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True,
+        universal_newlines=True,
+    )
+    return [line.rsplit(",", 1)[-1].strip() for line in result.stdout.splitlines() if line and not line.startswith("#")]
 
 
 # :: PATH, PATH -> ARRAY<STRING, ANY>
@@ -130,3 +143,32 @@ def testRendersSynchronizedVideoAndAudio(tmp_path: Path) -> None:
     resumedResult = RenderPipeline.init(backend=backend).render(resolved, str(outputPath))
     assert resumedResult.reusedChunks == 4
     assert resumedResult.frameCount == result.frameCount
+
+    clipDirectory = tmp_path / "clips"
+    clipResults = RenderPipeline.init(backend=backend).renderScenes(resolved, str(clipDirectory))
+    assert [Path(item.outputPath).name for item in clipResults] == ["001-calm.mp4", "002-impact.mp4"]
+    assert [item.frameCount for item in clipResults] == [4, 4]
+    clipFrameHashes = []
+    for index, item in enumerate(clipResults):
+        clipPath = Path(item.outputPath)
+        profile = json.loads(Path(item.profilePath).read_text(encoding="utf-8"))
+        assert clipPath.is_file()
+        assert Path(item.manifestPath).is_file()
+        assert len(profile["scenes"]) == 1
+        assert profile["scenes"][0]["id"] == resolved["scenes"][index]["id"]
+        assert profile["scenes"][0]["renderer"] == resolved["scenes"][index]["renderer"]
+        clipProbe = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,nb_frames,duration", "-of", "json", str(clipPath)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+            universal_newlines=True,
+        )
+        clipStreams = json.loads(clipProbe.stdout)["streams"]
+        clipVideo = next(stream for stream in clipStreams if stream["codec_type"] == "video")
+        clipAudio = next(stream for stream in clipStreams if stream["codec_type"] == "audio")
+        assert int(clipVideo["nb_frames"]) == 4
+        assert abs(float(clipVideo["duration"]) - 1.0) < 0.001
+        assert abs(float(clipAudio["duration"]) - 1.0) < 0.001
+        clipFrameHashes.extend(_frameHashes(clipPath))
+    assert clipFrameHashes == _frameHashes(outputPath)

@@ -108,7 +108,9 @@ def buildParser() -> argparse.ArgumentParser:
 
     renderParser = commands.add_parser("render", help="render a JSON config to video")
     renderParser.add_argument("config")
-    renderParser.add_argument("-o", "--output", required=True)
+    renderOutput = renderParser.add_mutually_exclusive_group(required=True)
+    renderOutput.add_argument("-o", "--output", help="write one assembled timeline video")
+    renderOutput.add_argument("--scene-clips", metavar="DIRECTORY", help="write each scene as an independent clip")
     renderParser.add_argument("--ffmpeg", default="ffmpeg")
     renderParser.add_argument("--ffprobe", default="ffprobe")
     renderParser.add_argument("--workers", type=_parseWorkers)
@@ -213,7 +215,25 @@ def _renderCommand(args: argparse.Namespace, resolver: ConfigResolver) -> int:
     if not report.isValid:
         _printReport(report, args.json)
         return 2
-    result = RenderPipeline.init(args.ffmpeg, args.ffprobe).render(resolved, args.output)
+    pipeline = RenderPipeline.init(args.ffmpeg, args.ffprobe)
+    if args.scene_clips:
+        results = pipeline.renderScenes(resolved, args.scene_clips)
+        clips = []
+        for scene, result in zip(resolved["scenes"], results):
+            clip = result.toDict()
+            clip["scene_id"] = scene["id"]
+            clips.append(clip)
+        summary = {
+            "output_directory": str(Path(args.scene_clips).resolve()),
+            "clips": clips,
+        }
+        if args.json:
+            print(json.dumps(summary, indent=2, sort_keys=True))
+        else:
+            for clip in clips:
+                print("wrote {0}: {1} frames ({2})".format(clip["output"], clip["frames"], clip["scene_id"]))
+        return 0
+    result = pipeline.render(resolved, args.output)
     if args.json:
         print(json.dumps(result.toDict(), indent=2, sort_keys=True))
     else:
