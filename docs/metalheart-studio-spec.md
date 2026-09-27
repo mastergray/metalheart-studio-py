@@ -290,6 +290,14 @@ The `background_pulse` modulator is a bounded zero-to-one control. It scales the
 
 Both background effects are composed before ghosts, shadow, and foreground geometry, so they do not resize, warp, or relight fully opaque foreground pixels. Whole-frame finishing still follows composition, and overlays remain last. Background image paths and content digests participate in render fingerprints. Version 1 background customization is limited to the 3D core because that renderer provides the isolated foreground alpha needed to preserve this layer contract.
 
+### 6.9 First-class 3D decor
+
+`renderer.decor` accepts the legacy boolean or a resolved object containing an overall enable switch, optional seed, and independent `ribbons` and `plates` objects. Each family provides its own enable switch, deterministic count from zero through eight, `metallic` or `matte` material, and optional image surface. When the overall switch or both families are disabled, the renderer omits the decor SDFs and their additional tracing steps.
+
+Ribbon images use local longitudinal and twisted-width coordinates derived from the animated ribbon frame. The image therefore bends, waves, and twists with the blade rather than sliding through it in world space. Plate images use local planar coordinates derived from the animated plate transform. Both surfaces support scale, rotation, bilinear or nearest sampling, texture-coordinate steps, and lighting steps. Decor images are resolved relative to the config and included in render fingerprints independently from core and background images. A core image skin never propagates to ribbon or plate hits.
+
+The typed destinations `ribbon_width`, `ribbon_twist`, `ribbon_wave`, and `ribbon_speed` control blade width, twist-rate response, path amplitude, and longitudinal wave speed. `plate_orbit` and `plate_displacement` control orbital speed and radial distance. If none of these explicit destinations is authored, bass continues to widen ribbons and displace plates while mid energy changes ribbon twist speed, preserving legacy output. The first-class decor object and its explicit destinations are version 1 3D features; legacy booleans continue to operate for both cores.
+
 ## 7. Timeline format
 
 ### 7.1 Design rules

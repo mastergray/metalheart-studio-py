@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "audio": "../ref/audioReactive/metalheart_audio_test_small.mp4",
+  "settings": {
+    "quality": "preview",
+    "seed": 3,
+    "time_mode": "scene"
+  },
+  "scenes": [
+    {
+      "id": "skinned-decor",
+      "name": "Independent local-coordinate ribbons and plates",
+      "start_sec": 0.0,
+      "end_sec": 4.0,
+      "renderer": {
+        "core": "3d",
+        "palette": "steel",
+        "forms": ["mercury"],
+        "cameras": ["orbit"],
+        "camera_speed": 0.0,
+        "decor": {
+          "enabled": true,
+          "seed": 7,
+          "ribbons": {
+            "enabled": true,
+            "count": 4,
+            "material": "metallic",
+            "surface": {
+              "image": "../ref/metalheart_3d_scene_angles.png",
+              "mapping": "ribbon",
+              "scale": 1.0,
+              "sampling": "nearest",
+              "texel_steps": 32,
+              "lighting_steps": 6
+            }
+          },
+          "plates": {
+            "enabled": true,
+            "count": 3,
+            "material": "matte",
+            "surface": {
+              "image": "../ref/metalheart_3d_scene_angles.png",
+              "mapping": "planar",
+              "scale": 1.0,
+              "sampling": "nearest",
+              "texel_steps": 24,
+              "lighting_steps": 5
+            }
+          }
+        }
+      },
+      "reactivity": {
+        "preset": "manual",
+        "modulators": {
+          "ribbon_width": {"source": "bass", "amount": 0.65, "curve": "ease_out", "clamp": [0.0, 0.65]},
+          "ribbon_twist": {"source": "mid", "amount": 1.4, "curve": "smoothstep", "clamp": [0.0, 1.4]},
+          "ribbon_wave": {"source": "amplitude", "amount": 0.5, "curve": "ease_out", "clamp": [0.0, 0.5]},
+          "ribbon_speed": {"source": "high", "amount": 1.2, "curve": "linear", "clamp": [0.0, 1.2]},
+          "plate_orbit": {"source": "mid", "amount": 1.5, "curve": "smoothstep", "clamp": [0.0, 1.5]},
+          "plate_displacement": {"source": "bass", "amount": 0.2, "curve": "ease_out", "clamp": [0.0, 0.2]}
+        }
+      },
+      "overlay": {
+        "enabled": false
+      }
+    }
+  ],
+  "post": []
+}

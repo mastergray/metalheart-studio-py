@@ -33,6 +33,12 @@ MODULATORS = [
     "background_ripple",
     "background_ripple_scale",
     "background_ripple_impact",
+    "ribbon_width",
+    "ribbon_twist",
+    "ribbon_wave",
+    "ribbon_speed",
+    "plate_orbit",
+    "plate_displacement",
 ]
 
 QUALITY_PROFILES: Dict[str, Dict[str, Any]] = {
@@ -60,6 +66,32 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "resume": True,
 }
 
+DEFAULT_DECOR_SURFACE: Dict[str, Any] = {
+    "image": None,
+    "scale": 1.0,
+    "rotation_deg": 0.0,
+    "sampling": "bilinear",
+    "texel_steps": 0,
+    "lighting_steps": 0,
+}
+
+DEFAULT_DECOR: Dict[str, Any] = {
+    "enabled": True,
+    "seed": None,
+    "ribbons": {
+        "enabled": True,
+        "count": 4,
+        "material": "metallic",
+        "surface": dict(DEFAULT_DECOR_SURFACE, mapping="ribbon"),
+    },
+    "plates": {
+        "enabled": True,
+        "count": 3,
+        "material": "metallic",
+        "surface": dict(DEFAULT_DECOR_SURFACE, mapping="planar"),
+    },
+}
+
 DEFAULT_RENDERER: Dict[str, Any] = {
     "id": "metalheart",
     "palette": "steel",
@@ -72,7 +104,7 @@ DEFAULT_RENDERER: Dict[str, Any] = {
     "camera_phase_sec": 0.0,
     "camera_intensity": 1.0,
     "crossfade_sec": 1.8,
-    "decor": True,
+    "decor": DEFAULT_DECOR,
     "anti_alias": True,
     "core_scale": 0.5,
     "surface": {
@@ -351,7 +383,12 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                 "camera_phase_sec": {"type": "number", "minimum": 0.0, "maximum": 120.0},
                 "camera_intensity": {"type": "number", "minimum": 0.0, "maximum": 3.0},
                 "crossfade_sec": {"type": "number", "exclusiveMinimum": 0},
-                "decor": {"type": "boolean"},
+                "decor": {
+                    "anyOf": [
+                        {"type": "boolean"},
+                        {"$ref": "#/$defs/decor"},
+                    ]
+                },
                 "anti_alias": {"type": "boolean"},
                 "core_scale": {"type": "number", "minimum": 0.1, "maximum": 1.0},
                 "surface": {"$ref": "#/$defs/surface"},
@@ -380,6 +417,49 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                         {"type": "integer", "minimum": 2, "maximum": 64},
                     ],
                 },
+            },
+            "additionalProperties": True,
+        },
+        "decorSurface": {
+            "type": "object",
+            "properties": {
+                "image": {"type": ["string", "null"]},
+                "mapping": {"enum": ["ribbon", "planar"]},
+                "scale": {"type": "number", "minimum": 0.05, "maximum": 100.0},
+                "rotation_deg": {"type": "number", "minimum": -3600.0, "maximum": 3600.0},
+                "sampling": {"enum": ["bilinear", "nearest"]},
+                "texel_steps": {
+                    "anyOf": [
+                        {"const": 0},
+                        {"type": "integer", "minimum": 2, "maximum": 1024},
+                    ]
+                },
+                "lighting_steps": {
+                    "anyOf": [
+                        {"const": 0},
+                        {"type": "integer", "minimum": 2, "maximum": 64},
+                    ]
+                },
+            },
+            "additionalProperties": True,
+        },
+        "decorElement": {
+            "type": "object",
+            "properties": {
+                "enabled": {"type": "boolean"},
+                "count": {"type": "integer", "minimum": 0, "maximum": 8},
+                "material": {"enum": ["metallic", "matte"]},
+                "surface": {"$ref": "#/$defs/decorSurface"},
+            },
+            "additionalProperties": True,
+        },
+        "decor": {
+            "type": "object",
+            "properties": {
+                "enabled": {"type": "boolean"},
+                "seed": {"type": ["integer", "null"]},
+                "ribbons": {"$ref": "#/$defs/decorElement"},
+                "plates": {"$ref": "#/$defs/decorElement"},
             },
             "additionalProperties": True,
         },

@@ -41,6 +41,12 @@ def testResolvesTemplateAndPreset(tmp_path: Path) -> None:
     assert resolved["scenes"][0]["renderer"]["core"] == "2d"
     assert resolved["scenes"][0]["reactivity"]["bindings"]["bass"]["source"] == "bass"
     assert resolved["scenes"][0]["reactivity"]["modulators"]["pulse"]["source"] == "bass"
+    assert resolved["scenes"][0]["renderer"]["decor"]["enabled"]
+    authored["scenes"][0]["renderer"]["decor"] = False
+    resolved = resolver.resolve(authored, str(configPath))
+    assert not resolved["scenes"][0]["renderer"]["decor"]["enabled"]
+    assert not resolved["scenes"][0]["renderer"]["decor"]["ribbons"]["enabled"]
+    assert not resolved["scenes"][0]["renderer"]["decor"]["plates"]["enabled"]
     assert resolved["scenes"][0]["overlay"] == {"enabled": False, "reference_hud": False, "items": []}
     assert resolved["settings"]["crf"] == 23
 
@@ -147,6 +153,7 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
     assert "heart" not in renderer["forms"]["items"]["enum"]
     assert renderer["surface"] == {"$ref": "#/$defs/surface"}
     assert renderer["form_style"] == {"$ref": "#/$defs/formStyle"}
+    assert {"$ref": "#/$defs/decor"} in renderer["decor"]["anyOf"]
     surface = schema["$defs"]["surface"]["properties"]
     assert surface["sampling"]["enum"] == ["bilinear", "nearest"]
     assert "texel_steps" in surface
@@ -394,6 +401,102 @@ def testRejectsInvalidBackgroundRippleControls(tmp_path: Path) -> None:
     assert any("ripple.enabled" in error for error in report.errors)
     for key in ("amount", "scale", "travel_speed", "warp", "specular", "roughness"):
         assert any("ripple.{0}".format(key) in error for error in report.errors)
+
+
+# :: PATH -> NONE
+# Verifies independent decor counts, skins, mappings, and audio controls resolve on 3D
+def testResolvesFirstClassDecorConfig(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    ribbonPath = tmp_path / "ribbon.png"
+    platePath = tmp_path / "plate.png"
+    ribbonPath.write_bytes(b"ribbon")
+    platePath.write_bytes(b"plate")
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["renderer"] = {
+        "core": "3d",
+        "decor": {
+            "enabled": True,
+            "seed": 17,
+            "ribbons": {
+                "enabled": True,
+                "count": 2,
+                "material": "matte",
+                "surface": {"image": "ribbon.png", "mapping": "ribbon"},
+            },
+            "plates": {
+                "enabled": False,
+                "count": 1,
+                "surface": {"image": "plate.png", "mapping": "planar"},
+            },
+        },
+    }
+    authored["scenes"][0]["reactivity"] = {
+        "preset": "spectral-radial",
+        "modulators": {
+            "ribbon_width": {"source": "bass", "amount": 0.5, "clamp": [0.0, 0.5]},
+            "ribbon_twist": {"source": "mid", "amount": 1.2, "clamp": [0.0, 1.2]},
+            "plate_orbit": {"source": "high", "amount": 1.0, "clamp": [0.0, 1.0]},
+        },
+    }
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert report.isValid, report.errors
+    decor = resolved["scenes"][0]["renderer"]["decor"]
+    assert decor["seed"] == 17
+    assert decor["ribbons"]["count"] == 2
+    assert decor["ribbons"]["surface"]["image"] == str(ribbonPath)
+    assert decor["plates"]["surface"]["image"] == str(platePath)
+    authored["scenes"][0]["renderer"]["core"] = "2d"
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert any("first-class decor controls require the 3d core" in error for error in report.errors)
+    assert any("decor modulation requires the 3d core" in error for error in report.errors)
+
+
+# :: PATH -> NONE
+# Verifies unsafe decor counts, materials, mappings, and style values are rejected
+def testRejectsInvalidDecorControls(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["renderer"] = {
+        "core": "3d",
+        "decor": {
+            "enabled": "yes",
+            "seed": True,
+            "ribbons": {
+                "enabled": 1,
+                "count": 9,
+                "material": "glass",
+                "surface": {
+                    "mapping": "planar",
+                    "sampling": "cubic",
+                    "scale": 0.0,
+                    "texel_steps": 1,
+                },
+            },
+            "plates": {"count": -1},
+        },
+    }
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert not report.isValid
+    for fragment in (
+        "decor.enabled",
+        "decor.seed",
+        "ribbons.enabled",
+        "ribbons.count",
+        "ribbons.material",
+        "ribbons.surface.mapping",
+        "ribbons.surface.sampling",
+        "ribbons.surface.scale",
+        "ribbons.surface.texel_steps",
+        "plates.count",
+    ):
+        assert any(fragment in error for error in report.errors)
+    authored["scenes"][0]["renderer"]["decor"] = "invalid"
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert any("renderer.decor: expected an object" in error for error in report.errors)
 
 
 # :: PATH -> NONE

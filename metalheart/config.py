@@ -12,6 +12,7 @@ from metalheart.catalog import CORES  # Supported renderer core identifiers
 from metalheart.catalog import CONFIG_SCHEMA  # Public JSON Schema document
 from metalheart.catalog import CURVES  # Supported binding curve identifiers
 from metalheart.catalog import DEFAULT_BACKGROUND  # Typed background defaults
+from metalheart.catalog import DEFAULT_DECOR  # First-class ribbon and plate defaults
 from metalheart.catalog import DEFAULT_FINISH  # Owned finishing-pass defaults
 from metalheart.catalog import DEFAULT_OVERLAY  # Text-overlay defaults
 from metalheart.catalog import DEFAULT_RENDERER  # Renderer defaults
@@ -197,6 +198,14 @@ class ConfigResolver:
         scene["name"] = scene.get("name", str(scene["id"]))
         rendererDefaults = self._deepMerge(DEFAULT_RENDERER, QUALITY_RENDERER_PROFILES.get(quality, QUALITY_RENDERER_PROFILES["final"]))
         scene["renderer"] = self._deepMerge(rendererDefaults, scene.get("renderer", {}))
+        scene["renderer"]["decor"] = self._resolveDecor(scene["renderer"].get("decor"))
+        decor = scene["renderer"]["decor"]
+        if isinstance(decor, dict):
+            for element in ("ribbons", "plates"):
+                elementConfig = decor.get(element)
+                surfaceConfig = elementConfig.get("surface") if isinstance(elementConfig, dict) else None
+                if isinstance(surfaceConfig, dict) and surfaceConfig.get("image"):
+                    surfaceConfig["image"] = self._resolvePath(surfaceConfig["image"], basePath)
         surface = scene["renderer"].get("surface")
         if isinstance(surface, dict) and surface.get("image"):
             surface["image"] = self._resolvePath(surface["image"], basePath)
@@ -242,6 +251,22 @@ class ConfigResolver:
             else:
                 result[key] = copy.deepcopy(value)
         return result
+
+    # :: ANY -> ANY
+    # Expands the legacy decor boolean into independent ribbon and plate settings
+    def _resolveDecor(self, value: Any) -> Any:
+        if isinstance(value, bool):
+            return self._deepMerge(
+                DEFAULT_DECOR,
+                {
+                    "enabled": value,
+                    "ribbons": {"enabled": value},
+                    "plates": {"enabled": value},
+                },
+            )
+        if not isinstance(value, dict):
+            return value
+        return self._deepMerge(DEFAULT_DECOR, value)
 
     # :: ARRAY<STRING, ANY>, validationReport -> NONE
     # Validates global output settings
@@ -323,6 +348,22 @@ class ConfigResolver:
         ):
             report.addError(
                 "{0}.reactivity.modulators: background modulation requires the 3d core".format(prefix)
+            )
+        if (
+            isinstance(renderer, dict)
+            and renderer.get("core") != "3d"
+            and isinstance(reactivity, dict)
+            and {
+                "ribbon_width",
+                "ribbon_twist",
+                "ribbon_wave",
+                "ribbon_speed",
+                "plate_orbit",
+                "plate_displacement",
+            }.intersection(reactivity.get("modulators", {}))
+        ):
+            report.addError(
+                "{0}.reactivity.modulators: decor modulation requires the 3d core".format(prefix)
             )
         overlay = scene.get("overlay")
         if not isinstance(overlay, dict):
@@ -433,7 +474,7 @@ class ConfigResolver:
         ownedForms = {"resonance", "radial"}.intersection(renderer.get("forms", []))
         if renderer.get("core") != "3d" and ownedForms:
             report.addError("{0}.renderer.forms: {1} requires the 3d core".format(prefix, sorted(ownedForms)[0]))
-        for key in ("decor", "anti_alias"):
+        for key in ("anti_alias",):
             if not isinstance(renderer.get(key), bool):
                 report.addError("{0}.renderer.{1}: expected a boolean".format(prefix, key))
         for key in ("form_len_sec", "camera_len_sec", "crossfade_sec", "core_scale"):
@@ -457,6 +498,11 @@ class ConfigResolver:
             report.addError("{0}.renderer.surface: expected an object".format(prefix))
         else:
             self._validateSurface(surface, renderer.get("core"), prefix, report)
+        decor = renderer.get("decor")
+        if not isinstance(decor, dict):
+            report.addError("{0}.renderer.decor: expected an object".format(prefix))
+        else:
+            self._validateDecor(decor, renderer.get("core"), prefix, report)
         formStyle = renderer.get("form_style")
         if not isinstance(formStyle, dict):
             report.addError("{0}.renderer.form_style: expected an object".format(prefix))
@@ -524,6 +570,105 @@ class ConfigResolver:
                 report.addError(
                     "{0}.{1}: expected 0 or an integer from {2} through {3}".format(
                         surfacePath, key, limits[0], limits[1]
+                    )
+                )
+
+    # :: ARRAY<STRING, ANY>, ANY, STRING, validationReport -> NONE
+    # Validates independently authored 3D ribbon and plate geometry and skins
+    def _validateDecor(
+        self,
+        decor: Dict[str, Any],
+        core: Any,
+        prefix: str,
+        report: ValidationReport,
+    ) -> None:
+        decorPath = prefix + ".renderer.decor"
+        if not isinstance(decor.get("enabled"), bool):
+            report.addError("{0}.enabled: expected a boolean".format(decorPath))
+        seed = decor.get("seed")
+        if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
+            report.addError("{0}.seed: expected an integer or null".format(decorPath))
+        for element, mapping in (("ribbons", "ribbon"), ("plates", "planar")):
+            value = decor.get(element)
+            elementPath = "{0}.{1}".format(decorPath, element)
+            if not isinstance(value, dict):
+                report.addError("{0}: expected an object".format(elementPath))
+                continue
+            if not isinstance(value.get("enabled"), bool):
+                report.addError("{0}.enabled: expected a boolean".format(elementPath))
+            count = value.get("count")
+            if isinstance(count, bool) or not isinstance(count, int) or not 0 <= count <= 8:
+                report.addError("{0}.count: expected an integer from 0 through 8".format(elementPath))
+            self._validateEnum(
+                value.get("material"),
+                ["metallic", "matte"],
+                elementPath + ".material",
+                report,
+            )
+            surface = value.get("surface")
+            if not isinstance(surface, dict):
+                report.addError("{0}.surface: expected an object".format(elementPath))
+            else:
+                self._validateDecorSurface(surface, mapping, core, elementPath, report)
+        if core != "3d" and self._hasAdvancedDecorControls(decor):
+            report.addError("{0}: first-class decor controls require the 3d core".format(decorPath))
+
+    # :: ARRAY<STRING, ANY> -> BOOL
+    # Distinguishes legacy all-on/all-off booleans from first-class decor authoring
+    def _hasAdvancedDecorControls(self, decor: Dict[str, Any]) -> bool:
+        ribbons = decor.get("ribbons", {})
+        plates = decor.get("plates", {})
+        legacyEnabled = bool(decor.get("enabled"))
+        if decor.get("seed") is not None:
+            return True
+        if ribbons.get("enabled") != legacyEnabled or plates.get("enabled") != legacyEnabled:
+            return True
+        for value, default in (
+            (ribbons, DEFAULT_DECOR["ribbons"]),
+            (plates, DEFAULT_DECOR["plates"]),
+        ):
+            if value.get("count") != default["count"] or value.get("material") != "metallic":
+                return True
+            surface = value.get("surface", {})
+            if surface != default["surface"]:
+                return True
+        return False
+
+    # :: ARRAY<STRING, ANY>, STRING, ANY, STRING, validationReport -> NONE
+    # Validates one ribbon-local or plate-planar image surface
+    def _validateDecorSurface(
+        self,
+        surface: Dict[str, Any],
+        mapping: str,
+        core: Any,
+        prefix: str,
+        report: ValidationReport,
+    ) -> None:
+        surfacePath = prefix + ".surface"
+        image = surface.get("image")
+        if image is not None and (not isinstance(image, str) or not image):
+            report.addError("{0}.image: expected a non-empty path or null".format(surfacePath))
+        elif isinstance(image, str) and not Path(image).is_file():
+            report.addError("{0}.image: file not found: {1}".format(surfacePath, image))
+        if image and core != "3d":
+            report.addError("{0}.image: decor image skins require the 3d core".format(surfacePath))
+        self._validateEnum(surface.get("mapping"), [mapping], surfacePath + ".mapping", report)
+        self._validateEnum(surface.get("sampling"), ["bilinear", "nearest"], surfacePath + ".sampling", report)
+        for key, limits in {"scale": (0.05, 100.0), "rotation_deg": (-3600.0, 3600.0)}.items():
+            value = surface.get(key)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not limits[0] <= value <= limits[1]:
+                report.addError("{0}.{1}: expected {2} through {3}".format(surfacePath, key, limits[0], limits[1]))
+        for key, limits in {"texel_steps": (2, 1024), "lighting_steps": (2, 64)}.items():
+            value = surface.get(key)
+            if isinstance(value, bool) or not isinstance(value, int) or (
+                value != 0 and not limits[0] <= value <= limits[1]
+            ):
+                report.addError(
+                    "{0}.{1}: expected 0 or an integer from {2} through {3}".format(
+                        surfacePath,
+                        key,
+                        limits[0],
+                        limits[1],
                     )
                 )
 

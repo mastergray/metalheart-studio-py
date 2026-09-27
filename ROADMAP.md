@@ -25,7 +25,7 @@ The following rules apply across the roadmap:
 | Form skins | A config-relative image replaces the 3D core color through object-space triplanar projection. `metallic` and `matte` lighting plus optional nearest sampling, texture-coordinate steps, and lighting steps are supported. | The PSX treatment is surface-only. Skins do not apply to ribbons or plates, and faceted normals and color-depth reduction are not yet supported. |
 | Forms | Reference forms plus the audio-driven `resonance` and `radial` forms are supported. Radial has opt-in faceting, object-space jaggedness, and continuous geometric steps. | Form styling currently targets Radial; it is not yet shared by reference forms or Resonance. |
 | Background | A public per-scene block selects the procedural palette or a fitted image, controls dots/ghosts/shadow, and exposes isolated pulse and spectrum-directed ripple systems. Image backgrounds can behave as flat, matte, or metallic 2.5D sheets. | The first slice is 3D-only and does not yet include drift, color reduction, dithering, or general background warp/offset destinations. |
-| Ribbons and plates | `decor: true` creates seeded ribbons and plates. In 3D, bass subtly widens ribbons and moves plates while mid energy changes ribbon twist speed. | Ribbons and plates are bundled behind one boolean. Counts, materials, skins, motion, and reactivity are not independently authorable. |
+| Ribbons and plates | The 3D decor block independently controls ribbon and plate enablement, counts, seed, materials, local-coordinate skins, and six typed audio destinations. Legacy booleans retain the reference behavior. | The first-class object is 3D-only; topology beyond count and additional plate/ribbon shape controls are not yet public. |
 | Retro finishing | Grain, scanlines, chroma offsets, slice glitches, bloom, streaks, flash, and vignette are configurable. | There is no coherent PSX-style preset, nearest-neighbor upscale, color quantization, or ordered dithering. |
 
 ## Milestone 1: PSX-inspired texture and finish language (in progress)
@@ -146,9 +146,9 @@ Acceptance criteria:
 - disabling overlays still guarantees no text;
 - background skins do not implicitly recolor form or ribbon skins.
 
-## Milestone 4: Make ribbons and plates first-class
+## Milestone 4: Make ribbons and plates first-class (first slice implemented)
 
-Replace the all-or-nothing `decor` concept with separately authorable ribbon and plate settings while preserving `decor: true|false` as migration shorthand.
+The all-or-nothing `decor` concept now resolves to separately authorable ribbon and plate settings while preserving `decor: true|false` as migration shorthand.
 
 Provisional direction:
 
@@ -172,9 +172,9 @@ Provisional direction:
 }
 ```
 
-This shape is also provisional. Ribbon images should use ribbon-local coordinates along length and width rather than reusing core triplanar projection; that lets an image bend and twist with the ribbon instead of appearing projected through it. Plates can use planar local coordinates. Both should share the established `metallic`, `matte`, and later PSX-style material vocabulary.
+This shape is part of the version 1 schema. Ribbon images use ribbon-local coordinates along length and twisted width rather than reusing core triplanar projection, so an image bends and twists with the ribbon instead of appearing projected through it. Plates use planar local coordinates. Both share the established `metallic`, `matte`, nearest-sampling, texel-step, and lighting-step vocabulary.
 
-The current hard-wired audio response should be made explicit through typed destinations. The first useful set is likely ribbon width, twist, wave amplitude, and motion speed. Plate orbit or displacement may follow. Counts and topology should remain scene configuration, not per-frame audio destinations, to avoid popping geometry in and out.
+The previous hard-wired audio response is preserved when no explicit decor destinations are present. Authors can override it through `ribbon_width`, `ribbon_twist`, `ribbon_wave`, `ribbon_speed`, `plate_orbit`, and `plate_displacement`. Counts remain scene configuration rather than per-frame audio destinations, avoiding geometry that pops in and out.
 
 Acceptance criteria:
 

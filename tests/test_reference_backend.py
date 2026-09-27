@@ -12,6 +12,7 @@ from metalheart.catalog import DEFAULT_BACKGROUND  # Build resolved background f
 from metalheart.catalog import DEFAULT_RENDERER  # Start renderer fixtures from production defaults
 from metalheart.catalog import DEFAULT_FINISH  # Supply owned finishing defaults
 from metalheart.catalog import REACTIVITY_PRESETS  # Exercise resolved audio mappings
+from metalheart.decor import resolveDecorConfig  # Build first-class decor fixtures
 from metalheart.frame_effects import FrameEffects  # Exercise visible post-render modulation
 from metalheart.reference_backend import ReferenceBackend  # Adapt immutable renderer reference code
 from metalheart.surface_skin import SurfaceSkin  # Exercise resolution-independent image sampling
@@ -208,6 +209,29 @@ def testBackgroundSurfaceModulatorsMapAnalysisValues() -> None:
 
 
 # :: VOID -> NONE
+# Verifies all decor destinations use the shared typed binding evaluator
+def testDecorModulatorsMapAnalysisValues() -> None:
+    backend = ReferenceBackend.init()
+    reactivity = {
+        "modulators": {
+            "ribbon_width": {"source": "bass", "amount": 0.5, "clamp": [0.0, 0.5]},
+            "ribbon_twist": {"source": "mid", "amount": 1.2, "clamp": [0.0, 1.2]},
+            "ribbon_wave": {"source": "amplitude", "amount": 0.8, "clamp": [0.0, 0.8]},
+            "ribbon_speed": {"source": "high", "amount": 1.0, "clamp": [0.0, 1.0]},
+            "plate_orbit": {"source": "high", "amount": 1.5, "clamp": [0.0, 1.5]},
+            "plate_displacement": {"source": "bass", "amount": 0.2, "clamp": [0.0, 0.2]},
+        }
+    }
+    modulators = backend.createModulators(_analysis(), 0, 0.0, reactivity)
+    assert modulators["ribbon_width"] == 0.125
+    assert abs(modulators["ribbon_twist"] - 0.48) < 1e-6
+    assert 0.0 < modulators["ribbon_wave"] < 0.8
+    assert abs(modulators["ribbon_speed"] - 0.6) < 1e-6
+    assert abs(modulators["plate_orbit"] - 0.9) < 1e-6
+    assert modulators["plate_displacement"] == 0.05
+
+
+# :: VOID -> NONE
 # Verifies the production-owned radial SDF renders a stable nonempty frame
 def testRadialFrameIsDeterministic() -> None:
     backend = ReferenceBackend.init()
@@ -307,6 +331,113 @@ def testImageSurfaceSkinChangesFrame(tmp_path: Path) -> None:
     skinned = backend.createRenderer(settings, scene).render(0.5, params, modulators)
     assert skinned.shape == reference.shape
     assert not np.array_equal(skinned, reference)
+
+
+# :: PATH -> NONE
+# Verifies independent decor counts, signals, local UVs, and ribbon skins render
+def testFirstClassDecorControlsAndRibbonSkin(tmp_path: Path) -> None:
+    texture = np.zeros((16, 16, 3), np.uint8)
+    texture[:, :8] = [0, 0, 255]
+    texture[:, 8:] = [0, 255, 0]
+    imagePath = tmp_path / "ribbon.png"
+    assert cv2.imwrite(str(imagePath), texture)
+    backend = ReferenceBackend.init()
+    settings = {"width": 80, "height": 64, "seed": 5}
+    scene = _scene()
+    scene["renderer"].update(
+        {
+            "core": "3d",
+            "forms": ["mercury"],
+            "cameras": ["orbit"],
+            "camera_speed": 0.0,
+            "core_scale": 0.25,
+            "decor": resolveDecorConfig(
+                {
+                    "enabled": True,
+                    "seed": 19,
+                    "ribbons": {"enabled": True, "count": 1},
+                    "plates": {"enabled": False, "count": 0},
+                }
+            ),
+        }
+    )
+    params = backend.createParams(_analysis(), 0, 0.0, scene["reactivity"])
+    baselineSession = backend.createRenderer(settings, scene)
+    baseline = baselineSession.render(0.5, params, {})
+    assert baselineSession._decorController is not None
+    controller = baselineSession._decorController
+    assert len(controller._decor.ribbons) == 1
+    assert len(controller._decor.plates) == 0
+    referenceFrame = controller._decor.frame(0.5, params)
+    compatibleFrame = controller.frame(0.5, params)
+    assert np.allclose(
+        referenceFrame["ribbons"][0]["R"],
+        compatibleFrame["ribbons"][0]["R"],
+    )
+    assert referenceFrame["ribbons"][0]["t1"] == compatibleFrame["ribbons"][0]["t1"]
+    assert referenceFrame["ribbons"][0]["t2"] == compatibleFrame["ribbons"][0]["t2"]
+    assert referenceFrame["ribbons"][0]["w_now"] == compatibleFrame["ribbons"][0]["w_now"]
+    controller.setSignals(
+        {
+            "ribbon_width": 0.5,
+            "ribbon_twist": 0.8,
+            "ribbon_wave": 0.6,
+            "ribbon_speed": 1.0,
+        }
+    )
+    animatedFrame = controller.frame(0.5, params)
+    baseRibbon = controller._decor.ribbons[0]
+    animatedRibbon = animatedFrame["ribbons"][0]
+    assert animatedRibbon["w_now"] > baseRibbon["w"]
+    assert animatedRibbon["A"] > baseRibbon["A"]
+    localX = np.asarray([0.2], np.float32)
+    centerY = animatedRibbon["A"] * np.sin(animatedRibbon["f"] * localX + animatedRibbon["t1"])
+    centerZ = animatedRibbon["B"] * np.sin(
+        0.63 * animatedRibbon["f"] * localX + animatedRibbon["t1"] * 0.7 + 1.3
+    )
+    twist = animatedRibbon["k"] * localX + animatedRibbon["t2"]
+    across = animatedRibbon["w_now"] * 0.5
+    localPoint = np.asarray(
+        [localX[0], centerY[0] + across * np.cos(twist[0]), centerZ[0] + across * np.sin(twist[0])],
+        np.float32,
+    )
+    worldPoint = animatedRibbon["R"].T @ localPoint + animatedRibbon["c"]
+    horizontal, vertical = controller._ribbonCoordinates(
+        np.asarray([worldPoint[0]], np.float32),
+        np.asarray([worldPoint[1]], np.float32),
+        np.asarray([worldPoint[2]], np.float32),
+        animatedRibbon,
+    )
+    assert abs(float(horizontal[0]) - (0.2 / (2.0 * animatedRibbon["L"]) + 0.5)) < 1e-5
+    assert abs(float(vertical[0]) - 0.75) < 1e-5
+    scene["renderer"]["decor"]["ribbons"]["surface"].update(
+        {"image": str(imagePath), "sampling": "nearest", "texel_steps": 8, "lighting_steps": 4}
+    )
+    skinned = backend.createRenderer(settings, scene).render(0.5, params, {})
+    assert skinned.shape == baseline.shape
+    assert not np.array_equal(skinned, baseline)
+    scene["renderer"]["decor"] = resolveDecorConfig(
+        {
+            "enabled": True,
+            "seed": 19,
+            "ribbons": {"enabled": False, "count": 0},
+            "plates": {"enabled": True, "count": 2},
+        }
+    )
+    plateBaselineSession = backend.createRenderer(settings, scene)
+    plateBaseline = plateBaselineSession.render(0.5, params, {})
+    assert plateBaselineSession._decorController is not None
+    assert len(plateBaselineSession._decorController._decor.ribbons) == 0
+    assert len(plateBaselineSession._decorController._decor.plates) == 2
+    scene["renderer"]["decor"]["plates"]["surface"].update(
+        {"image": str(imagePath), "sampling": "nearest", "texel_steps": 8, "lighting_steps": 4}
+    )
+    plateSkinned = backend.createRenderer(settings, scene).render(0.5, params, {})
+    assert not np.array_equal(plateSkinned, plateBaseline)
+    scene["renderer"]["decor"] = False
+    disabledSession = backend.createRenderer(settings, scene)
+    assert disabledSession._decorController is None
+    assert disabledSession._renderer.core3d.decor is None
 
 
 # :: PATH -> NONE

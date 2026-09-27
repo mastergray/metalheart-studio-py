@@ -15,6 +15,8 @@ from metalheart.audio_form_core import AudioFormCore  # Install production-owned
 from metalheart.background import BackgroundPass  # Compose configurable audio-reactive backgrounds
 from metalheart.camera_choreo import CameraChoreo  # Strengthen camera timing without modifying reference code
 from metalheart.catalog import DEFAULT_BACKGROUND  # Preserve defaults for direct backend callers
+from metalheart.decor import DecorController  # Configure and skin 3D ribbons and plates independently
+from metalheart.decor import resolveDecorConfig  # Expand legacy direct-backend decor booleans
 from metalheart.frame_effects import FrameEffects  # Apply authored audio-driven frame transforms
 from metalheart.finishing import FinishingPass  # Replace immutable finishing with authored controls
 from metalheart.surface_skin import SurfaceSkin  # Project authored images across 3D core surfaces
@@ -64,10 +66,19 @@ class ReferenceRendererSession:
         self._cameraChoreo: Optional[CameraChoreo] = None
         self._audioFormCore: Optional[AudioFormCore] = None
         self._surfaceSkin: Optional[SurfaceSkin] = None
+        self._decorController: Optional[DecorController] = None
         self._background: Optional[BackgroundPass] = None
         overlayConfig = scene["overlay"]
         self._overlay = TextOverlay.init(overlayConfig, rendererModule.FONT_PATH)
         rendererConfig = scene["renderer"]
+        decorConfig = resolveDecorConfig(rendererConfig.get("decor", True))
+        decorEnabled = bool(
+            decorConfig["enabled"]
+            and (
+                (decorConfig["ribbons"]["enabled"] and decorConfig["ribbons"]["count"])
+                or (decorConfig["plates"]["enabled"] and decorConfig["plates"]["count"])
+            )
+        )
         self._renderer = rendererModule.MetalheartRenderer(
             width=settings["width"],
             height=settings["height"],
@@ -80,7 +91,7 @@ class ReferenceRendererSession:
             look_len=rendererConfig["form_len_sec"],
             cam_len=rendererConfig["camera_len_sec"],
             core_scale=rendererConfig["core_scale"],
-            decor=rendererConfig["decor"],
+            decor=decorEnabled,
             aa=rendererConfig["anti_alias"],
         )
         if rendererConfig["core"] == "3d":
@@ -106,6 +117,13 @@ class ReferenceRendererSession:
             if rendererConfig["surface"]["image"]:
                 self._surfaceSkin = SurfaceSkin.init(self._renderer.core3d, rendererConfig["surface"])
                 self._renderer.core3d._shade = self._surfaceSkin.shade
+            if decorEnabled:
+                self._decorController = DecorController.init(
+                    liquidModule,
+                    self._renderer.core3d,
+                    decorConfig,
+                    scene.get("seed", settings["seed"]),
+                )
         self._background = BackgroundPass.init(
             self._renderer,
             scene.get("background", DEFAULT_BACKGROUND),
@@ -127,6 +145,8 @@ class ReferenceRendererSession:
             self._cameraChoreo.setSignals(modulators)
         if self._audioFormCore is not None:
             self._audioFormCore.setSignals(modulators)
+        if self._decorController is not None:
+            self._decorController.setSignals(modulators)
         if self._background is not None:
             self._background.setSignals(modulators)
         frame = self._renderer.render(timeSec, params)

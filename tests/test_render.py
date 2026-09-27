@@ -44,3 +44,29 @@ def testBackgroundImageContentsAffectFingerprint(tmp_path: Path) -> None:
     imagePath.write_bytes(b"second-image")
     second = pipeline._renderFingerprint(config, str(tmp_path / "analysis.npz"))
     assert first != second
+
+
+# :: PATH -> NONE
+# Verifies editing ribbon or plate images invalidates resumable render chunks
+def testDecorImageContentsAffectFingerprint(tmp_path: Path) -> None:
+    imagePath = tmp_path / "ribbon.png"
+    imagePath.write_bytes(b"first-image")
+    config = {
+        "scenes": [
+            {
+                "renderer": {
+                    "surface": {"image": None},
+                    "decor": {
+                        "ribbons": {"surface": {"image": str(imagePath)}},
+                        "plates": {"surface": {"image": None}},
+                    },
+                },
+                "background": {"image": None},
+            }
+        ]
+    }
+    pipeline = RenderPipeline.init()
+    first = pipeline._renderFingerprint(config, str(tmp_path / "analysis.npz"))
+    imagePath.write_bytes(b"second-image")
+    second = pipeline._renderFingerprint(config, str(tmp_path / "analysis.npz"))
+    assert first != second
