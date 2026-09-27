@@ -9,7 +9,7 @@ import cv2  # Load and bilinearly sample authored image skins
 import numpy as np  # Blend triplanar samples across raymarched surface normals
 
 
-# Applies a seamless image tint to core hits while retaining reference chrome lighting
+# Replaces core palette color with a seamless image under metallic or matte lighting
 class SurfaceSkin:
 
     # CONSTRUCTOR :: ANY, ARRAY<STRING, ANY> -> surfaceSkin
@@ -24,14 +24,14 @@ class SurfaceSkin:
         self._texture = cv2.cvtColor(texture, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
         self._scale = float(config["scale"])
         self._rotation = math.radians(float(config["rotation_deg"]))
-        self._strength = float(config["strength"])
+        self._material = str(config["material"])
 
     #
     # Instance Methods
     #
 
     # :: ANY, ANY, ANY, ANY, ANY, ANY, ANY -> ANY
-    # Shades reference chrome, then tints only core hits with triplanar image samples
+    # Shades reference geometry, then replaces core color with triplanar image samples
     def shade(self, eye: Any, rayX: Any, rayY: Any, rayZ: Any, distance: Any, frame: Any, decor: Any) -> Any:
         chrome = self._baseShade(eye, rayX, rayY, rayZ, distance, frame, decor)
         pointX = eye[0] + rayX * distance
@@ -39,18 +39,29 @@ class SurfaceSkin:
         pointZ = eye[2] + rayZ * distance
         normalX, normalY, normalZ = self._normals(pointX, pointY, pointZ, frame, decor)
         texture = self._triplanar(pointX, pointY, pointZ, normalX, normalY, normalZ)
-        tinted = chrome * (0.3 + 1.05 * texture)
-        mixed = chrome * (1.0 - self._strength) + tinted * self._strength
+        skinned = self._applyMaterial(chrome, texture)
         if decor is None:
-            return mixed
+            return skinned
         coreDistance = self._renderer.core.sdf(pointX, pointY, pointZ, frame)
         ribbonDistance, plateDistance = self._renderer.decor.sdf_parts(pointX, pointY, pointZ, decor)
         material = np.argmin(np.stack([coreDistance, ribbonDistance, plateDistance]), axis=0)
-        return np.where((material == 0)[:, None], mixed, chrome)
+        return np.where((material == 0)[:, None], skinned, chrome)
 
     #
     # Protected Methods
     #
+
+    # :: ANY, ANY -> ANY
+    # Uses palette shading as neutral light while the image supplies all base color
+    def _applyMaterial(self, chrome: Any, texture: Any) -> Any:
+        luminance = chrome @ np.array([0.2126, 0.7152, 0.0722], np.float32)
+        if self._material == "matte":
+            diffuse = 0.38 + 0.52 * np.clip(luminance, 0.0, 1.0)
+            return texture * diffuse[:, None]
+        reflection = np.clip(luminance, 0.0, 1.2)
+        base = texture * (0.2 + 0.75 * reflection)[:, None]
+        highlight = np.clip((luminance - 0.52) * 1.8, 0.0, 1.1)
+        return base + highlight[:, None] * 0.65
 
     # :: ANY, ANY, ANY, ANY, ANY -> (ANY, ANY, ANY)
     # Reconstructs surface normals using the reference tetrahedral estimator

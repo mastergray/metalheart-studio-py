@@ -357,11 +357,10 @@ class ConfigResolver:
         if image and core != "3d":
             report.addError("{0}.image: image skins require the 3d core".format(surfacePath))
         self._validateEnum(surface.get("mapping"), ["triplanar"], surfacePath + ".mapping", report)
-        self._validateEnum(surface.get("mode"), ["chrome_tint"], surfacePath + ".mode", report)
+        self._validateEnum(surface.get("material"), ["metallic", "matte"], surfacePath + ".material", report)
         ranges = {
             "scale": (0.05, 100.0),
             "rotation_deg": (-3600.0, 3600.0),
-            "strength": (0.0, 1.0),
         }
         for key, limits in ranges.items():
             value = surface.get(key)

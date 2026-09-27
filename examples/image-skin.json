@@ -24,8 +24,7 @@
           "mapping": "triplanar",
           "scale": 1.0,
           "rotation_deg": 0.0,
-          "strength": 0.75,
-          "mode": "chrome_tint"
+          "material": "metallic"
         }
       },
       "reactivity": {

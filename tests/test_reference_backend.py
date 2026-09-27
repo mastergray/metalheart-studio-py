@@ -222,8 +222,7 @@ def testImageSurfaceSkinChangesFrame(tmp_path: Path) -> None:
         "mapping": "triplanar",
         "scale": 1.0,
         "rotation_deg": 0.0,
-        "strength": 1.0,
-        "mode": "chrome_tint",
+        "material": "metallic",
     }
     skinned = backend.createRenderer(settings, scene).render(0.5, params, modulators)
     assert skinned.shape == reference.shape
@@ -244,13 +243,39 @@ def testImageSurfaceSkinSamplesLargeHitSet(tmp_path: Path) -> None:
             "image": str(imagePath),
             "scale": 1.0,
             "rotation_deg": 0.0,
-            "strength": 1.0,
+            "material": "metallic",
         },
     )
     coordinates = np.linspace(-2.0, 2.0, 40000, dtype=np.float32)
     sampled = skin._sample(coordinates, coordinates)
     assert sampled.shape == (40000, 3)
     assert np.isfinite(sampled).all()
+
+
+# :: PATH -> NONE
+# Verifies both materials preserve image hue instead of palette hue
+def testImageSurfaceSkinReplacesPaletteColor(tmp_path: Path) -> None:
+    imagePath = tmp_path / "skin.png"
+    assert cv2.imwrite(str(imagePath), np.zeros((2, 2, 3), np.uint8))
+    renderer = SimpleNamespace(_shade=lambda *arguments: arguments)
+    chrome = np.array([[0.05, 0.1, 1.0]], np.float32)
+    texture = np.array([[1.0, 0.0, 0.0]], np.float32)
+    outputs = []
+    for material in ["metallic", "matte"]:
+        skin = SurfaceSkin.init(
+            renderer,
+            {
+                "image": str(imagePath),
+                "scale": 1.0,
+                "rotation_deg": 0.0,
+                "material": material,
+            },
+        )
+        outputs.append(skin._applyMaterial(chrome, texture))
+    for output in outputs:
+        assert output[0, 0] > output[0, 2]
+        assert output[0, 1] == 0.0
+        assert output[0, 2] == 0.0
 
 
 # :: VOID -> NONE

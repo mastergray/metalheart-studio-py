@@ -74,8 +74,7 @@ DEFAULT_RENDERER: Dict[str, Any] = {
         "mapping": "triplanar",
         "scale": 1.0,
         "rotation_deg": 0.0,
-        "strength": 0.75,
-        "mode": "chrome_tint",
+        "material": "metallic",
     },
 }
 
@@ -310,8 +309,7 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                 "mapping": {"const": "triplanar"},
                 "scale": {"type": "number", "minimum": 0.05, "maximum": 100.0},
                 "rotation_deg": {"type": "number", "minimum": -3600.0, "maximum": 3600.0},
-                "strength": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                "mode": {"const": "chrome_tint"},
+                "material": {"enum": ["metallic", "matte"]},
             },
             "additionalProperties": True,
         },

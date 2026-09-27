@@ -246,12 +246,13 @@ def testResolvesImageSurfacePath(tmp_path: Path) -> None:
     authored["scenes"][0]["renderer"] = {
         "core": "3d",
         "forms": ["radial"],
-        "surface": {"image": "skin.png", "strength": 0.6},
+        "surface": {"image": "skin.png", "material": "matte"},
     }
     resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
     report = resolver.validate(resolved)
     assert report.isValid, report.errors
     assert resolved["scenes"][0]["renderer"]["surface"]["image"] == str(skinPath)
+    assert resolved["scenes"][0]["renderer"]["surface"]["material"] == "matte"
     authored["scenes"][0]["renderer"]["core"] = "2d"
     resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
     report = resolver.validate(resolved)
