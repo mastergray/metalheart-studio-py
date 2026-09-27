@@ -282,6 +282,12 @@ Audio-reactive behavior is authored per scene. Time-based form or camera choreog
 
 An optional `renderer.surface` block may assign a config-relative image to any 3D core. Version 1 uses object-space `triplanar` mapping so animated or topologically changing forms do not require authored UV coordinates. `scale` controls repetition, and `rotation_deg` rotates the projection around the vertical axis. The image replaces the core palette color rather than tinting it. `material` selects `metallic`, which adds neutral reflections and highlights, or `matte`, which applies diffuse lighting without reflective highlights. `sampling` selects smooth `bilinear` or hard-edged `nearest` texture sampling. A nonzero `texel_steps` value snaps each repeating projection to a stable object-space grid, while a nonzero `lighting_steps` value reduces smooth illumination to a fixed number of bands. Zero disables either quantizer and preserves the original output. The palette continues to control the environment and unskinned geometry. The skin applies only to core hits; ribbons and plates retain their reference materials. Resolved paths and image-content digests participate in render fingerprints so editing an image invalidates resumable chunks.
 
+### 6.8 First-class backgrounds
+
+A 3D scene may define a `background` block whose `source` is either the existing procedural `palette` or a config-relative `image`. Image backgrounds support `cover`, `contain`, and repeating `tile` fit modes. `scale`, `rotation_deg`, normalized `offset`, and `opacity` control image placement without changing the foreground form. The dot field, blurred foreground ghosts, and drop shadow are independently enabled by `dots`, `ghosts`, and `shadow`.
+
+The `background_pulse` modulator is a bounded zero-to-one control. It scales the background around `pulse_center` by at most `pulse_scale` and raises its brightness by at most `pulse_brightness`. It is composed before ghosts, shadow, and foreground geometry, so it does not resize or brighten fully opaque foreground pixels. Whole-frame finishing still follows composition, and overlays remain last. Background image paths and content digests participate in render fingerprints. Version 1 background customization is limited to the 3D core because that renderer provides the isolated foreground alpha needed to preserve this layer contract.
+
 ## 7. Timeline format
 
 ### 7.1 Design rules
@@ -363,8 +369,24 @@ An optional `renderer.surface` block may assign a config-relative image to any 3
           "pulse": {"source": "beat", "amount": 0.1, "clamp": [0.0, 0.1]},
           "shake": {"source": "onset", "amount": 0.02, "threshold": 0.3},
           "flash": {"source": "downbeat", "amount": 0.2},
-          "chroma": {"source": "high", "amount": 0.008, "threshold": 0.5}
+          "chroma": {"source": "high", "amount": 0.008, "threshold": 0.5},
+          "background_pulse": {"source": "bass", "amount": 1.0, "clamp": [0.0, 1.0]}
         }
+      },
+      "background": {
+        "source": "image",
+        "image": "./assets/background.png",
+        "fit": "cover",
+        "scale": 1.0,
+        "rotation_deg": 0.0,
+        "offset": [0.0, 0.0],
+        "opacity": 1.0,
+        "pulse_brightness": 0.35,
+        "pulse_scale": 0.08,
+        "pulse_center": [0.5, 0.5],
+        "dots": false,
+        "ghosts": true,
+        "shadow": true
       },
       "overlay": {
         "enabled": true,

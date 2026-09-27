@@ -29,6 +29,7 @@ MODULATORS = [
     "form_rotation",
     "form_jaggedness",
     "form_jagged_scale",
+    "background_pulse",
 ]
 
 QUALITY_PROFILES: Dict[str, Dict[str, Any]] = {
@@ -93,6 +94,22 @@ DEFAULT_OVERLAY: Dict[str, Any] = {
     "enabled": False,
     "reference_hud": False,
     "items": [],
+}
+
+DEFAULT_BACKGROUND: Dict[str, Any] = {
+    "source": "palette",
+    "image": None,
+    "fit": "cover",
+    "scale": 1.0,
+    "rotation_deg": 0.0,
+    "offset": [0.0, 0.0],
+    "opacity": 1.0,
+    "pulse_brightness": 0.35,
+    "pulse_scale": 0.08,
+    "pulse_center": [0.5, 0.5],
+    "dots": True,
+    "ghosts": True,
+    "shadow": True,
 }
 
 DEFAULT_FINISH: Dict[str, Any] = {
@@ -409,6 +426,35 @@ CONFIG_SCHEMA: Dict[str, Any] = {
             },
             "additionalProperties": True,
         },
+        "background": {
+            "type": "object",
+            "properties": {
+                "source": {"enum": ["palette", "image"]},
+                "image": {"type": ["string", "null"]},
+                "fit": {"enum": ["cover", "contain", "tile"]},
+                "scale": {"type": "number", "minimum": 0.1, "maximum": 10.0},
+                "rotation_deg": {"type": "number", "minimum": -3600.0, "maximum": 3600.0},
+                "offset": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {"type": "number", "minimum": -2.0, "maximum": 2.0},
+                },
+                "opacity": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "pulse_brightness": {"type": "number", "minimum": 0.0, "maximum": 2.0},
+                "pulse_scale": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "pulse_center": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                },
+                "dots": {"type": "boolean"},
+                "ghosts": {"type": "boolean"},
+                "shadow": {"type": "boolean"},
+            },
+            "additionalProperties": True,
+        },
         "scene": {
             "type": "object",
             "required": ["start_sec", "end_sec"],
@@ -430,6 +476,7 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                 },
                 "finish": {"$ref": "#/$defs/finish"},
                 "overlay": {"$ref": "#/$defs/overlay"},
+                "background": {"$ref": "#/$defs/background"},
                 "post": {"type": "array"},
             },
             "additionalProperties": True,

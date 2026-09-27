@@ -24,7 +24,7 @@ The following rules apply across the roadmap:
 | --- | --- | --- |
 | Form skins | A config-relative image replaces the 3D core color through object-space triplanar projection. `metallic` and `matte` lighting plus optional nearest sampling, texture-coordinate steps, and lighting steps are supported. | The PSX treatment is surface-only. Skins do not apply to ribbons or plates, and faceted normals and color-depth reduction are not yet supported. |
 | Forms | Reference forms plus the audio-driven `resonance` and `radial` forms are supported. Radial has opt-in faceting, object-space jaggedness, and continuous geometric steps. | Form styling currently targets Radial; it is not yet shared by reference forms or Resonance. |
-| Background | The reference renderer builds a palette gradient with moving procedural noise, a dot field, blurred foreground ghosts, and a drop shadow. | There is no public `background` block, image skin, or dedicated audio-reactive background destination. The global onset flash is not a background-only pulse. |
+| Background | A public per-scene block selects the procedural palette or a fitted image, controls dots/ghosts/shadow, and exposes an isolated `background_pulse`. | The first slice is 3D-only and does not yet include drift, color reduction, dithering, or background warp/offset destinations. |
 | Ribbons and plates | `decor: true` creates seeded ribbons and plates. In 3D, bass subtly widens ribbons and moves plates while mid energy changes ribbon twist speed. | Ribbons and plates are bundled behind one boolean. Counts, materials, skins, motion, and reactivity are not independently authorable. |
 | Retro finishing | Grain, scanlines, chroma offsets, slice glitches, bloom, streaks, flash, and vignette are configurable. | There is no coherent PSX-style preset, nearest-neighbor upscale, color quantization, or ordered dithering. |
 
@@ -81,16 +81,18 @@ Acceptance criteria:
 - a fixed seed produces stable spatial detail and repeatable frames;
 - performance cost is measured at preview, draft, and final quality.
 
-## Milestone 3: First-class backgrounds
+## Milestone 3: First-class backgrounds (first slice implemented)
 
-Introduce a per-scene `background` object instead of exposing reference-renderer fields directly. The first version should support:
+The implemented per-scene `background` object supports:
 
 - `palette`, preserving the current procedural background;
 - `image`, in which a config-relative image replaces the palette gradient;
 - image fit modes such as `cover`, `contain`, and `tile`;
-- scale, rotation, offset, opacity, and optional slow drift;
+- scale, rotation, offset, and opacity;
 - independent enabling of the dot field, foreground ghosts, and drop shadow;
-- the same deterministic color-reduction and dithering vocabulary used by the PSX work where applicable.
+- a bounded `background_pulse` that changes background brightness and scale without pulsing the foreground form.
+
+Slow drift, deterministic color reduction and dithering, background warp/offset destinations, and non-3D composition remain future work.
 
 The initial audio-reactive destination should be a bounded `background_pulse`. It should change background brightness and/or scale around a configurable center without pulsing the foreground form. Additional destinations can follow only if they produce meaningfully different results, such as background warp or image offset. They must use the existing reactivity binding model so a scene can map amplitude, a frequency band, beats, or onsets explicitly.
 
@@ -119,7 +121,7 @@ Provisional authoring shape:
 }
 ```
 
-This shape is a proposal, not yet a stable schema.
+This shape is now part of the version 1 schema. The full object additionally exposes rotation, offset, pulse brightness, pulse scale, pulse center, and the dot-field switch.
 
 Layer order should be explicit and tested: base background or image, background-only modulation, optional ghosts and shadow, foreground geometry, whole-frame finishing, then overlays.
 

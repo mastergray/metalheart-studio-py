@@ -153,6 +153,12 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
     assert "lighting_steps" in surface
     assert "finish" in scene
     assert "overlay" in scene
+    assert scene["background"] == {"$ref": "#/$defs/background"}
+    assert schema["$defs"]["background"]["properties"]["fit"]["enum"] == [
+        "cover",
+        "contain",
+        "tile",
+    ]
 
 
 # :: PATH -> NONE
@@ -305,6 +311,42 @@ def testResolvesImageSurfacePath(tmp_path: Path) -> None:
     resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
     report = resolver.validate(resolved)
     assert any("renderer.surface: expected an object" in error for error in report.errors)
+
+
+# :: PATH -> NONE
+# Verifies image backgrounds resolve paths and background pulse remains 3D-only
+def testResolvesImageBackgroundPath(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    backgroundPath = tmp_path / "background.png"
+    backgroundPath.write_bytes(b"placeholder")
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["renderer"] = {"core": "3d", "forms": ["radial"]}
+    authored["scenes"][0]["background"] = {
+        "source": "image",
+        "image": "background.png",
+        "fit": "contain",
+        "pulse_scale": 0.2,
+    }
+    authored["scenes"][0]["reactivity"] = {
+        "preset": "spectral-radial",
+        "modulators": {
+            "background_pulse": {
+                "source": "bass",
+                "amount": 1.0,
+                "clamp": [0.0, 1.0],
+            }
+        },
+    }
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert report.isValid, report.errors
+    assert resolved["scenes"][0]["background"]["image"] == str(backgroundPath)
+    assert resolved["scenes"][0]["background"]["fit"] == "contain"
+    authored["scenes"][0]["renderer"]["core"] = "2d"
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert any("customized backgrounds require the 3d core" in error for error in report.errors)
+    assert any("background_pulse: requires the 3d core" in error for error in report.errors)
 
 
 # :: PATH -> NONE

@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "audio": "../ref/audioReactive/metalheart_audio_test_small.mp4",
+  "settings": {
+    "quality": "preview",
+    "seed": 3,
+    "time_mode": "scene"
+  },
+  "scenes": [
+    {
+      "id": "image-background",
+      "name": "Image background with isolated bass pulse",
+      "start_sec": 0.0,
+      "end_sec": 4.0,
+      "renderer": {
+        "core": "3d",
+        "palette": "steel",
+        "forms": ["radial"],
+        "cameras": ["orbit"],
+        "camera_speed": 0.35,
+        "decor": false,
+        "form_style": {
+          "faceting": 0.55,
+          "jaggedness": 0.025,
+          "jagged_scale": 4.0,
+          "geometry_steps": 6
+        }
+      },
+      "background": {
+        "source": "image",
+        "image": "../ref/metalheart_3d_scene_angles.png",
+        "fit": "cover",
+        "scale": 1.0,
+        "opacity": 1.0,
+        "pulse_brightness": 0.4,
+        "pulse_scale": 0.12,
+        "pulse_center": [0.5, 0.5],
+        "dots": false,
+        "ghosts": false,
+        "shadow": true
+      },
+      "reactivity": {
+        "preset": "spectral-radial-jagged",
+        "modulators": {
+          "background_pulse": {
+            "source": "bass",
+            "amount": 1.0,
+            "curve": "ease_out",
+            "clamp": [0.0, 1.0]
+          }
+        }
+      },
+      "overlay": {
+        "enabled": false
+      }
+    }
+  ],
+  "post": []
+}

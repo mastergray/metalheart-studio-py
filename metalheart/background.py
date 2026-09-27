@@ -1,0 +1,219 @@
+# Configurable image and palette backgrounds for captured 3D foregrounds
+
+from __future__ import annotations  # Preserve forward-compatible annotations on Python 3.8
+
+import math  # Rotate normalized background coordinates
+from typing import Any, Dict, Optional, Tuple  # Type renderer state and captured foregrounds
+
+import cv2  # Fit, transform, blur, and composite background imagery
+import numpy as np  # Evaluate procedural backgrounds and alpha composition
+
+from metalheart.catalog import DEFAULT_BACKGROUND  # Detect the unchanged reference background contract
+
+
+# :: FLOAT, FLOAT, ANY -> ANY
+# Evaluates the reference background's stable smoothstep curve
+def _smoothstep(edge0: float, edge1: float, value: Any) -> Any:
+    amount = np.clip((value - edge0) / (edge1 - edge0 + 1e-9), 0.0, 1.0)
+    return amount * amount * (3.0 - 2.0 * amount)
+
+
+# Rebuilds the 3D composition around an authored background before finishing
+class BackgroundPass:
+
+    # CONSTRUCTOR :: ANY, ARRAY<STRING, ANY> -> backgroundPass
+    # Loads an optional image and prepares foreground capture
+    def __init__(self, renderer: Any, config: Dict[str, Any]) -> None:
+        self._renderer = renderer
+        self._config = config
+        self._signals: Dict[str, float] = {}
+        self._foreground: Optional[Tuple[Any, Any, Any]] = None
+        self._baseCoreRender: Optional[Any] = None
+        self._custom = config != DEFAULT_BACKGROUND
+        self._texture: Optional[np.ndarray] = None
+        imagePath = config.get("image")
+        if config["source"] == "image" and imagePath:
+            texture = cv2.imread(str(imagePath), cv2.IMREAD_COLOR)
+            if texture is None:
+                raise ValueError("unable to decode background image: {0}".format(imagePath))
+            self._texture = cv2.cvtColor(texture, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+        if hasattr(renderer, "core3d"):
+            self._baseCoreRender = renderer.core3d.render
+            renderer.core3d.render = self._captureCoreRender
+
+    #
+    # Instance Methods
+    #
+
+    # :: ARRAY<STRING, FLOAT> -> NONE
+    # Stores the current bounded background-only audio controls
+    def setSignals(self, signals: Dict[str, float]) -> None:
+        self._signals = signals
+
+    # :: ANY, FLOAT, ANY -> ANY
+    # Replaces only the background while retaining captured foreground and HUD layers
+    def apply(self, referenceImage: Any, timeSec: float, params: Any) -> Any:
+        pulse = min(max(float(self._signals.get("background_pulse", 0.0)), 0.0), 1.0)
+        if not self._custom and pulse <= 0.0:
+            return referenceImage
+        if self._foreground is None:
+            return referenceImage
+        foreground, alpha, focus = self._foreground
+        background = self._palette(timeSec, pulse)
+        if self._texture is not None:
+            image, imageAlpha = self._image(pulse)
+            opacity = float(self._config["opacity"]) * imageAlpha[..., None]
+            background = background * (1.0 - opacity) + image * opacity
+        if self._config["dots"]:
+            background = background + self._renderer.dots[..., None] * np.asarray(
+                self._renderer.pal["hud"], np.float32
+            ) * 0.05
+        background *= 1.0 + pulse * float(self._config["pulse_brightness"])
+        if self._config["ghosts"]:
+            background = self._ghosts(background, foreground * alpha[..., None], alpha)
+        if self._config["shadow"]:
+            background = self._shadow(background, alpha)
+        alphaLayer = alpha[..., None]
+        image = background * (1.0 - alphaLayer) + foreground * alphaLayer
+        hudColor, hudAlpha = self._renderer.hud(timeSec, params, focus)
+        glow = cv2.GaussianBlur(
+            hudColor * hudAlpha,
+            (0, 0),
+            max(1.0, self._renderer.H * 0.004),
+        )
+        return image * (1.0 - hudAlpha) + hudColor * hudAlpha + glow * 0.55
+
+    #
+    # Protected Methods
+    #
+
+    # :: *ANY, **ANY -> ANY
+    # Captures the already-rendered foreground without tracing it a second time
+    def _captureCoreRender(self, *arguments: Any, **keywords: Any) -> Any:
+        if self._baseCoreRender is None:
+            raise RuntimeError("background foreground capture is unavailable")
+        result = self._baseCoreRender(*arguments, **keywords)
+        self._foreground = (result[0], result[1], result[2])
+        return result
+
+    # :: FLOAT, FLOAT -> (ANY, ANY)
+    # Produces centered normalized sampling coordinates with authored pulse zoom
+    def _coordinates(self, pulse: float) -> Tuple[Any, Any]:
+        width = self._renderer.W
+        height = self._renderer.H
+        center = self._config["pulse_center"]
+        pivotX = (float(center[0]) * width - width / 2.0) / height
+        pivotY = float(center[1]) - 0.5
+        zoom = 1.0 + pulse * float(self._config["pulse_scale"])
+        horizontal = pivotX + (self._renderer.u - pivotX) / zoom
+        vertical = pivotY + (self._renderer.v - pivotY) / zoom
+        offset = self._config["offset"]
+        horizontal -= float(offset[0]) * width / height
+        vertical -= float(offset[1])
+        scale = float(self._config["scale"])
+        horizontal /= scale
+        vertical /= scale
+        rotation = math.radians(float(self._config["rotation_deg"]))
+        cosine = math.cos(rotation)
+        sine = math.sin(rotation)
+        return horizontal * cosine + vertical * sine, -horizontal * sine + vertical * cosine
+
+    # :: FLOAT, FLOAT -> ANY
+    # Recreates the reference palette gradient and moving nebula without foreground effects
+    def _palette(self, timeSec: float, pulse: float) -> Any:
+        horizontal, vertical = self._coordinates(pulse)
+        radius = np.sqrt(horizontal * horizontal + (vertical * 1.3) ** 2)
+        gradient = _smoothstep(0.0, 0.95, radius)[..., None]
+        palette = self._renderer.pal
+        center = np.asarray(palette["bg_center"], np.float32)
+        edge = np.asarray(palette["bg_edge"], np.float32)
+        background = center * (1.0 - gradient) + edge * gradient
+        nebula = self._renderer.noise.sample(
+            0,
+            horizontal * 180.0 + timeSec * 4.0,
+            vertical * 180.0 - timeSec * 2.0,
+        )
+        return background * (0.75 + 0.3 * np.clip(nebula, -1.0, 2.0)[..., None])
+
+    # :: FLOAT -> (ANY, ANY)
+    # Samples the configured image with cover, contain, or repeating tile behavior
+    def _image(self, pulse: float) -> Tuple[Any, Any]:
+        if self._texture is None:
+            raise RuntimeError("background image is unavailable")
+        sourceHeight, sourceWidth = self._texture.shape[:2]
+        outputHeight = self._renderer.H
+        outputWidth = self._renderer.W
+        if self._config["fit"] == "cover":
+            fitScale = max(outputWidth / sourceWidth, outputHeight / sourceHeight)
+            borderMode = cv2.BORDER_REFLECT_101
+        elif self._config["fit"] == "contain":
+            fitScale = min(outputWidth / sourceWidth, outputHeight / sourceHeight)
+            borderMode = cv2.BORDER_CONSTANT
+        else:
+            fitScale = min(outputWidth / sourceWidth, outputHeight / sourceHeight)
+            borderMode = cv2.BORDER_WRAP
+        horizontal, vertical = self._coordinates(pulse)
+        mapX = sourceWidth / 2.0 + horizontal * outputHeight / fitScale
+        mapY = sourceHeight / 2.0 + vertical * outputHeight / fitScale
+        image = cv2.remap(
+            self._texture,
+            mapX.astype(np.float32),
+            mapY.astype(np.float32),
+            cv2.INTER_LINEAR,
+            borderMode=borderMode,
+        )
+        if self._config["fit"] != "contain":
+            return image, np.ones((outputHeight, outputWidth), np.float32)
+        mask = cv2.remap(
+            np.ones((sourceHeight, sourceWidth), np.float32),
+            mapX.astype(np.float32),
+            mapY.astype(np.float32),
+            cv2.INTER_LINEAR,
+            borderMode=cv2.BORDER_CONSTANT,
+        )
+        return image, np.clip(mask, 0.0, 1.0)
+
+    # :: ANY, ANY, ANY -> ANY
+    # Adds optional enlarged blurred foreground echoes behind the primary form
+    def _ghosts(self, background: Any, foreground: Any, alpha: Any) -> Any:
+        width = self._renderer.W
+        height = self._renderer.H
+        sky = np.asarray(self._renderer.pal["sky_hor"], np.float32)
+        for scale, sigma, amount, flip, offsetX in (
+            (1.9, 0.035, 0.30, False, 0.1),
+            (1.35, 0.014, 0.22, True, -0.2),
+        ):
+            matrix = cv2.getRotationMatrix2D(
+                (width / 2.0 + offsetX * height, height / 2.0),
+                8.0 if flip else -5.0,
+                scale,
+            )
+            ghostColor = cv2.warpAffine(foreground, matrix, (width, height))
+            ghostAlpha = cv2.warpAffine(alpha, matrix, (width, height))
+            if flip:
+                ghostColor = ghostColor[:, ::-1]
+                ghostAlpha = ghostAlpha[:, ::-1]
+            ghostColor = cv2.GaussianBlur(ghostColor, (0, 0), height * sigma)
+            ghostAlpha = cv2.GaussianBlur(ghostAlpha, (0, 0), height * sigma)[..., None]
+            background = background * (1.0 - amount * ghostAlpha) + amount * ghostColor * sky * 0.8
+        return background
+
+    # :: ANY, ANY -> ANY
+    # Applies the optional reference-style foreground drop shadow to the background
+    def _shadow(self, background: Any, alpha: Any) -> Any:
+        height = self._renderer.H
+        width = self._renderer.W
+        matrix = np.float32([[1.0, 0.0, height * 0.02], [0.0, 1.0, height * 0.035]])
+        shadow = cv2.warpAffine(alpha, matrix, (width, height))
+        shadow = cv2.GaussianBlur(shadow, (0, 0), height * 0.02)[..., None]
+        return background * (1.0 - 0.65 * shadow)
+
+    #
+    # Class Methods
+    #
+
+    # Class Factory Method :: ANY, ARRAY<STRING, ANY> -> backgroundPass
+    # Creates a configured background compositor
+    @classmethod
+    def init(cls, renderer: Any, config: Dict[str, Any]) -> BackgroundPass:
+        return cls(renderer, config)

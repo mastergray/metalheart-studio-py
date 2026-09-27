@@ -7,6 +7,8 @@ from typing import Any, Dict  # Python 3.8-compatible config annotations
 import cv2  # Write deterministic image-skin fixtures
 import numpy as np  # Create feature arrays and compare rendered frames
 
+from metalheart.background import BackgroundPass  # Exercise image fit behavior directly
+from metalheart.catalog import DEFAULT_BACKGROUND  # Build resolved background fixtures
 from metalheart.catalog import DEFAULT_RENDERER  # Start renderer fixtures from production defaults
 from metalheart.catalog import DEFAULT_FINISH  # Supply owned finishing defaults
 from metalheart.catalog import REACTIVITY_PRESETS  # Exercise resolved audio mappings
@@ -169,6 +171,25 @@ def testJaggedRadialModulatorsMapAnalysisValues() -> None:
 
 
 # :: VOID -> NONE
+# Verifies background pulse uses the ordinary typed binding evaluator
+def testBackgroundPulseMapsAnalysisValues() -> None:
+    backend = ReferenceBackend.init()
+    reactivity = {
+        "modulators": {
+            "background_pulse": {
+                "source": "bass",
+                "amount": 1.0,
+                "bias": 0.0,
+                "curve": "linear",
+                "clamp": [0.0, 1.0],
+            }
+        }
+    }
+    modulators = backend.createModulators(_analysis(), 1, 0.25, reactivity)
+    assert modulators["background_pulse"] == 0.75
+
+
+# :: VOID -> NONE
 # Verifies the production-owned radial SDF renders a stable nonempty frame
 def testRadialFrameIsDeterministic() -> None:
     backend = ReferenceBackend.init()
@@ -268,6 +289,88 @@ def testImageSurfaceSkinChangesFrame(tmp_path: Path) -> None:
     skinned = backend.createRenderer(settings, scene).render(0.5, params, modulators)
     assert skinned.shape == reference.shape
     assert not np.array_equal(skinned, reference)
+
+
+# :: PATH -> NONE
+# Verifies background pulse changes only pixels outside the opaque 3D foreground
+def testImageBackgroundPulseLeavesOpaqueForegroundStable(tmp_path: Path) -> None:
+    texture = np.zeros((12, 8, 3), np.uint8)
+    texture[:6] = [0, 0, 255]
+    texture[6:] = [255, 0, 0]
+    imagePath = tmp_path / "background.png"
+    assert cv2.imwrite(str(imagePath), texture)
+    backend = ReferenceBackend.init()
+    settings = {"width": 64, "height": 64, "seed": 5}
+    scene = _scene()
+    scene["renderer"].update(
+        {"core": "3d", "forms": ["radial"], "cameras": ["orbit"], "core_scale": 0.25}
+    )
+    scene["background"] = dict(
+        DEFAULT_BACKGROUND,
+        source="image",
+        image=str(imagePath),
+        dots=False,
+        ghosts=False,
+        shadow=False,
+        pulse_brightness=0.8,
+        pulse_scale=0.25,
+    )
+    scene["finish"].update(
+        {
+            "bloom": 0.0,
+            "wide_bloom": 0.0,
+            "streaks": 0.0,
+            "onset_streaks": 0.0,
+            "flash": 0.0,
+            "chroma": 0.0,
+            "chroma_onset": 0.0,
+            "vignette": 0.0,
+            "grain": 0.0,
+            "grain_high": 0.0,
+        }
+    )
+    params = backend.createParams(_analysis(), 1, 0.5, scene["reactivity"])
+    session = backend.createRenderer(settings, scene)
+    quiet = session.render(0.5, params, {"background_pulse": 0.0})
+    loud = session.render(0.5, params, {"background_pulse": 1.0})
+    assert session._background is not None
+    assert session._background._foreground is not None
+    alpha = session._background._foreground[1]
+    opaque = alpha >= 0.999
+    exposed = alpha <= 0.001
+    assert np.any(opaque)
+    assert np.any(exposed)
+    assert np.array_equal(quiet[opaque], loud[opaque])
+    assert not np.array_equal(quiet[exposed], loud[exposed])
+
+
+# :: PATH -> NONE
+# Verifies cover, contain, and tile produce stable frame-sized image layers
+def testImageBackgroundFitModes(tmp_path: Path) -> None:
+    texture = np.zeros((8, 4, 3), np.uint8)
+    texture[:, :2] = [0, 0, 255]
+    texture[:, 2:] = [0, 255, 0]
+    imagePath = tmp_path / "background.png"
+    assert cv2.imwrite(str(imagePath), texture)
+    height = 8
+    width = 16
+    vertical, horizontalPixels = np.mgrid[0:height, 0:width].astype(np.float32)
+    renderer = SimpleNamespace(
+        W=width,
+        H=height,
+        u=(horizontalPixels - width / 2.0) / height,
+        v=(vertical - height / 2.0) / height,
+    )
+    layers = {}
+    for fit in ("cover", "contain", "tile"):
+        config = dict(DEFAULT_BACKGROUND, source="image", image=str(imagePath), fit=fit)
+        layers[fit] = BackgroundPass.init(renderer, config)._image(0.0)
+        assert layers[fit][0].shape == (height, width, 3)
+        assert layers[fit][1].shape == (height, width)
+    assert np.all(layers["cover"][1] == 1.0)
+    assert np.all(layers["tile"][1] == 1.0)
+    assert np.any(layers["contain"][1] == 0.0)
+    assert np.any(layers["contain"][1] == 1.0)
 
 
 # :: PATH -> NONE

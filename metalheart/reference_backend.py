@@ -12,7 +12,9 @@ from typing import Any, Dict, Optional, Tuple  # Python 3.8-compatible type anno
 import numpy as np  # Build renderer parameters and blank HUD buffers
 
 from metalheart.audio_form_core import AudioFormCore  # Install production-owned audio-composed geometry
+from metalheart.background import BackgroundPass  # Compose configurable audio-reactive backgrounds
 from metalheart.camera_choreo import CameraChoreo  # Strengthen camera timing without modifying reference code
+from metalheart.catalog import DEFAULT_BACKGROUND  # Preserve defaults for direct backend callers
 from metalheart.frame_effects import FrameEffects  # Apply authored audio-driven frame transforms
 from metalheart.finishing import FinishingPass  # Replace immutable finishing with authored controls
 from metalheart.surface_skin import SurfaceSkin  # Project authored images across 3D core surfaces
@@ -62,6 +64,7 @@ class ReferenceRendererSession:
         self._cameraChoreo: Optional[CameraChoreo] = None
         self._audioFormCore: Optional[AudioFormCore] = None
         self._surfaceSkin: Optional[SurfaceSkin] = None
+        self._background: Optional[BackgroundPass] = None
         overlayConfig = scene["overlay"]
         self._overlay = TextOverlay.init(overlayConfig, rendererModule.FONT_PATH)
         rendererConfig = scene["renderer"]
@@ -103,8 +106,12 @@ class ReferenceRendererSession:
             if rendererConfig["surface"]["image"]:
                 self._surfaceSkin = SurfaceSkin.init(self._renderer.core3d, rendererConfig["surface"])
                 self._renderer.core3d._shade = self._surfaceSkin.shade
+        self._background = BackgroundPass.init(
+            self._renderer,
+            scene.get("background", DEFAULT_BACKGROUND),
+        )
         self._finishing = FinishingPass.init(self._renderer, scene["finish"])
-        self._renderer.post = self._finishing.apply
+        self._renderer.post = self._finishFrame
         self._renderer.hud_tag = "//AUDIO.REACTIVE"
         if not overlayConfig["enabled"] or not overlayConfig["reference_hud"]:
             self._renderer.hud = self._blankHud
@@ -120,6 +127,8 @@ class ReferenceRendererSession:
             self._cameraChoreo.setSignals(modulators)
         if self._audioFormCore is not None:
             self._audioFormCore.setSignals(modulators)
+        if self._background is not None:
+            self._background.setSignals(modulators)
         frame = self._renderer.render(timeSec, params)
         frame = self._frameEffects.apply(frame, timeSec, modulators)
         return self._overlay.apply(frame)
@@ -127,6 +136,13 @@ class ReferenceRendererSession:
     #
     # Protected Methods
     #
+
+    # :: ANY, FLOAT, ANY -> ANY
+    # Rebuilds the authored background before applying whole-frame finishing
+    def _finishFrame(self, image: Any, timeSec: float, params: Any) -> Any:
+        if self._background is not None:
+            image = self._background.apply(image, timeSec, params)
+        return self._finishing.apply(image, timeSec, params)
 
     # :: FLOAT, ANY, ANY -> (ANY, ANY)
     # Returns transparent HUD buffers when HUD rendering is disabled

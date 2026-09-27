@@ -225,6 +225,7 @@ class RenderPipeline:
             "analysis": str(Path(analysisPath).resolve()),
             "backend": self._backend.version,
             "surface_images": self._surfaceImageDigests(config),
+            "background_images": self._backgroundImageDigests(config),
         }
         encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
         return hashlib.sha256(encoded).hexdigest()
@@ -235,6 +236,24 @@ class RenderPipeline:
         digests: Dict[str, str] = {}
         for scene in config.get("scenes", []):
             image = scene.get("renderer", {}).get("surface", {}).get("image")
+            if not image or image in digests:
+                continue
+            digest = hashlib.sha256()
+            with Path(image).open("rb") as handle:
+                while True:
+                    block = handle.read(1024 * 1024)
+                    if not block:
+                        break
+                    digest.update(block)
+            digests[image] = digest.hexdigest()
+        return digests
+
+    # :: ARRAY<STRING, ANY> -> ARRAY<STRING, STRING>
+    # Includes background image contents so edits invalidate resumable chunks
+    def _backgroundImageDigests(self, config: Dict[str, Any]) -> Dict[str, str]:
+        digests: Dict[str, str] = {}
+        for scene in config.get("scenes", []):
+            image = scene.get("background", {}).get("image")
             if not image or image in digests:
                 continue
             digest = hashlib.sha256()

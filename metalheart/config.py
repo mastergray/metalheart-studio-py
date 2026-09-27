@@ -11,6 +11,7 @@ from metalheart.catalog import CAMERAS  # Supported camera identifiers
 from metalheart.catalog import CORES  # Supported renderer core identifiers
 from metalheart.catalog import CONFIG_SCHEMA  # Public JSON Schema document
 from metalheart.catalog import CURVES  # Supported binding curve identifiers
+from metalheart.catalog import DEFAULT_BACKGROUND  # Typed background defaults
 from metalheart.catalog import DEFAULT_FINISH  # Owned finishing-pass defaults
 from metalheart.catalog import DEFAULT_OVERLAY  # Text-overlay defaults
 from metalheart.catalog import DEFAULT_RENDERER  # Renderer defaults
@@ -199,6 +200,10 @@ class ConfigResolver:
         surface = scene["renderer"].get("surface")
         if isinstance(surface, dict) and surface.get("image"):
             surface["image"] = self._resolvePath(surface["image"], basePath)
+        scene["background"] = self._deepMerge(DEFAULT_BACKGROUND, scene.get("background", {}))
+        background = scene["background"]
+        if isinstance(background, dict) and background.get("image"):
+            background["image"] = self._resolvePath(background["image"], basePath)
         legacyFinish = self._deepMerge(templateFinish, authoredFinish)
         scene["finish"] = self._deepMerge(DEFAULT_FINISH, self._deepMerge(legacyFinish, scene.get("finish", {})))
         reactivity = copy.deepcopy(scene.get("reactivity", {}))
@@ -295,6 +300,25 @@ class ConfigResolver:
             report.addError("{0}.reactivity: expected an object".format(prefix))
         else:
             self._validateReactivity(reactivity, prefix, report)
+        background = scene.get("background")
+        if not isinstance(background, dict):
+            report.addError("{0}.background: expected an object".format(prefix))
+        else:
+            core = renderer.get("core") if isinstance(renderer, dict) else None
+            self._validateBackground(background, core, prefix, report)
+            if core != "3d" and background != DEFAULT_BACKGROUND:
+                report.addError(
+                    "{0}.background: customized backgrounds require the 3d core".format(prefix)
+                )
+        if (
+            isinstance(renderer, dict)
+            and renderer.get("core") != "3d"
+            and isinstance(reactivity, dict)
+            and "background_pulse" in reactivity.get("modulators", {})
+        ):
+            report.addError(
+                "{0}.reactivity.modulators.background_pulse: requires the 3d core".format(prefix)
+            )
         overlay = scene.get("overlay")
         if not isinstance(overlay, dict):
             report.addError("{0}.overlay: expected an object".format(prefix))
@@ -307,6 +331,59 @@ class ConfigResolver:
             self._validateFinish(finish, prefix, report)
         if scene.get("post"):
             report.addError("{0}.post: scene post effects are not implemented in the first vertical slice".format(prefix))
+
+    # :: ARRAY<STRING, ANY>, ANY, STRING, validationReport -> NONE
+    # Validates configurable palette or image backgrounds and bounded pulse behavior
+    def _validateBackground(
+        self,
+        background: Dict[str, Any],
+        core: Any,
+        prefix: str,
+        report: ValidationReport,
+    ) -> None:
+        backgroundPath = prefix + ".background"
+        source = background.get("source")
+        image = background.get("image")
+        self._validateEnum(source, ["palette", "image"], backgroundPath + ".source", report)
+        self._validateEnum(background.get("fit"), ["cover", "contain", "tile"], backgroundPath + ".fit", report)
+        if image is not None and (not isinstance(image, str) or not image):
+            report.addError("{0}.image: expected a non-empty path or null".format(backgroundPath))
+        elif isinstance(image, str) and not Path(image).is_file():
+            report.addError("{0}.image: file not found: {1}".format(backgroundPath, image))
+        if source == "image" and not image:
+            report.addError("{0}.image: image source requires a file".format(backgroundPath))
+        if source == "image" and core != "3d":
+            report.addError("{0}: image backgrounds require the 3d core".format(backgroundPath))
+        ranges = {
+            "scale": (0.1, 10.0),
+            "rotation_deg": (-3600.0, 3600.0),
+            "opacity": (0.0, 1.0),
+            "pulse_brightness": (0.0, 2.0),
+            "pulse_scale": (0.0, 1.0),
+        }
+        for key, limits in ranges.items():
+            value = background.get(key)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not limits[0] <= value <= limits[1]:
+                report.addError("{0}.{1}: expected {2} through {3}".format(backgroundPath, key, limits[0], limits[1]))
+        points = {
+            "offset": (-2.0, 2.0),
+            "pulse_center": (0.0, 1.0),
+        }
+        for key, limits in points.items():
+            value = background.get(key)
+            valid = isinstance(value, list) and len(value) == 2 and all(
+                isinstance(item, (int, float))
+                and not isinstance(item, bool)
+                and limits[0] <= item <= limits[1]
+                for item in value
+            )
+            if not valid:
+                report.addError("{0}.{1}: expected two numbers from {2} through {3}".format(
+                    backgroundPath, key, limits[0], limits[1]
+                ))
+        for key in ("dots", "ghosts", "shadow"):
+            if not isinstance(background.get(key), bool):
+                report.addError("{0}.{1}: expected a boolean".format(backgroundPath, key))
 
     # :: ARRAY<STRING, ANY>, STRING, validationReport -> NONE
     # Validates renderer enums, booleans, and numeric controls
