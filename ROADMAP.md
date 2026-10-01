@@ -226,7 +226,7 @@ Acceptance criteria:
 
 Build a native desktop application over the existing JSON contract and application services. It must not contain a webview or require an HTTP server.
 
-The implemented authoring slice begins with audio selection and background analysis into phrase-aligned scenes. The primary workspace combines a cached-energy waveform/hard-cut timeline, scene navigation, an explicit production-backed still preview, and structured per-scene Form, Background, and Ribbons inspectors. Each layer has an independent ordered effect stack with catalog-generated controls for bypass, mix, order, and typed parameters. Canonical JSON is an optional advanced dock rather than the primary workflow.
+The implemented authoring slice begins with audio selection and background analysis into either one uninterrupted full-track composition or phrase-aligned automatic scenes. Both project modes retain the same analyzed feature cache and canonical scene contract. The primary workspace combines a cached-energy waveform/hard-cut timeline, scene navigation, an explicit production-backed still preview, and structured per-scene Form, Background, and Ribbons inspectors. Each layer has an independent ordered effect stack with catalog-generated controls for bypass, mix, order, and typed parameters. Canonical JSON is an optional advanced dock rather than the primary workflow.
 
 Analysis, preview, and full export run outside the GUI thread and support cancellation. Preview work is explicit and capped at 480×270, 12 fps, 0.2 core scale, and no antialiasing for older hardware. PySide6 6.4 through 6.6 retains the Python 3.8 runtime target and is a normal application dependency.
 

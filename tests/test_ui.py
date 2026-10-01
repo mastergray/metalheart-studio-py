@@ -75,6 +75,27 @@ def testMainWindowDisplaysStructuredProgress() -> None:
     application.processEvents()
 
 
+# :: PATH -> NONE
+# Verifies native full-track creation delegates to the shared analyzer mode
+def testMainWindowBuildsFullTrackAnalysisCommand(tmp_path: Path) -> None:
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow.init()
+    audioPath = tmp_path / "song.wav"
+    projectPath = tmp_path / "song.metalheart.json"
+    arguments = window._analysisArguments(audioPath, projectPath, "single")
+    assert arguments[1:5] == [
+        "analyze",
+        str(audioPath.resolve()),
+        "-o",
+        str(projectPath.resolve()),
+    ]
+    assert arguments[arguments.index("--scene-mode") + 1] == "single"
+    assert "--progress" in arguments
+    window.close()
+    window.deleteLater()
+    application.processEvents()
+
+
 # :: VOID -> NONE
 # Verifies each layer can own an independently ordered typed effect chain
 def testEffectStackBuildsCanonicalCatalogEntries() -> None:

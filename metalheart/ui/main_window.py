@@ -377,16 +377,40 @@ class MainWindow(QMainWindow):
         )
         if not audioPath:
             return
+        sceneMode = self._chooseSceneMode()
+        if sceneMode is None:
+            return
         suggested = Path(audioPath).with_suffix(".metalheart.json")
         projectPath, _ = QFileDialog.getSaveFileName(
             self, "Save New Metalheart Project", str(suggested), PROJECT_FILTER
         )
         if projectPath:
-            self._startAnalysis(Path(audioPath), Path(projectPath))
+            self._startAnalysis(Path(audioPath), Path(projectPath), sceneMode)
 
-    # :: PATH, PATH -> NONE
+    # :: VOID -> STRING?
+    # Asks whether a new audio project should remain whole or gain phrase scenes
+    def _chooseSceneMode(self) -> Optional[str]:
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("New Audio Project")
+        dialog.setText("How should Metalheart organize this audio?")
+        dialog.setInformativeText(
+            "Full Track creates one uninterrupted composition. Auto Scenes creates "
+            "phrase-aligned sections that can be styled independently."
+        )
+        fullTrackButton = dialog.addButton("Full Track", QMessageBox.ButtonRole.AcceptRole)
+        autoScenesButton = dialog.addButton("Auto Scenes", QMessageBox.ButtonRole.ActionRole)
+        dialog.addButton(QMessageBox.StandardButton.Cancel)
+        dialog.setDefaultButton(fullTrackButton)
+        dialog.exec()
+        if dialog.clickedButton() is fullTrackButton:
+            return "single"
+        if dialog.clickedButton() is autoScenesButton:
+            return "phrases"
+        return None
+
+    # :: PATH, PATH, STRING -> NONE
     # Runs the established analyzer and scene planner outside the GUI thread
-    def _startAnalysis(self, audioPath: Path, projectPath: Path) -> None:
+    def _startAnalysis(self, audioPath: Path, projectPath: Path, sceneMode: str) -> None:
         if self._analysisProcess is not None:
             return
         process = QProcess(self)
@@ -394,11 +418,7 @@ class MainWindow(QMainWindow):
         process.readyReadStandardOutput.connect(self._readAnalysisOutput)
         process.finished.connect(self._analysisFinished)
         process.errorOccurred.connect(self._analysisFailed)
-        studioPath = Path(__file__).resolve().parents[2] / "studio.py"
-        arguments = [
-            str(studioPath), "analyze", str(audioPath.resolve()), "-o",
-            str(projectPath.resolve()), "--quality", "final", "--progress",
-        ]
+        arguments = self._analysisArguments(audioPath, projectPath, sceneMode)
         if os.name == "posix":
             process.start("setsid", [sys.executable] + arguments)
         else:
@@ -409,8 +429,28 @@ class MainWindow(QMainWindow):
         self._newAction.setEnabled(False)
         self._cancelAnalysisAction.setEnabled(True)
         self._showBusyProgress("Starting audio analysis…")
-        self._diagnostics.setText("Analyzing audio and creating phrase-aligned scenes…")
+        if sceneMode == "single":
+            self._diagnostics.setText("Analyzing audio and creating one full-track composition…")
+        else:
+            self._diagnostics.setText("Analyzing audio and creating phrase-aligned scenes…")
         self.statusBar().showMessage("Analyzing {0}…".format(audioPath.name))
+
+    # :: PATH, PATH, STRING -> [STRING]
+    # Builds the shared CLI invocation for one audio-led project creation mode
+    def _analysisArguments(self, audioPath: Path, projectPath: Path, sceneMode: str) -> List[str]:
+        studioPath = Path(__file__).resolve().parents[2] / "studio.py"
+        return [
+            str(studioPath),
+            "analyze",
+            str(audioPath.resolve()),
+            "-o",
+            str(projectPath.resolve()),
+            "--quality",
+            "final",
+            "--scene-mode",
+            sceneMode,
+            "--progress",
+        ]
 
     # :: VOID -> NONE
     # Shows the newest analyzer message without blocking the event loop

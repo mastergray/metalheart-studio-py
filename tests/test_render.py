@@ -115,6 +115,18 @@ def testUiCommandAcceptsOptionalProject() -> None:
 
 
 # :: VOID -> NONE
+# Verifies audio analysis exposes compatible phrase and full-track project modes
+def testAnalyzeCommandAcceptsSceneModes() -> None:
+    parser = buildParser()
+    defaultArgs = parser.parse_args(["analyze", "song.wav", "-o", "song.json"])
+    singleArgs = parser.parse_args(
+        ["analyze", "song.wav", "-o", "song.json", "--scene-mode", "single"]
+    )
+    assert defaultArgs.scene_mode == "phrases"
+    assert singleArgs.scene_mode == "single"
+
+
+# :: VOID -> NONE
 # Verifies offline thumbnail generation has a packaged default and explicit output
 def testThumbnailCommandAcceptsOptionalOutput() -> None:
     parser = buildParser()

@@ -21,6 +21,7 @@ from metalheart.config import ConfigError  # Report authored config failures
 from metalheart.config import ConfigResolver  # Load, resolve, validate, and write configs
 from metalheart.effect_catalog import effectIds  # List stable owned effect identifiers
 from metalheart.effect_catalog import publicEffectCatalog  # Expose typed effect metadata for the desktop UI
+from metalheart.planner import SCENE_MODES  # Constrain audio project organization modes
 from metalheart.planner import ScenePlanner  # Convert audio analysis into scene-based configs
 from metalheart.progress import reportProgress  # Publish native-UI progress records
 from metalheart.reference_backend import ReferenceBackend  # Analyze audio through the pinned backend
@@ -99,6 +100,7 @@ def buildParser() -> argparse.ArgumentParser:
     analyzeParser.add_argument("--crf", type=int)
     analyzeParser.add_argument("--seed", type=int, default=3)
     analyzeParser.add_argument("--bpm", type=float)
+    analyzeParser.add_argument("--scene-mode", choices=SCENE_MODES, default="phrases", help="create one full-track scene or phrase-aligned scenes")
     analyzeParser.add_argument("--bars-per-scene", type=int, default=8)
     analyzeParser.add_argument("--max-scene-sec", type=float)
     analyzeParser.add_argument("--template", choices=sorted(TEMPLATES), default="builtins/mercury-intro", help="explicit default for every generated scene skeleton")
@@ -160,7 +162,7 @@ def _validateCommand(args: argparse.Namespace, resolver: ConfigResolver) -> int:
 
 
 # :: argumentNamespace, configResolver -> INT
-# Analyzes a complete audio source and writes a renderable multi-scene config
+# Analyzes a complete audio source and writes a renderable authored config
 def _analyzeCommand(args: argparse.Namespace, resolver: ConfigResolver) -> int:
     started = time.monotonic()
     reportProgress(
@@ -180,8 +182,10 @@ def _analyzeCommand(args: argparse.Namespace, resolver: ConfigResolver) -> int:
     fps = args.fps if args.fps is not None else qualityProfile["fps"]
     crf = args.crf if args.crf is not None else qualityProfile["crf"]
     width, height = args.size if args.size is not None else (qualityProfile["width"], qualityProfile["height"])
-    if fps <= 0 or args.bars_per_scene <= 0:
-        raise ConfigError("fps and bars-per-scene must be positive")
+    if fps <= 0:
+        raise ConfigError("fps must be positive")
+    if args.scene_mode == "phrases" and args.bars_per_scene <= 0:
+        raise ConfigError("bars-per-scene must be positive in phrases scene mode")
     outputPath = Path(args.output).resolve()
     outputPath.parent.mkdir(parents=True, exist_ok=True)
     backend = ReferenceBackend.init()
@@ -196,7 +200,7 @@ def _analyzeCommand(args: argparse.Namespace, resolver: ConfigResolver) -> int:
         4,
         "stages",
         started,
-        "Planning phrase-aligned scenes",
+        "Planning full-track composition" if args.scene_mode == "single" else "Planning phrase-aligned scenes",
     )
     planner = ScenePlanner.init(
         width=width,
@@ -208,7 +212,14 @@ def _analyzeCommand(args: argparse.Namespace, resolver: ConfigResolver) -> int:
         template=args.template,
         maxSceneSec=args.max_scene_sec,
     )
-    authored = planner.plan(analysisResult.analysis, str(audioPath), str(outputPath), args.bars_per_scene, analysisResult.cachePath)
+    authored = planner.plan(
+        analysisResult.analysis,
+        str(audioPath),
+        str(outputPath),
+        args.bars_per_scene,
+        analysisResult.cachePath,
+        args.scene_mode,
+    )
     reportProgress(
         args.progress,
         "analysis",
@@ -241,6 +252,7 @@ def _analyzeCommand(args: argparse.Namespace, resolver: ConfigResolver) -> int:
         "render_duration_sec": authored["scenes"][-1]["end_sec"],
         "bpm": float(analysisResult.analysis.bpm),
         "scenes": len(authored["scenes"]),
+        "scene_mode": args.scene_mode,
         "analysis_cache": analysisResult.cachePath,
         "analysis_cache_hit": analysisResult.cacheHit,
     }

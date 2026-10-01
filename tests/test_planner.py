@@ -44,3 +44,26 @@ def testPlansContiguousNeutralScenes(tmp_path: Path) -> None:
     assert scenes[0]["analysis"]["mean_energy"] == 0.2
     assert scenes[-1]["analysis"]["mean_energy"] == 0.9
     assert all(scene["beats"] > 0 for scene in scenes)
+
+
+# :: PATH -> NONE
+# Verifies single mode retains full-track analysis without automatic segmentation
+def testPlansOneFullTrackScene(tmp_path: Path) -> None:
+    planner = ScenePlanner.init(fps=10, template="builtins/ferro-impact", maxSceneSec=1.0)
+    config = planner.plan(
+        _analysis(),
+        str(tmp_path / "audio.wav"),
+        str(tmp_path / "project.json"),
+        1,
+        str(tmp_path / "features.npz"),
+        "single",
+    )
+    scenes = config["scenes"]
+    assert len(scenes) == 1
+    assert scenes[0]["id"] == "scene-01"
+    assert scenes[0]["name"] == "Full Track"
+    assert scenes[0]["start_sec"] == 0.0
+    assert scenes[0]["end_sec"] == 40.0
+    assert scenes[0]["beats"] == 80
+    assert scenes[0]["downbeats"] == 20
+    assert scenes[0]["analysis"]["mean_energy"] == 0.62

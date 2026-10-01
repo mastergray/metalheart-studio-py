@@ -7,6 +7,9 @@ from pathlib import Path  # Resolve source and destination paths
 from typing import Any, Dict, List, Optional  # Python 3.8-compatible type annotations
 
 
+SCENE_MODES = ("phrases", "single")
+
+
 # Converts analyzed tempo into contiguous phrase-aligned scene skeletons
 class ScenePlanner:
 
@@ -26,16 +29,19 @@ class ScenePlanner:
     # Instance Methods
     #
 
-    # :: ANY, STRING, STRING, INT, STRING -> ARRAY<STRING, ANY>
-    # Builds a complete authored config from analyzed audio and phrase settings
-    def plan(self, analysis: Any, audioPath: str, configPath: str, barsPerScene: int, cachePath: str) -> Dict[str, Any]:
+    # :: ANY, STRING, STRING, INT, STRING, STRING -> ARRAY<STRING, ANY>
+    # Builds a complete authored config as one full-track scene or aligned phrases
+    def plan(self, analysis: Any, audioPath: str, configPath: str, barsPerScene: int, cachePath: str, sceneMode: str = "phrases") -> Dict[str, Any]:
         configDirectory = Path(configPath).resolve().parent
         totalFrames = int(analysis.n_frames)
         if totalFrames <= 0:
             raise ValueError("audio analysis produced no renderable frames")
-        boundaries = self._boundaries(analysis, barsPerScene)
+        if sceneMode not in SCENE_MODES:
+            raise ValueError("scene mode must be one of: {0}".format(", ".join(SCENE_MODES)))
+        boundaries = [0, totalFrames] if sceneMode == "single" else self._boundaries(analysis, barsPerScene)
+        sceneName = "Full Track" if sceneMode == "single" else None
         scenes = [
-            self._scene(analysis, boundaries[index], boundaries[index + 1], index)
+            self._scene(analysis, boundaries[index], boundaries[index + 1], index, sceneName)
             for index in range(len(boundaries) - 1)
         ]
         return {
@@ -89,16 +95,16 @@ class ScenePlanner:
             boundaries.append(int(analysis.n_frames))
         return boundaries
 
-    # :: ANY, INT, INT, INT -> ARRAY<STRING, ANY>
+    # :: ANY, INT, INT, INT, STRING? -> ARRAY<STRING, ANY>
     # Creates one neutral scene skeleton with objective analysis metadata
-    def _scene(self, analysis: Any, startFrame: int, endFrame: int, index: int) -> Dict[str, Any]:
+    def _scene(self, analysis: Any, startFrame: int, endFrame: int, index: int, sceneName: Optional[str] = None) -> Dict[str, Any]:
         startSec = startFrame / float(self._fps)
         endSec = endFrame / float(self._fps)
         beatCount = self._eventCount(analysis.beat_times, startSec, endSec)
         downbeatCount = self._eventCount(analysis.downbeat_times, startSec, endSec)
         return {
             "id": "scene-{0:02d}".format(index + 1),
-            "name": "Phrase {0}".format(index + 1),
+            "name": sceneName or "Phrase {0}".format(index + 1),
             "start_sec": round(startSec, 9),
             "end_sec": round(endSec, 9),
             "beats": beatCount,
