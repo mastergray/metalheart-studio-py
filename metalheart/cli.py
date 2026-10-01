@@ -366,13 +366,20 @@ def _thumbnailCommand(args: argparse.Namespace) -> int:
         "renderer_version": manifest["renderer_version"],
         "thumbnail_version": manifest["thumbnail_version"],
         "count": sum(len(entries) for entries in manifest["catalogs"].values()),
+        "animations": sum(
+            1
+            for entries in manifest["catalogs"].values()
+            for entry in entries.values()
+            if "animation_file" in entry
+        ),
     }
     if args.json:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:
         print(
-            "wrote {0} thumbnails: {1}".format(
+            "wrote {0} thumbnails and {1} animations: {2}".format(
                 summary["count"],
+                summary["animations"],
                 summary["manifest"],
             )
         )

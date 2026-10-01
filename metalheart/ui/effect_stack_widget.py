@@ -22,6 +22,7 @@ from PySide6.QtWidgets import QVBoxLayout  # Stack the editor sections
 from PySide6.QtWidgets import QWidget  # Host the reusable native editor
 
 from metalheart.effect_catalog import publicEffectCatalog  # Build controls from renderer metadata
+from metalheart.ui.animated_thumbnail_widget import AnimatedThumbnailWidget  # Play larger effect studies without rendering
 from metalheart.ui.numeric_parameter_widget import NumericParameterWidget  # Pair sliders and numbers
 from metalheart.ui.thumbnail_icons import applyComboThumbnails  # Decorate the effect picker from packaged assets
 
@@ -96,11 +97,15 @@ class EffectStackWidget(QWidget):
                 entry["id"],
             )
         applyComboThumbnails(self._effectPicker, "effects", True)
+        self._effectPicker.currentIndexChanged.connect(self._effectPreviewSelected)
         addButton = QPushButton("Add")
         addButton.clicked.connect(self._addSelected)
         picker.addWidget(self._effectPicker, 1)
         picker.addWidget(addButton)
         layout.addLayout(picker)
+        self._effectPreview = AnimatedThumbnailWidget.init()
+        self._effectPreview.setOption("effects", str(self._effectPicker.currentData()))
+        layout.addWidget(self._effectPreview, 0, Qt.AlignmentFlag.AlignHCenter)
 
         self._list = QListWidget()
         self._list.setObjectName("effectStackList")
@@ -173,6 +178,13 @@ class EffectStackWidget(QWidget):
         effectId = self._effectPicker.currentData()
         if isinstance(effectId, str):
             self.addEffect(effectId)
+
+    # :: INT -> NONE
+    # Updates the large packaged effect study selected by the browser control
+    def _effectPreviewSelected(self, index: int) -> None:
+        effectId = self._effectPicker.itemData(index, Qt.ItemDataRole.UserRole)
+        if isinstance(effectId, str):
+            self._effectPreview.setOption("effects", effectId)
 
     # :: VOID -> NONE
     # Removes the active effect instance from this layer only

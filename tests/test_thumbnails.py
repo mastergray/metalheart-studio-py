@@ -5,9 +5,13 @@ import json  # Write temporary manifest fixtures
 from pathlib import Path  # Inspect packaged and temporary thumbnail catalogs
 
 import cv2  # Verify packaged thumbnail dimensions
+import numpy as np  # Confirm motion studies contain changing frames
 import pytest  # Mark the production-renderer regeneration check
 
 from metalheart.thumbnails import THUMBNAIL_CATALOGS  # Verify complete option coverage
+from metalheart.thumbnails import THUMBNAIL_ANIMATED_CATALOGS  # Verify motion-study coverage
+from metalheart.thumbnails import THUMBNAIL_ANIMATION_COLUMNS  # Verify spritesheet geometry
+from metalheart.thumbnails import THUMBNAIL_ANIMATION_FRAMES  # Verify loop length
 from metalheart.thumbnails import THUMBNAIL_HEIGHT  # Verify generated asset dimensions
 from metalheart.thumbnails import THUMBNAIL_SCHEMA_VERSION  # Verify manifest compatibility
 from metalheart.thumbnails import THUMBNAIL_VERSION  # Verify reviewed asset revision
@@ -29,6 +33,7 @@ def testPackagedThumbnailCatalogIsCurrentAndComplete() -> None:
     assert manifest["height"] == THUMBNAIL_HEIGHT
     assert catalog.validate() == []
     assert sum(len(entries) for entries in THUMBNAIL_CATALOGS.values()) == 92
+    animationCount = 0
     for catalogId, identifiers in THUMBNAIL_CATALOGS.items():
         assert list(manifest["catalogs"][catalogId]) == identifiers
         for optionId in identifiers:
@@ -37,6 +42,32 @@ def testPackagedThumbnailCatalogIsCurrentAndComplete() -> None:
             frame = cv2.imread(str(path), cv2.IMREAD_COLOR)
             assert frame is not None
             assert frame.shape == (THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH, 3)
+            animation = catalog.animation(catalogId, optionId)
+            if catalogId not in THUMBNAIL_ANIMATED_CATALOGS:
+                assert animation is None
+                continue
+            assert animation is not None
+            sheet = cv2.imread(str(animation["path"]), cv2.IMREAD_COLOR)
+            assert sheet is not None
+            rows = THUMBNAIL_ANIMATION_FRAMES // THUMBNAIL_ANIMATION_COLUMNS
+            assert sheet.shape == (
+                rows * THUMBNAIL_HEIGHT,
+                THUMBNAIL_ANIMATION_COLUMNS * THUMBNAIL_WIDTH,
+                3,
+            )
+            firstFrame = sheet[0:THUMBNAIL_HEIGHT, 0:THUMBNAIL_WIDTH]
+            framesChange = False
+            for frameIndex in range(1, THUMBNAIL_ANIMATION_FRAMES):
+                row = frameIndex // THUMBNAIL_ANIMATION_COLUMNS
+                column = frameIndex % THUMBNAIL_ANIMATION_COLUMNS
+                frame = sheet[
+                    row * THUMBNAIL_HEIGHT:(row + 1) * THUMBNAIL_HEIGHT,
+                    column * THUMBNAIL_WIDTH:(column + 1) * THUMBNAIL_WIDTH,
+                ]
+                framesChange = framesChange or not np.array_equal(firstFrame, frame)
+            assert framesChange
+            animationCount += 1
+    assert animationCount == 72
 
 
 # :: PATH -> NONE
@@ -54,6 +85,7 @@ def testThumbnailCatalogRejectsStaleManifest(tmp_path: Path) -> None:
     catalog = ThumbnailCatalog.init(tmp_path)
     assert not catalog.available
     assert catalog.path("forms", "mercury") is None
+    assert catalog.animation("cameras", "orbit") is None
     assert catalog.validate() == ["thumbnail manifest is missing or stale"]
 
 

@@ -17,8 +17,8 @@ _CATALOG: Optional[ThumbnailCatalog] = None
 
 
 # :: VOID -> thumbnailCatalog
-# Returns one process-local read-only manifest cache
-def _thumbnailCatalog() -> ThumbnailCatalog:
+# Returns one process-local read-only manifest cache for icons and animation panels
+def thumbnailCatalog() -> ThumbnailCatalog:
     global _CATALOG
     if _CATALOG is None:
         _CATALOG = ThumbnailCatalog.init()
@@ -32,7 +32,7 @@ def applyComboThumbnails(
     catalog: str,
     identifiersInData: bool = False,
 ) -> None:
-    thumbnails = _thumbnailCatalog()
+    thumbnails = thumbnailCatalog()
     if not thumbnails.available:
         return
     loaded = False

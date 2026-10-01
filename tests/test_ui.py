@@ -83,6 +83,13 @@ def testEffectStackBuildsCanonicalCatalogEntries() -> None:
     assert not stack._effectPicker.itemIcon(posterizeIndex).isNull()
     assert stack._effectPicker.iconSize().width() == 64
     assert stack._effectPicker.iconSize().height() == 36
+    stack._effectPicker.setCurrentIndex(posterizeIndex)
+    application.processEvents()
+    assert not stack._effectPreview.isHidden()
+    assert stack._effectPreview.frameCount == 16
+    previousFrame = stack._effectPreview.frameIndex
+    stack._effectPreview._advanceFrame()
+    assert stack._effectPreview.frameIndex != previousFrame
     stack.addEffect("posterize")
     stack.addEffect("tear")
     application.processEvents()
@@ -203,6 +210,8 @@ def testLayerPaletteControlsAreIndependentAndUndoable() -> None:
     inspector = window._inspector
     assert not inspector._form.itemIcon(inspector._form.findText("radial")).isNull()
     assert not inspector._camera.itemIcon(inspector._camera.findText("dutch")).isNull()
+    assert not inspector._cameraPreview.isHidden()
+    assert inspector._cameraPreview.frameCount == 16
     for selector in (
         inspector._palette,
         inspector._backgroundPalette,

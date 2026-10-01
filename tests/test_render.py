@@ -123,7 +123,7 @@ def testThumbnailCommandAcceptsOptionalOutput() -> None:
         ["thumbnails", "-o", "/tmp/metalheart-thumbnails", "--json"]
     )
     assert defaultArgs.command == "thumbnails"
-    assert defaultArgs.output.endswith("metalheart/assets/thumbnails/v1")
+    assert defaultArgs.output.endswith("metalheart/assets/thumbnails/v2")
     assert not defaultArgs.json
     assert outputArgs.output == "/tmp/metalheart-thumbnails"
     assert outputArgs.json

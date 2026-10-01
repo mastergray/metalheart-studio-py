@@ -1,0 +1,637 @@
+{
+  "schema_version": 2,
+  "thumbnail_version": "2026-10-01-v2",
+  "renderer_version": "audioReactive-2026-10-01-visible-backgrounds-v15",
+  "catalog_fingerprint": "b89d3c6f050cb1f3e8f37488bdf896e740da73a345e3045eac9f3751171d0d23",
+  "width": 128,
+  "height": 72,
+  "animation": {
+    "width": 128,
+    "height": 72,
+    "fps": 8,
+    "frame_count": 16,
+    "columns": 4,
+    "camera_span_sec": 10.0,
+    "effect_preroll_frames": 32
+  },
+  "fixture": {
+    "fps": 12,
+    "seed": 23,
+    "time_sec": 1.75,
+    "effect_frames": 32
+  },
+  "catalogs": {
+    "forms": {
+      "mercury": {
+        "label": "Mercury",
+        "file": "forms/mercury.png",
+        "sha256": "618f92bf31e5fad524d55eae632c8900e27e49550cd984c0e3100029b245cda4"
+      },
+      "wring": {
+        "label": "Wring",
+        "file": "forms/wring.png",
+        "sha256": "8a859b699da5b89a12c515ce0f8b2fd8ec11f748993783e6d03e36e878430072"
+      },
+      "ferro": {
+        "label": "Ferro",
+        "file": "forms/ferro.png",
+        "sha256": "70bc2770ec728dd21c3e19b2337ba0c1c81bea4cbf0fcbd0bafc810430eebec6"
+      },
+      "drip": {
+        "label": "Drip",
+        "file": "forms/drip.png",
+        "sha256": "7b727583aeaef9352502a4fb5cb2b3e66f614737fc3a1142d8002f5c9b18209a"
+      },
+      "split": {
+        "label": "Split",
+        "file": "forms/split.png",
+        "sha256": "230639253e32d83760ca2c8e84711066dacaafaa9d0cf0c4228c5eabeb7b6035"
+      },
+      "fold": {
+        "label": "Fold",
+        "file": "forms/fold.png",
+        "sha256": "91ce2b567114458358e9f719f3fd2a524197b819ee8821ac21c1f891f45c1865"
+      },
+      "morph": {
+        "label": "Morph",
+        "file": "forms/morph.png",
+        "sha256": "2a1564ea3f22c365c2cb81d6844488299c1605f5329b658835f67504e7042101"
+      },
+      "gyro": {
+        "label": "Gyro",
+        "file": "forms/gyro.png",
+        "sha256": "f1bf50546a2baf9b1606195dfbaf4841de51bdbcc66e07dc9803fdf6c14d9dcd"
+      },
+      "chaos": {
+        "label": "Chaos",
+        "file": "forms/chaos.png",
+        "sha256": "65345613de2d6f5ec9e253e36b60c5abe8825a1b457550bc9396af2c8cd44beb"
+      },
+      "resonance": {
+        "label": "Resonance",
+        "file": "forms/resonance.png",
+        "sha256": "a3beb9061370a6fcc20982acca4946590cde489b6cf97e079fee0a28b5f51296"
+      },
+      "radial": {
+        "label": "Radial",
+        "file": "forms/radial.png",
+        "sha256": "acbf60fbfc3e2bed7813c851db70c17f0e9eab033cb28bfe5e8b076f10c0ee9b"
+      }
+    },
+    "cameras": {
+      "orbit": {
+        "label": "Orbit",
+        "file": "cameras/orbit.png",
+        "sha256": "8cf43c17082c42bf0f6aa303dd0c1445bedc601b1e3183dbccee0e52a6d0d0f2",
+        "animation_file": "previews/cameras/orbit.png",
+        "animation_sha256": "0d7ef9c977fe863778563fbf752288f2e00739e9966e22454a72cf92b5d05d21"
+      },
+      "crane": {
+        "label": "Crane",
+        "file": "cameras/crane.png",
+        "sha256": "b230ba3212fb7b282486c0337a310f1b66fb780c3476b37567e3db558dd782ed",
+        "animation_file": "previews/cameras/crane.png",
+        "animation_sha256": "bdf6514e093d45731f7d4771e43cda94e153d76b2558cd7276cf78435d77d8fe"
+      },
+      "dolly": {
+        "label": "Dolly",
+        "file": "cameras/dolly.png",
+        "sha256": "ddaeedb67506190ee6cb36071c9ea1e9a4aec280f424c7153751f095d5fd1510",
+        "animation_file": "previews/cameras/dolly.png",
+        "animation_sha256": "11047ba6c05df664e84679aaeb969c5d54c95ec3f327e8ebb323edb233103944"
+      },
+      "low": {
+        "label": "Low",
+        "file": "cameras/low.png",
+        "sha256": "bc4f9deeb7ce642b0214e04415fa13bd1958944e65802bf26755e3b927c20339",
+        "animation_file": "previews/cameras/low.png",
+        "animation_sha256": "545ca6a1a9c286b4e07315dc8314e344fe89ae25ffe620c64a82afa5949f62cb"
+      },
+      "top": {
+        "label": "Top",
+        "file": "cameras/top.png",
+        "sha256": "706e26b5c983f7fe706e10ac76e7a21e7afd93c66c5f25c3a602b2cce947b4a2",
+        "animation_file": "previews/cameras/top.png",
+        "animation_sha256": "e1efbfc540c8bdf1de957a94ec178b2ef752193c96a96ea6f6fb018626a8dbc6"
+      },
+      "macro": {
+        "label": "Macro",
+        "file": "cameras/macro.png",
+        "sha256": "913e8af20658b74e874efeed621188928c9a6d5c87a7cbbe464425e9ca33bb3a",
+        "animation_file": "previews/cameras/macro.png",
+        "animation_sha256": "2f1293cda9abe71ae7dffeb22b0a8b4cb28a1e1606a48eaa2df4327a500ffc8c"
+      },
+      "dutch": {
+        "label": "Dutch",
+        "file": "cameras/dutch.png",
+        "sha256": "6bf63475475d638932da5e6766a8adb2ad893394e67c7c281e1f09cd692fe7a4",
+        "animation_file": "previews/cameras/dutch.png",
+        "animation_sha256": "bfd775ae1901d787c61819cb1768dfed7566d658155c8349d515fc89854f26a3"
+      },
+      "drift": {
+        "label": "Drift",
+        "file": "cameras/drift.png",
+        "sha256": "fc8ff18b3f433f4dfe029757e28d44412b425e555ab140cd420d6ec20f401458",
+        "animation_file": "previews/cameras/drift.png",
+        "animation_sha256": "a8ab31277fdde289ec7846050289ec7863da634c9c6d348f66e2d174895bb4b8"
+      }
+    },
+    "palettes": {
+      "steel": {
+        "label": "Steel",
+        "file": "palettes/steel.png",
+        "sha256": "ead5273675c69bdc06a81a5cf62adaddbe343ed9e76875fd73006b9c1406c6b1"
+      },
+      "acid": {
+        "label": "Acid",
+        "file": "palettes/acid.png",
+        "sha256": "088e3cec1068949c03e9478b95c5afbc8e7988b3c39af30680dab7a915de278a"
+      },
+      "ember": {
+        "label": "Ember",
+        "file": "palettes/ember.png",
+        "sha256": "cdd93e1d1b24731956b8ded31cda73525bb9609d7d839fc1b754448eee234ac5"
+      },
+      "jungle": {
+        "label": "Jungle",
+        "file": "palettes/jungle.png",
+        "sha256": "4e04f002bb46c4063c36b48f8d4a7b3a4020ed4643121d69ff79d9d9461dc00f"
+      },
+      "rainbow": {
+        "label": "Rainbow",
+        "file": "palettes/rainbow.png",
+        "sha256": "057888726393f9e5f4d739ee48a1ff034c2c85f3394f1e463e3590b521810ca4"
+      },
+      "ice": {
+        "label": "Ice",
+        "file": "palettes/ice.png",
+        "sha256": "eb56ef6f6ab4ab8c1d195ffca30f49bb1508d6a4d294e67d00693fe08ac74736"
+      },
+      "electric": {
+        "label": "Electric",
+        "file": "palettes/electric.png",
+        "sha256": "fe571259aa3ceacaf6131423cbab60a09ffcf6b9971c6dd4d5e033da12b99b51"
+      },
+      "neon": {
+        "label": "Neon",
+        "file": "palettes/neon.png",
+        "sha256": "1cdd5771dd5b98f540982b268b5338d928faa2abd9b4592917f603ac1862513a"
+      },
+      "grayscale": {
+        "label": "Grayscale",
+        "file": "palettes/grayscale.png",
+        "sha256": "256493e3dcf735b18fc5b977e89befcf4a4567fa60380def226033cadc76d6a3"
+      }
+    },
+    "effects": {
+      "aged_tape_decay_like": {
+        "label": "Aged Tape Decay",
+        "file": "effects/aged_tape_decay_like.png",
+        "sha256": "455cfb0f1f29e2e02fa9c15f160d45148500131e38ee746ce426bf3b70674ba9",
+        "animation_file": "previews/effects/aged_tape_decay_like.png",
+        "animation_sha256": "f707004f38271a2fd51c083e14fc1d44e42963455e333d9fcd9de447c6f00e14"
+      },
+      "arcade": {
+        "label": "Arcade",
+        "file": "effects/arcade.png",
+        "sha256": "e0d71bf2c70fe23cab8ad31df9684782ec8addbe73d7c108e1240022e63510f7",
+        "animation_file": "previews/effects/arcade.png",
+        "animation_sha256": "d5463e44af7b526f63ad00f62ad25fd8d471659d670c2006688315980036ba3b"
+      },
+      "arcade_night_like": {
+        "label": "Arcade Night",
+        "file": "effects/arcade_night_like.png",
+        "sha256": "e3d9cf81c369164d97039b6f2e4713aa6d39d69d00f88a1c41368b7594ecc618",
+        "animation_file": "previews/effects/arcade_night_like.png",
+        "animation_sha256": "7a3712177011773077a6ad10bb6df559baad908a1b0153b9d93cf85843794968"
+      },
+      "arcade_phosphor_like": {
+        "label": "Arcade Phosphor",
+        "file": "effects/arcade_phosphor_like.png",
+        "sha256": "148bc7de636c5cfb479eea9e4dd7cfbcabd39dfe726cea7b9f02844c0a93399a",
+        "animation_file": "previews/effects/arcade_phosphor_like.png",
+        "animation_sha256": "ac04cfbb5e3e4c554323cf416039e0faff5bf808a270acfaa72a70a0e7c78174"
+      },
+      "bitplane_scramble_like": {
+        "label": "Bitplane Scramble",
+        "file": "effects/bitplane_scramble_like.png",
+        "sha256": "39703774343e6ea33212c4828c23df76597640e008877f02a37c1799f9860797",
+        "animation_file": "previews/effects/bitplane_scramble_like.png",
+        "animation_sha256": "8e2926ae56f4fef6db2291ab89d4779541b3279bc75b80a87a53686148549615"
+      },
+      "block_corrupt_like": {
+        "label": "Block Corrupt",
+        "file": "effects/block_corrupt_like.png",
+        "sha256": "36f44cc72d29fb063f54a3284118a0bf46eb1cf2fdd00af098fdd30b3489d309",
+        "animation_file": "previews/effects/block_corrupt_like.png",
+        "animation_sha256": "1cea92f37e42068b17d38c6ccc0750a39fca0ee24c3aaa9a479a3de059c99b2d"
+      },
+      "block_jitter": {
+        "label": "Block Jitter",
+        "file": "effects/block_jitter.png",
+        "sha256": "e62a2f0f957f98f2a14d4da9bd8fd9d66d12a794786ca798a3adbf0137c559e4",
+        "animation_file": "previews/effects/block_jitter.png",
+        "animation_sha256": "df18e2ff1a9e08e6c4ffee76e6e99decc15026398f009ff584d4bd208704511f"
+      },
+      "blur": {
+        "label": "Blur",
+        "file": "effects/blur.png",
+        "sha256": "c0f79c0a9229e80820981c42561e7b9abc7eb126f6c269ebaf539a6864377799",
+        "animation_file": "previews/effects/blur.png",
+        "animation_sha256": "03a823077f6ac608c1384ee7992c25953289214901256451eb087075f3ff589d"
+      },
+      "broken_mux_like": {
+        "label": "Broken Mux",
+        "file": "effects/broken_mux_like.png",
+        "sha256": "4e4624b8fa28c3f853d00cd1818bfe18676ac2bb1999b3eba622ac70c7f46abd",
+        "animation_file": "previews/effects/broken_mux_like.png",
+        "animation_sha256": "92358eb7cd9c1c688e7d486e032d9d6dd34431797b436ad245dabf187ef0029b"
+      },
+      "channel_drift_like": {
+        "label": "Channel Drift",
+        "file": "effects/channel_drift_like.png",
+        "sha256": "0a5851d3f18bd09b34514b5c125dd98127e687ffe40fbf599196cf60c796298d",
+        "animation_file": "previews/effects/channel_drift_like.png",
+        "animation_sha256": "9ed3d4984b3623c4d6f3a640a77b9e1be701e16f23a3ac3f9edc37e18bfacfd5"
+      },
+      "channel_smear_like": {
+        "label": "Channel Smear",
+        "file": "effects/channel_smear_like.png",
+        "sha256": "a1694b6ee8542dc2ad8b2a200df4919b19328d388e25631c701e81b9ad2b0e50",
+        "animation_file": "previews/effects/channel_smear_like.png",
+        "animation_sha256": "d53983530b0b522f3c9fc0a9e98b65070f26b72c37f1622503be6a2da890f9ed"
+      },
+      "channels": {
+        "label": "Channels",
+        "file": "effects/channels.png",
+        "sha256": "f1161181f321709b63d9d334f5f47316c206e6aac345ee62e3aeb0f15e503ab3",
+        "animation_file": "previews/effects/channels.png",
+        "animation_sha256": "ba5456b0cf1c6c338d3d3117acfa08623a3d40f7073931512c5245d95edf6284"
+      },
+      "chaos_breach_like": {
+        "label": "Chaos Breach",
+        "file": "effects/chaos_breach_like.png",
+        "sha256": "e29b341bd2e85b6a2136888321771590b30be6b49d2c0ccecd40d4b6757af327",
+        "animation_file": "previews/effects/chaos_breach_like.png",
+        "animation_sha256": "e9fac47aea7fc88315bc0e4f0f77f15945adcb853f8e09c46839ab5fc4223d73"
+      },
+      "chaos_vortex_like": {
+        "label": "Chaos Vortex",
+        "file": "effects/chaos_vortex_like.png",
+        "sha256": "5f522fb17643ec8f932e16ce7f4911e01487cd5add75b9eab779b7b56022834d",
+        "animation_file": "previews/effects/chaos_vortex_like.png",
+        "animation_sha256": "12ca47a03fc7884823e5c8b401b578b36b25019d65c64654b1577039b1189a04"
+      },
+      "chromatic": {
+        "label": "Chromatic (Glitzle)",
+        "file": "effects/chromatic.png",
+        "sha256": "fd53a070647f4ac8911f98aa25f5179392910e899d8953dd5740d53dc63a06e7",
+        "animation_file": "previews/effects/chromatic.png",
+        "animation_sha256": "68bed0dbc282b566fba0f689d76c1d96a36090c754f842c5dd38fd0eb438cf6d"
+      },
+      "codec_crush_like": {
+        "label": "Codec Crush",
+        "file": "effects/codec_crush_like.png",
+        "sha256": "6b067696ffe3c3fb86348fb17cd3b6f9a8826e9387fe2fae5923e120ec5979df",
+        "animation_file": "previews/effects/codec_crush_like.png",
+        "animation_sha256": "35813134910d95b560cda172fdc02f7656fb7e6a649c7f4409ef6d5146b73281"
+      },
+      "compression_spike_like": {
+        "label": "Compression Spike",
+        "file": "effects/compression_spike_like.png",
+        "sha256": "aea4b958078fdfb5a9c6ac45083d51e48da66b6da5858a3c73d0dcba9a728514",
+        "animation_file": "previews/effects/compression_spike_like.png",
+        "animation_sha256": "4b9e7a931742eb571beb3c0f94a854cc57023dc080102f8f37f0b73002af7b8f"
+      },
+      "contrast": {
+        "label": "Contrast",
+        "file": "effects/contrast.png",
+        "sha256": "10a5c72c2dffe0b296ce3eb06155d410f0c53846d50ddbd53e033d7bd49d337d",
+        "animation_file": "previews/effects/contrast.png",
+        "animation_sha256": "a2059acbe16a318e6db609567f41de2a47615c1e4ee62193364a44aa11f2ad9e"
+      },
+      "datamosh_breakup_like": {
+        "label": "Datamosh Breakup",
+        "file": "effects/datamosh_breakup_like.png",
+        "sha256": "45c237a41e726e8a4c3390bdae2b5706e4b852f86c66d7da9349a73f9792790c",
+        "animation_file": "previews/effects/datamosh_breakup_like.png",
+        "animation_sha256": "bfe382415d7d40122925876389b944ce26384bf781bdd71f7a7f6361055f20d8"
+      },
+      "datamosh_drift_like": {
+        "label": "Datamosh Drift",
+        "file": "effects/datamosh_drift_like.png",
+        "sha256": "a0d94fd7759d4482e2e85f3ba627b7fdfcc8cf27c1254cc0169570c658c7bc53",
+        "animation_file": "previews/effects/datamosh_drift_like.png",
+        "animation_sha256": "c1f10bff3ef62533b204c7e1de20d064c693b5ad2d0ccd7b12cf55debe95ebab"
+      },
+      "destructive_shatter_corrupt_like": {
+        "label": "Destructive Shatter Corrupt",
+        "file": "effects/destructive_shatter_corrupt_like.png",
+        "sha256": "09dfe591f0c28e6f877c92b0ddf749c6048be3fa05ed8d284024bb59d9e66c30",
+        "animation_file": "previews/effects/destructive_shatter_corrupt_like.png",
+        "animation_sha256": "b0715604f605a90bbc19b034e89d5d38f0bd35e3a2d057b93bd693e2ec2c47b1"
+      },
+      "digital_tear_like": {
+        "label": "Digital Tear",
+        "file": "effects/digital_tear_like.png",
+        "sha256": "2ee5784fed64cb75d8d1b3cd4f452240cf4e77f4f36cdf155aca7e0d3d6edfe9",
+        "animation_file": "previews/effects/digital_tear_like.png",
+        "animation_sha256": "6491a15ba1e12365b22ec75fba84f5fbae6777f253f15a545352f9d90e0214b3"
+      },
+      "film_decay_like": {
+        "label": "Film Decay",
+        "file": "effects/film_decay_like.png",
+        "sha256": "f29bc52b30f10661163f073acd8ba673b472cba24fccee56321eed7905b01d39",
+        "animation_file": "previews/effects/film_decay_like.png",
+        "animation_sha256": "4ce5eae5e57a954da41aff5577aab8c91339eaced12384f90fca2578eab36354"
+      },
+      "glitch_warpfield_like": {
+        "label": "Glitch Warpfield",
+        "file": "effects/glitch_warpfield_like.png",
+        "sha256": "b486747faf2d738f62af4f1a8ae4dd40fecc05a05a44f9cb53725bebf92b7633",
+        "animation_file": "previews/effects/glitch_warpfield_like.png",
+        "animation_sha256": "13906361efdbef57b6ab4a1da8e19f5953ed1c27baa5910985da43f325845a43"
+      },
+      "grayscale": {
+        "label": "Grayscale",
+        "file": "effects/grayscale.png",
+        "sha256": "5ec2c454c43a60b8912536c2933cb72cf7e6df243e837ff3649190d7c887d709",
+        "animation_file": "previews/effects/grayscale.png",
+        "animation_sha256": "aa6b1f702ecbdb74e300c9131697c91a74c7da7e9479862ac6dd3ac01418e09d"
+      },
+      "hyper_glitch_like": {
+        "label": "Hyper Glitch",
+        "file": "effects/hyper_glitch_like.png",
+        "sha256": "538214153b285b5766903ca7fd9fa12580a9bd7690fd29ec88a7111abeb89038",
+        "animation_file": "previews/effects/hyper_glitch_like.png",
+        "animation_sha256": "53d1bd58eae4a6c27195f0db22d1d9ca68c6f322be7c104b49af2a1e9187ef24"
+      },
+      "invert": {
+        "label": "Invert",
+        "file": "effects/invert.png",
+        "sha256": "5e25a332a0c30e6d4fd73c2827b6b89817aa404d4720b32d803572a7f9060bce",
+        "animation_file": "previews/effects/invert.png",
+        "animation_sha256": "5291221bfc647ae900d7bfed9bf30391bba27ff2f87767e452d042251ee45b5c"
+      },
+      "mirror_diamond": {
+        "label": "Diamond Mirror",
+        "file": "effects/mirror_diamond.png",
+        "sha256": "ae5018776585a9acbf1e47e88b536c3ec2de2ea90f2f6c8c74426cb4ca9fe31f",
+        "animation_file": "previews/effects/mirror_diamond.png",
+        "animation_sha256": "bbf7da32cfacb6b101225b866f7aa6e1411bd5e43dce767cd66cf2f8a2ad3d17"
+      },
+      "mirror_h": {
+        "label": "Horizontal Mirror",
+        "file": "effects/mirror_h.png",
+        "sha256": "e4381b5b21bd603408e7fba18ec891e6c5fb96483dcd48e44d442522fd8866fa",
+        "animation_file": "previews/effects/mirror_h.png",
+        "animation_sha256": "9df33a0a874072a150d6bd12f0edbf30098a4245adbb309105f8f914817284ad"
+      },
+      "mirror_quad": {
+        "label": "Quad Mirror",
+        "file": "effects/mirror_quad.png",
+        "sha256": "ace2f792181ad6222c8be546d543104dafbca9808a346e5303a906422c867b79",
+        "animation_file": "previews/effects/mirror_quad.png",
+        "animation_sha256": "3bf63cb98b3fbfa48061cc71f134114e8ae25ea94c1ccc98dc7887daa2501e90"
+      },
+      "mirror_v": {
+        "label": "Vertical Mirror",
+        "file": "effects/mirror_v.png",
+        "sha256": "72dd1ca2007d2b439a417ac34978624d79588d20a027a43a663bf5380e523b72",
+        "animation_file": "previews/effects/mirror_v.png",
+        "animation_sha256": "91ca30a3cb724c94e4baae07c8a893f23632cb59d50f6f77a5e21307153bfef0"
+      },
+      "noise": {
+        "label": "Noise",
+        "file": "effects/noise.png",
+        "sha256": "d329d5a08e160945ac47025bfe2fba25b6b73111d0f3e0ba1edfc6eefb38cc18",
+        "animation_file": "previews/effects/noise.png",
+        "animation_sha256": "fc304788c6add6e8bfeae70f15ee80654096d5d0ba536034b5953e1dad83f6d8"
+      },
+      "packet_desync_like": {
+        "label": "Packet Desync",
+        "file": "effects/packet_desync_like.png",
+        "sha256": "3ea28f4b3bba6e1d729d6df01a5ba2ddc93d78d1906435ea2ee1a6257745a77d",
+        "animation_file": "previews/effects/packet_desync_like.png",
+        "animation_sha256": "cdde8266df6b8006c1af216c415e5650b4beebf0ab9cc8b8268c4f35052480f0"
+      },
+      "packet_loss_like": {
+        "label": "Packet Loss",
+        "file": "effects/packet_loss_like.png",
+        "sha256": "c44ca1ea983d678070b3309216f29418c4a79d154613e7e83a3163ac2cb4b32b",
+        "animation_file": "previews/effects/packet_loss_like.png",
+        "animation_sha256": "57539499859fbcedfc2b1746e8c0b7852fb34062dc19fc47cd73782e76c6d09a"
+      },
+      "phase_error_like": {
+        "label": "Phase Error",
+        "file": "effects/phase_error_like.png",
+        "sha256": "0320d9d8dc63bc7cdec9c0b8f18bbaaf1a3d2b30e7231f1ac28212a8cc6a07d7",
+        "animation_file": "previews/effects/phase_error_like.png",
+        "animation_sha256": "ac6e9549790872697f530d246675b2a0c47284648e86bd4e2a7a8ac5bb339670"
+      },
+      "pixel_sort": {
+        "label": "Pixel Sort (Glitzle)",
+        "file": "effects/pixel_sort.png",
+        "sha256": "c8e7305f22c8e68d255ab5f29de03a3d8fb916a64385ac7b71e6914bda99392d",
+        "animation_file": "previews/effects/pixel_sort.png",
+        "animation_sha256": "d430f78de74b8d27d7c9ce1477555f660f6227b94d966cc6c73f6394df579ae4"
+      },
+      "pixelate": {
+        "label": "Pixelate",
+        "file": "effects/pixelate.png",
+        "sha256": "a2eb8d22fd44046d2f1b416bc2fa20be078df6b58a9b4792bb6fc17e67ad105d",
+        "animation_file": "previews/effects/pixelate.png",
+        "animation_sha256": "6a2b918d98ecefed6d66ed7dff68504c92f13ec53e20f59941f88634a8271f44"
+      },
+      "posterize": {
+        "label": "Posterize",
+        "file": "effects/posterize.png",
+        "sha256": "6958c89ff5852ed5d2f42f104f4adca93500a1694f28551651efe843ad27c0e4",
+        "animation_file": "previews/effects/posterize.png",
+        "animation_sha256": "5a8ad11ca990eb3226eea057fa7f672823e74ea17074c3c57448ba506764272e"
+      },
+      "rectangles": {
+        "label": "Rectangles",
+        "file": "effects/rectangles.png",
+        "sha256": "fe47060cf11af422f740bea610ddc4492d26243f8b6553b9268c8723ff3fd202",
+        "animation_file": "previews/effects/rectangles.png",
+        "animation_sha256": "99bb5545bf813069bcb3333c6c8f69b6decbb9becead17e75648342c39218f60"
+      },
+      "retro_crt_like": {
+        "label": "Retro CRT",
+        "file": "effects/retro_crt_like.png",
+        "sha256": "f508ec9b53a3d9f352b8df2ac1b35b46c600721b2e58bce424ad33843d1a9d3a",
+        "animation_file": "previews/effects/retro_crt_like.png",
+        "animation_sha256": "72c5dc494b07acf030ffab7fa7bc9c982e64dd92bac998799a65ed2abc514c62"
+      },
+      "rgb_shift": {
+        "label": "RGB Shift",
+        "file": "effects/rgb_shift.png",
+        "sha256": "b623f4a4ada613061d84148b7bd7b5bbc9207c83d7ef4ee3f1c1c65c9dc9c608",
+        "animation_file": "previews/effects/rgb_shift.png",
+        "animation_sha256": "b5242455973ffd4200d9bd84b03eb5f71c62e2289640a7f8d6ba8722f92642e7"
+      },
+      "saturation": {
+        "label": "Saturation",
+        "file": "effects/saturation.png",
+        "sha256": "7e2e61a392052e4abbb9d5caa660ed352db462a05fcadba09f3f277bb9cc2376",
+        "animation_file": "previews/effects/saturation.png",
+        "animation_sha256": "a107f88662050a8ac0c7bf00196e38a09b9fc0bceb9cf5c84b63c910e1b3c8d3"
+      },
+      "scale": {
+        "label": "Scale",
+        "file": "effects/scale.png",
+        "sha256": "be726b3207b28830a2fea32e27f200cc63fa60b2652825356b712ac48acdcb11",
+        "animation_file": "previews/effects/scale.png",
+        "animation_sha256": "9599833a9870117e81e1641b2ee17bcbc233e72237a96fbadba7a1c067a7c82a"
+      },
+      "scan_corrupt_like": {
+        "label": "Scan Corrupt",
+        "file": "effects/scan_corrupt_like.png",
+        "sha256": "f6d5e9b73bf5d5523ab508096c82003a4ea718bca8eb29cbdf92973d9616f34d",
+        "animation_file": "previews/effects/scan_corrupt_like.png",
+        "animation_sha256": "32ebcad6c418dd78b13718e858455d2561c36238eb832cee8dccf54f3f2e2ec4"
+      },
+      "scanline_corrupt": {
+        "label": "Scanline Corrupt",
+        "file": "effects/scanline_corrupt.png",
+        "sha256": "6778d7b0893ca932edbfb0243fb00289221b925c2b5530f4a368bda07fa6d8be",
+        "animation_file": "previews/effects/scanline_corrupt.png",
+        "animation_sha256": "6d48ee10b44f68fab0d6bf1ede0d47dac06f1ec054604842584cc5a784ba5494"
+      },
+      "scanline_desync_like": {
+        "label": "Scanline Desync",
+        "file": "effects/scanline_desync_like.png",
+        "sha256": "6cef2bcd0924d9b734a62568f9af65e698f5f954c744d1227b5000e983bf3934",
+        "animation_file": "previews/effects/scanline_desync_like.png",
+        "animation_sha256": "bfc707f3c8234b7b87872b920077b81f98450f95f53d90de331e358d65cdb993"
+      },
+      "scanlines": {
+        "label": "Scanlines",
+        "file": "effects/scanlines.png",
+        "sha256": "4cfa4564adc5792904b196bc668f53f49815e0b1624082f0c8cad70ac758c541",
+        "animation_file": "previews/effects/scanlines.png",
+        "animation_sha256": "206e1228d2ac0857a549cb0f83d1435b1dd1d43497104716987cad4f345e3830"
+      },
+      "signal_bleed_like": {
+        "label": "Signal Bleed",
+        "file": "effects/signal_bleed_like.png",
+        "sha256": "ca510a291de52c0c0bc33ac1f7fa92fafdc5a0b03f3a6fac7792b06608fe7a15",
+        "animation_file": "previews/effects/signal_bleed_like.png",
+        "animation_sha256": "df9db48d67a28cc85b1640345a27617971d05b36b4d0dd0b0fbb1617386c7c4e"
+      },
+      "slice_shift_x": {
+        "label": "Vertical Slice Shift",
+        "file": "effects/slice_shift_x.png",
+        "sha256": "1bbf2e8a4593be2a14c1ae01a67e303dda10e3f5e28060bb21839d157d8e7e65",
+        "animation_file": "previews/effects/slice_shift_x.png",
+        "animation_sha256": "2aefdd5a1a42aeb96ff0f4ab9b4590be7bf1c3409977a26e64a98dc11b2542e3"
+      },
+      "slice_shift_y": {
+        "label": "Horizontal Slice Shift",
+        "file": "effects/slice_shift_y.png",
+        "sha256": "17fee7e70e2fd1c7b662d3220c6ad7be5ffd711295ed79735667699349c25121",
+        "animation_file": "previews/effects/slice_shift_y.png",
+        "animation_sha256": "4319cefe3046d02acd0b7cd0a0367bd88b25879edb083c0ae92f8f103dff9dca"
+      },
+      "slitscan": {
+        "label": "Slitscan (Glitzle)",
+        "file": "effects/slitscan.png",
+        "sha256": "c3438eaf821683864da1f02615e995815ddaa6379e8312ec4fa7ceef79c3ce11",
+        "animation_file": "previews/effects/slitscan.png",
+        "animation_sha256": "693473d771523b5e626055a4926e6269bf761e2b92e46467847ed828a2d34e7e"
+      },
+      "stutter_tear_like": {
+        "label": "Stutter Tear",
+        "file": "effects/stutter_tear_like.png",
+        "sha256": "41f2d35b1e26f6ea1da9572c20e0849cbd7df8df1590beb3649d10daf1bfcd54",
+        "animation_file": "previews/effects/stutter_tear_like.png",
+        "animation_sha256": "620e7b93e6ff2567612fd41a664418ac8df2e5bf490d71d8506fadce81ad88dd"
+      },
+      "tear": {
+        "label": "Tear",
+        "file": "effects/tear.png",
+        "sha256": "5da7344119264b98140b1f50f269f9109f358f9bd91ecfddf842924d90de7446",
+        "animation_file": "previews/effects/tear.png",
+        "animation_sha256": "d492d0da47f17f56537027cbe8f7b90ab5b26e022d64729f9b4287f8781cdc7e"
+      },
+      "tetrys": {
+        "label": "Tetrys",
+        "file": "effects/tetrys.png",
+        "sha256": "c18cf16835a69cb419f7ec576f43293114eabd2b184097b51f90df41c3a154b6",
+        "animation_file": "previews/effects/tetrys.png",
+        "animation_sha256": "9c9e766402fe27bca216dc585c37f9ea887cf744e92f286a6485fe4cd09a05d8"
+      },
+      "total_entropy_like": {
+        "label": "Total Entropy",
+        "file": "effects/total_entropy_like.png",
+        "sha256": "1c109081300f5a87bf7b4696207bca9c7317e8916f2752e86715c5ac8d776e13",
+        "animation_file": "previews/effects/total_entropy_like.png",
+        "animation_sha256": "37e5a210907f052988ff42cad7ae1d6124f897ff20ab0d8fbbbf2aa89d144e41"
+      },
+      "tube_tv_soft_like": {
+        "label": "Tube TV Soft",
+        "file": "effects/tube_tv_soft_like.png",
+        "sha256": "7893a8fb26a5c740d85c0b0666b29e1562b5c2f6a16479693701dc30fc08c2ee",
+        "animation_file": "previews/effects/tube_tv_soft_like.png",
+        "animation_sha256": "8b032fb4e1e1a3593a9b5de2ff57ffe0c6543eaa2c47e110a267c38bfedc0ffc"
+      },
+      "vhs": {
+        "label": "VHS",
+        "file": "effects/vhs.png",
+        "sha256": "c0c77a4e28f049c98c09abd1c383b4c41f8ca14c1bc62e7674631d74af3e7f52",
+        "animation_file": "previews/effects/vhs.png",
+        "animation_sha256": "30442cf196c65c9dcb0a0bf12c598b974e773e7610bf7c57244ad5d89a99fefa"
+      },
+      "vhs_soft_bleed_like": {
+        "label": "VHS Soft Bleed",
+        "file": "effects/vhs_soft_bleed_like.png",
+        "sha256": "5cabdc6f63c32f4971561f753fa460638e9229bacb4976cafe378b5f0232134b",
+        "animation_file": "previews/effects/vhs_soft_bleed_like.png",
+        "animation_sha256": "48036636f348cbbfed16b683683033736b63cc6831d4ddb6801b3b6249c2b1ca"
+      },
+      "vignette": {
+        "label": "Vignette",
+        "file": "effects/vignette.png",
+        "sha256": "25de2d6953296f8da587588ace557ba4b9199a338bd9c424d83cc7188f804d50",
+        "animation_file": "previews/effects/vignette.png",
+        "animation_sha256": "a95b5108e7228c6d9e2c3adf746cd4840fd3ac4435d3744936ae5c07c0fb72d2"
+      },
+      "violent_impact_like": {
+        "label": "Violent Impact",
+        "file": "effects/violent_impact_like.png",
+        "sha256": "0038fa3ef26726a1714aab0ef4534706f4be30c6d911dfd705e0ddd67ac0737d",
+        "animation_file": "previews/effects/violent_impact_like.png",
+        "animation_sha256": "e6024678132b5c137a20e4fb2323a5b625caf331cd2a3a7101fd3c0fdcef9e79"
+      },
+      "violent_like": {
+        "label": "Violent",
+        "file": "effects/violent_like.png",
+        "sha256": "eea3c1e0186d11e53b9414f917bd5ae635689c87cf47efdf4b3e795bf14c86d9",
+        "animation_file": "previews/effects/violent_like.png",
+        "animation_sha256": "dc4a229fa013c9d037d21918fd0c61fb6dabd1679c52c26d835122fd75dd24ff"
+      },
+      "xor": {
+        "label": "XOR Interference",
+        "file": "effects/xor.png",
+        "sha256": "3ac5e13b68ace8bdc5147a453afe2c7aa6013ba5f5cec8c6b0f5d203130d1c4c",
+        "animation_file": "previews/effects/xor.png",
+        "animation_sha256": "71eec9fcf6ad250b83a43597ea5ff8f8a9b26a5f2798764cf5ae434ae7b451a8"
+      },
+      "ziti": {
+        "label": "Ziti",
+        "file": "effects/ziti.png",
+        "sha256": "56e826d2f67bc563a0aed46d00e01d11ec86a92c37a68954508e773375f6e96d",
+        "animation_file": "previews/effects/ziti.png",
+        "animation_sha256": "290e7eba7d3ff2797ecc9f6ab616a76eb686a2d9c5473b573ba4276e8ff23607"
+      },
+      "zoom_shake": {
+        "label": "Zoom Shake",
+        "file": "effects/zoom_shake.png",
+        "sha256": "b3bf37ced08eaa290b26ca4c950bf9729be1d00b9e7d270731f90f897bd0be8e",
+        "animation_file": "previews/effects/zoom_shake.png",
+        "animation_sha256": "e5bba5ec1049a101de9519c0ab9ac891d59f8e57d5de38b90fc85e8b46a67ac1"
+      }
+    }
+  }
+}

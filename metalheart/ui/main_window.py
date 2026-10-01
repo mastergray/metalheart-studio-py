@@ -362,6 +362,7 @@ class MainWindow(QMainWindow):
             "QSlider::handle:horizontal { background: #4ccbd1; width: 12px; margin: -5px 0; }"
             "#panelTitle { color: #7fe4e7; font-weight: bold; letter-spacing: 1px; }"
             "#summary, #audioSummary { color: #9aa7a9; }"
+            "#animatedOptionPreview { background: #050708; border: 1px solid #30383a; }"
             "#diagnostics { background: #131718; border-top: 1px solid #293133; padding: 6px; }"
         )
 

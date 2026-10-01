@@ -25,6 +25,7 @@ from metalheart.catalog import CAMERAS  # Populate supported camera modes
 from metalheart.catalog import FORMS  # Populate supported form geometries
 from metalheart.catalog import PALETTES  # Populate supported form palettes
 from metalheart.catalog import REACTIVITY_PRESETS  # Populate explicit audio mappings
+from metalheart.ui.animated_thumbnail_widget import AnimatedThumbnailWidget  # Play camera studies without rendering
 from metalheart.ui.effect_stack_widget import EffectStackWidget  # Edit scoped post chains
 from metalheart.ui.thumbnail_icons import applyComboThumbnails  # Decorate catalog selectors from packaged assets
 
@@ -176,6 +177,10 @@ class SceneInspector(QWidget):
         form.addRow("Palette", self._palette)
         self._camera = self._combo(CAMERAS, "cameras")
         form.addRow("Camera", self._camera)
+        self._cameraPreview = AnimatedThumbnailWidget.init()
+        self._camera.currentTextChanged.connect(self._cameraPreviewSelected)
+        self._cameraPreview.setOption("cameras", self._camera.currentText())
+        form.addRow("Motion preview", self._cameraPreview)
         self._formMaterial = self._combo(["metallic", "matte"])
         form.addRow("Material", self._formMaterial)
         self._formSampling = self._combo(["bilinear", "nearest"])
@@ -273,6 +278,11 @@ class SceneInspector(QWidget):
             applyComboThumbnails(control, thumbnailCatalog)
         control.currentTextChanged.connect(self._publishScene)
         return control
+
+    # :: STRING -> NONE
+    # Updates the packaged camera motion study without invoking the renderer
+    def _cameraPreviewSelected(self, cameraId: str) -> None:
+        self._cameraPreview.setOption("cameras", cameraId)
 
     # :: FLOAT, FLOAT, FLOAT, INT -> qDoubleSpinBox
     # Creates a bounded floating-point scene property control

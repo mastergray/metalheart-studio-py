@@ -5,6 +5,7 @@ from __future__ import annotations  # Preserve forward-compatible annotations on
 import copy  # Build isolated fixed-fixture scenes
 import hashlib  # Fingerprint catalogs and generated thumbnail bytes
 import json  # Read and write portable deterministic manifests
+import math  # Sample camera spans and animated effect signals
 from pathlib import Path  # Locate packaged assets and caller-selected outputs
 from types import SimpleNamespace  # Build fixed renderer parameters without audio decoding
 from typing import Any, Dict, List, Optional  # Python 3.8-compatible collection annotations
@@ -27,16 +28,20 @@ from metalheart.reference_backend import REFERENCE_VERSION  # Reject assets from
 from metalheart.reference_backend import ReferenceBackend  # Render fixed form, camera, and palette frames
 
 
-THUMBNAIL_SCHEMA_VERSION = 1
-THUMBNAIL_VERSION = "2026-10-01-v1"
+THUMBNAIL_SCHEMA_VERSION = 2
+THUMBNAIL_VERSION = "2026-10-01-v2"
 THUMBNAIL_WIDTH = 128
 THUMBNAIL_HEIGHT = 72
 THUMBNAIL_FPS = 12
 THUMBNAIL_SEED = 23
 THUMBNAIL_TIME_SEC = 1.75
 THUMBNAIL_EFFECT_FRAMES = 32
+THUMBNAIL_ANIMATION_FPS = 8
+THUMBNAIL_ANIMATION_FRAMES = 16
+THUMBNAIL_ANIMATION_COLUMNS = 4
+THUMBNAIL_CAMERA_SPAN_SEC = 10.0
 THUMBNAIL_ROOT = (
-    Path(__file__).resolve().parent / "assets" / "thumbnails" / "v1"
+    Path(__file__).resolve().parent / "assets" / "thumbnails" / "v2"
 )
 THUMBNAIL_CATALOGS: Dict[str, List[str]] = {
     "forms": list(FORMS),
@@ -44,6 +49,7 @@ THUMBNAIL_CATALOGS: Dict[str, List[str]] = {
     "palettes": list(PALETTES),
     "effects": effectIds(),
 }
+THUMBNAIL_ANIMATED_CATALOGS = ("cameras", "effects")
 
 
 # :: VOID -> STRING
@@ -101,15 +107,26 @@ class ThumbnailCatalog:
         entry = self._manifest["catalogs"].get(catalog, {}).get(optionId)
         if not isinstance(entry, dict):
             return None
-        path = (self._root / str(entry.get("file", ""))).resolve()
-        try:
-            path.relative_to(self._root)
-        except ValueError:
+        return self._entryPath(entry, "file")
+
+    # :: STRING, STRING -> ARRAY<STRING, ANY>?
+    # Returns one spritesheet contract and path without decoding its frames
+    def animation(self, catalog: str, optionId: str) -> Optional[Dict[str, Any]]:
+        if self._manifest is None:
             return None
-        return path if path.is_file() else None
+        entry = self._manifest["catalogs"].get(catalog, {}).get(optionId)
+        if not isinstance(entry, dict):
+            return None
+        path = self._entryPath(entry, "animation_file")
+        metadata = self._manifest.get("animation")
+        if path is None or not isinstance(metadata, dict):
+            return None
+        result = copy.deepcopy(metadata)
+        result["path"] = path
+        return result
 
     # :: VOID -> [STRING]
-    # Validates every declared file and content hash without changing assets
+    # Validates every declared still, spritesheet, and content hash
     def validate(self) -> List[str]:
         if self._manifest is None:
             return ["thumbnail manifest is missing or stale"]
@@ -117,18 +134,65 @@ class ThumbnailCatalog:
         for catalog, identifiers in THUMBNAIL_CATALOGS.items():
             for optionId in identifiers:
                 entry = self._manifest["catalogs"][catalog][optionId]
-                path = self.path(catalog, optionId)
-                if path is None:
-                    errors.append("missing thumbnail: {0}/{1}".format(catalog, optionId))
-                    continue
-                digest = hashlib.sha256(path.read_bytes()).hexdigest()
-                if digest != entry.get("sha256"):
-                    errors.append("thumbnail hash mismatch: {0}/{1}".format(catalog, optionId))
+                self._validateFile(
+                    errors,
+                    catalog,
+                    optionId,
+                    entry,
+                    "file",
+                    "sha256",
+                    "thumbnail",
+                )
+                if catalog in THUMBNAIL_ANIMATED_CATALOGS:
+                    self._validateFile(
+                        errors,
+                        catalog,
+                        optionId,
+                        entry,
+                        "animation_file",
+                        "animation_sha256",
+                        "animation",
+                    )
         return errors
 
     #
     # Protected Methods
     #
+
+    # :: ARRAY<STRING, ANY>, STRING -> PATH?
+    # Resolves one manifest path while rejecting traversal outside the asset root
+    def _entryPath(self, entry: Dict[str, Any], key: str) -> Optional[Path]:
+        value = entry.get(key)
+        if not isinstance(value, str) or not value:
+            return None
+        path = (self._root / value).resolve()
+        try:
+            path.relative_to(self._root)
+        except ValueError:
+            return None
+        return path if path.is_file() else None
+
+    # :: [STRING], STRING, STRING, ARRAY<STRING, ANY>, STRING, STRING, STRING -> NONE
+    # Validates one declared asset path and digest with a precise diagnostic
+    def _validateFile(
+        self,
+        errors: List[str],
+        catalog: str,
+        optionId: str,
+        entry: Dict[str, Any],
+        fileKey: str,
+        hashKey: str,
+        assetType: str,
+    ) -> None:
+        path = self._entryPath(entry, fileKey)
+        if path is None:
+            errors.append("missing {0}: {1}/{2}".format(assetType, catalog, optionId))
+            return
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        if digest != entry.get(hashKey):
+            errors.append(
+                "{0} hash mismatch: {1}/{2}".format(assetType, catalog, optionId)
+            )
 
     # :: VOID -> NONE
     # Reads and accepts only a complete current manifest
@@ -157,6 +221,17 @@ class ThumbnailCatalog:
             return False
         if manifest.get("height") != THUMBNAIL_HEIGHT:
             return False
+        expectedAnimation = {
+            "width": THUMBNAIL_WIDTH,
+            "height": THUMBNAIL_HEIGHT,
+            "fps": THUMBNAIL_ANIMATION_FPS,
+            "frame_count": THUMBNAIL_ANIMATION_FRAMES,
+            "columns": THUMBNAIL_ANIMATION_COLUMNS,
+            "camera_span_sec": THUMBNAIL_CAMERA_SPAN_SEC,
+            "effect_preroll_frames": THUMBNAIL_EFFECT_FRAMES,
+        }
+        if manifest.get("animation") != expectedAnimation:
+            return False
         catalogs = manifest.get("catalogs")
         if not isinstance(catalogs, dict):
             return False
@@ -164,6 +239,12 @@ class ThumbnailCatalog:
             entries = catalogs.get(catalog)
             if not isinstance(entries, dict) or list(entries) != identifiers:
                 return False
+            if catalog in THUMBNAIL_ANIMATED_CATALOGS:
+                for entry in entries.values():
+                    if not isinstance(entry, dict):
+                        return False
+                    if not entry.get("animation_file") or not entry.get("animation_sha256"):
+                        return False
         return True
 
     #
@@ -232,7 +313,7 @@ class ThumbnailGenerator:
             str(entry["id"]): str(entry["label"])
             for entry in publicEffectCatalog()
         }
-        catalogs: Dict[str, Dict[str, Dict[str, str]]] = {
+        catalogs: Dict[str, Dict[str, Dict[str, Any]]] = {
             catalog: {} for catalog in THUMBNAIL_CATALOGS
         }
         for formId in FORMS:
@@ -245,14 +326,16 @@ class ThumbnailGenerator:
                 frame,
             )
         for cameraId in CAMERAS:
-            frame = self._renderScene("radial", cameraId, "jungle")
-            catalogs["cameras"][cameraId] = self._write(
+            frames = self._cameraFrames(cameraId)
+            entry = self._write(
                 outputRoot,
                 "cameras",
                 cameraId,
                 cameraId.replace("_", " ").title(),
-                frame,
+                frames[len(frames) // 2],
             )
+            entry.update(self._writeAnimation(outputRoot, "cameras", cameraId, frames))
+            catalogs["cameras"][cameraId] = entry
         for paletteId in PALETTES:
             frame = self._renderScene("mercury", "orbit", paletteId)
             catalogs["palettes"][paletteId] = self._write(
@@ -264,14 +347,16 @@ class ThumbnailGenerator:
             )
         effectBase = self._effectBase()
         for effectId in effectIds():
-            frame = self._effectThumbnail(effectBase, effectId)
-            catalogs["effects"][effectId] = self._write(
+            frames = self._effectFrames(effectBase, effectId)
+            entry = self._write(
                 outputRoot,
                 "effects",
                 effectId,
                 labels[effectId],
-                frame,
+                frames[len(frames) // 2],
             )
+            entry.update(self._writeAnimation(outputRoot, "effects", effectId, frames))
+            catalogs["effects"][effectId] = entry
         manifest: Dict[str, Any] = {
             "schema_version": THUMBNAIL_SCHEMA_VERSION,
             "thumbnail_version": THUMBNAIL_VERSION,
@@ -279,6 +364,15 @@ class ThumbnailGenerator:
             "catalog_fingerprint": catalogFingerprint(),
             "width": THUMBNAIL_WIDTH,
             "height": THUMBNAIL_HEIGHT,
+            "animation": {
+                "width": THUMBNAIL_WIDTH,
+                "height": THUMBNAIL_HEIGHT,
+                "fps": THUMBNAIL_ANIMATION_FPS,
+                "frame_count": THUMBNAIL_ANIMATION_FRAMES,
+                "columns": THUMBNAIL_ANIMATION_COLUMNS,
+                "camera_span_sec": THUMBNAIL_CAMERA_SPAN_SEC,
+                "effect_preroll_frames": THUMBNAIL_EFFECT_FRAMES,
+            },
             "fixture": {
                 "fps": THUMBNAIL_FPS,
                 "seed": THUMBNAIL_SEED,
@@ -311,6 +405,28 @@ class ThumbnailGenerator:
             int(round(THUMBNAIL_TIME_SEC * THUMBNAIL_FPS)),
             self._effectSignals(),
         )
+
+    # :: STRING -> [ANY]
+    # Samples a broad camera path and compresses it into a concise looping study
+    def _cameraFrames(self, cameraId: str) -> List[np.ndarray]:
+        scene = self._scene("fold", cameraId, "jungle")
+        scene["renderer"]["camera_speed"] = 1.0
+        session = self._backend.createRenderer(self._settings, scene)
+        frames: List[np.ndarray] = []
+        for frameIndex in range(THUMBNAIL_ANIMATION_FRAMES):
+            progress = frameIndex / float(THUMBNAIL_ANIMATION_FRAMES - 1)
+            timeSec = 0.4 + progress * THUMBNAIL_CAMERA_SPAN_SEC
+            frames.append(
+                session.render(
+                    timeSec,
+                    self._params,
+                    self._modulators,
+                    frameIndex,
+                    frameIndex,
+                    self._effectSignals(frameIndex),
+                )
+            )
+        return frames
 
     # :: STRING, STRING, STRING -> ARRAY<STRING, ANY>
     # Builds the complete fixed scene contract without audio or project I/O
@@ -379,9 +495,9 @@ class ThumbnailGenerator:
         )
         return output
 
-    # :: ANY, STRING -> ANY
-    # Applies one catalog effect after deterministic temporal preroll
-    def _effectThumbnail(self, base: np.ndarray, effectId: str) -> np.ndarray:
+    # :: ANY, STRING -> [ANY]
+    # Applies one catalog effect through preroll and a changing audio/source loop
+    def _effectFrames(self, base: np.ndarray, effectId: str) -> List[np.ndarray]:
         chain = EffectChain.init(
             [{"id": effectId}],
             THUMBNAIL_WIDTH,
@@ -389,31 +505,38 @@ class ThumbnailGenerator:
             THUMBNAIL_FPS,
             THUMBNAIL_SEED,
         )
-        output = base
-        signals = self._effectSignals()
-        for frameIndex in range(THUMBNAIL_EFFECT_FRAMES):
-            source = np.roll(base, frameIndex - THUMBNAIL_EFFECT_FRAMES + 1, axis=1)
+        frames: List[np.ndarray] = []
+        totalFrames = THUMBNAIL_EFFECT_FRAMES + THUMBNAIL_ANIMATION_FRAMES
+        for frameIndex in range(totalFrames):
+            phase = frameIndex * math.tau / float(THUMBNAIL_ANIMATION_FRAMES)
+            horizontal = int(round(math.sin(phase) * 11.0))
+            vertical = int(round(math.cos(phase * 0.5) * 3.0))
+            source = np.roll(base, (vertical, horizontal), axis=(0, 1))
             output = chain.apply(
                 source,
                 frameIndex / float(THUMBNAIL_FPS),
                 frameIndex,
-                signals,
+                self._effectSignals(frameIndex),
             )
-        return output
+            if frameIndex >= THUMBNAIL_EFFECT_FRAMES:
+                frames.append(output)
+        return frames
 
-    # :: VOID -> ARRAY<STRING, FLOAT>
-    # Supplies fixed high-information audio values to audio-aware effects
-    def _effectSignals(self) -> Dict[str, float]:
+    # :: INT -> ARRAY<STRING, FLOAT>
+    # Supplies changing high-information audio values to audio-aware effects
+    def _effectSignals(self, frameIndex: int = 0) -> Dict[str, float]:
+        phase = frameIndex * math.tau / float(THUMBNAIL_ANIMATION_FRAMES)
+        pulse = 0.95 if frameIndex % 8 in (0, 1) else 0.18
         return {
-            "bass": 0.68,
-            "mid": 0.52,
-            "high": 0.61,
-            "treble": 0.61,
-            "rms": 0.62,
-            "onset": 0.42,
-            "transient": 1.0,
-            "chromatic_phase": 0.67,
-            "chromatic_sign": 1.0,
+            "bass": 0.58 + 0.30 * math.sin(phase),
+            "mid": 0.52 + 0.24 * math.sin(phase * 1.5 + 0.8),
+            "high": 0.55 + 0.32 * math.cos(phase * 2.0 + 0.4),
+            "treble": 0.55 + 0.32 * math.cos(phase * 2.0 + 0.4),
+            "rms": 0.60 + 0.22 * math.sin(phase + 1.2),
+            "onset": pulse,
+            "transient": 1.0 if frameIndex % 8 == 0 else 0.0,
+            "chromatic_phase": phase,
+            "chromatic_sign": -1.0 if frameIndex % 2 else 1.0,
         }
 
     # :: PATH, STRING, STRING, STRING, ANY -> ARRAY<STRING, STRING>
@@ -436,6 +559,43 @@ class ThumbnailGenerator:
             "label": label,
             "file": relative,
             "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        }
+
+    # :: PATH, STRING, STRING, [ANY] -> ARRAY<STRING, STRING>
+    # Packs one dependency-free animation into a deterministic PNG spritesheet
+    def _writeAnimation(
+        self,
+        root: Path,
+        catalog: str,
+        optionId: str,
+        frames: List[np.ndarray],
+    ) -> Dict[str, str]:
+        rows = int(math.ceil(len(frames) / float(THUMBNAIL_ANIMATION_COLUMNS)))
+        sheet = np.zeros(
+            (
+                rows * THUMBNAIL_HEIGHT,
+                THUMBNAIL_ANIMATION_COLUMNS * THUMBNAIL_WIDTH,
+                3,
+            ),
+            dtype=np.uint8,
+        )
+        for frameIndex, frame in enumerate(frames):
+            row = frameIndex // THUMBNAIL_ANIMATION_COLUMNS
+            column = frameIndex % THUMBNAIL_ANIMATION_COLUMNS
+            top = row * THUMBNAIL_HEIGHT
+            left = column * THUMBNAIL_WIDTH
+            sheet[
+                top:top + THUMBNAIL_HEIGHT,
+                left:left + THUMBNAIL_WIDTH,
+            ] = frame
+        directory = root / "previews" / catalog
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / "{0}.png".format(optionId)
+        if not cv2.imwrite(str(path), sheet):
+            raise RuntimeError("unable to write thumbnail animation: {0}".format(path))
+        return {
+            "animation_file": path.relative_to(root).as_posix(),
+            "animation_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         }
 
     #
