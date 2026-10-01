@@ -42,6 +42,8 @@ def testResolvesTemplateAndPreset(tmp_path: Path) -> None:
     assert resolved["scenes"][0]["reactivity"]["bindings"]["bass"]["source"] == "bass"
     assert resolved["scenes"][0]["reactivity"]["modulators"]["pulse"]["source"] == "bass"
     assert resolved["scenes"][0]["renderer"]["decor"]["enabled"]
+    assert resolved["scenes"][0]["background"]["palette"] == "steel"
+    assert resolved["scenes"][0]["renderer"]["decor"]["ribbons"]["palette"] == "steel"
     authored["scenes"][0]["renderer"]["decor"] = False
     resolved = resolver.resolve(authored, str(configPath))
     assert not resolved["scenes"][0]["renderer"]["decor"]["enabled"]
@@ -110,6 +112,8 @@ def testMigratesLegacyRendererAliases(tmp_path: Path) -> None:
     resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
     scene = resolved["scenes"][0]
     assert scene["renderer"]["palette"] == "ember"
+    assert scene["background"]["palette"] == "ember"
+    assert scene["renderer"]["decor"]["ribbons"]["palette"] == "ember"
     assert scene["renderer"]["forms"] == ["ferro"]
     assert scene["renderer"]["form_len_sec"] == 3.0
     assert "preset" not in scene["renderer"]
@@ -117,6 +121,33 @@ def testMigratesLegacyRendererAliases(tmp_path: Path) -> None:
     assert "hud" not in scene["renderer"]
     assert scene["finish"]["scanlines"]
     assert not scene["overlay"]["enabled"]
+
+
+# :: PATH -> NONE
+# Verifies background and ribbon palettes resolve independently from the form
+def testResolvesIndependentLayerPalettes(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["renderer"] = {
+        "core": "3d",
+        "palette": "ember",
+        "decor": {"ribbons": {"palette": "acid"}},
+    }
+    authored["scenes"][0]["background"] = {"palette": "steel"}
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert report.isValid, report.errors
+    scene = resolved["scenes"][0]
+    assert scene["renderer"]["palette"] == "ember"
+    assert scene["background"]["palette"] == "steel"
+    assert scene["renderer"]["decor"]["ribbons"]["palette"] == "acid"
+    authored["scenes"][0]["background"]["palette"] = "unknown"
+    authored["scenes"][0]["renderer"]["decor"]["ribbons"]["palette"] = "invalid"
+    invalid = resolver.validate(
+        resolver.resolve(authored, str(tmp_path / "project.json"))
+    )
+    assert any("background.palette" in error for error in invalid.errors)
+    assert any("ribbons.palette" in error for error in invalid.errors)
 
 
 # :: PATH -> NONE
@@ -249,7 +280,10 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
         "tile",
     ]
     background = schema["$defs"]["background"]["properties"]
+    assert background["palette"]["enum"] == ["steel", "acid", "ember"]
     assert background["post"] == {"type": "array", "items": {"$ref": "#/$defs/effect"}}
+    ribbon = schema["$defs"]["ribbonElement"]["allOf"][1]["properties"]
+    assert ribbon["palette"]["enum"] == ["steel", "acid", "ember"]
     assert schema["$defs"]["ribbonElement"]["allOf"][1]["properties"]["post"] == {
         "type": "array",
         "items": {"$ref": "#/$defs/effect"},

@@ -208,6 +208,8 @@ class ConfigResolver:
                     surfaceConfig["image"] = self._resolvePath(surfaceConfig["image"], basePath)
             ribbons = decor.get("ribbons")
             if isinstance(ribbons, dict):
+                if ribbons.get("palette") is None:
+                    ribbons["palette"] = scene["renderer"]["palette"]
                 ribbons["post"] = self._resolvePost(ribbons.get("post", []))
         surface = scene["renderer"].get("surface")
         if isinstance(surface, dict):
@@ -217,6 +219,8 @@ class ConfigResolver:
         scene["background"] = self._deepMerge(DEFAULT_BACKGROUND, scene.get("background", {}))
         background = scene["background"]
         if isinstance(background, dict):
+            if background.get("palette") is None:
+                background["palette"] = scene["renderer"]["palette"]
             if background.get("image"):
                 background["image"] = self._resolvePath(background["image"], basePath)
             background["post"] = self._resolvePost(background.get("post", []))
@@ -374,8 +378,11 @@ class ConfigResolver:
             report.addError("{0}.background: expected an object".format(prefix))
         else:
             core = renderer.get("core") if isinstance(renderer, dict) else None
-            self._validateBackground(background, core, prefix, report)
-            if core != "3d" and background != DEFAULT_BACKGROUND:
+            rendererPalette = renderer.get("palette") if isinstance(renderer, dict) else None
+            self._validateBackground(background, core, rendererPalette, prefix, report)
+            defaultBackground = copy.deepcopy(DEFAULT_BACKGROUND)
+            defaultBackground["palette"] = rendererPalette
+            if core != "3d" and background != defaultBackground:
                 report.addError(
                     "{0}.background: customized backgrounds require the 3d core".format(prefix)
                 )
@@ -480,12 +487,13 @@ class ConfigResolver:
             if (minimum is not None and parameterValue < minimum) or (maximum is not None and parameterValue > maximum):
                 report.addError("{0}: expected {1} through {2}".format(parameterPath, minimum, maximum))
 
-    # :: ARRAY<STRING, ANY>, ANY, STRING, validationReport -> NONE
+    # :: ARRAY<STRING, ANY>, ANY, ANY, STRING, validationReport -> NONE
     # Validates configurable palette or image backgrounds and bounded pulse behavior
     def _validateBackground(
         self,
         background: Dict[str, Any],
         core: Any,
+        rendererPalette: Any,
         prefix: str,
         report: ValidationReport,
     ) -> None:
@@ -493,6 +501,7 @@ class ConfigResolver:
         source = background.get("source")
         image = background.get("image")
         self._validateEnum(source, ["palette", "image"], backgroundPath + ".source", report)
+        self._validateEnum(background.get("palette"), PALETTES, backgroundPath + ".palette", report)
         self._validateEnum(background.get("fit"), ["cover", "contain", "tile"], backgroundPath + ".fit", report)
         self._validateEnum(
             background.get("material"),
@@ -508,6 +517,12 @@ class ConfigResolver:
             report.addError("{0}.image: image source requires a file".format(backgroundPath))
         if source == "image" and core != "3d":
             report.addError("{0}: image backgrounds require the 3d core".format(backgroundPath))
+        if core != "3d" and background.get("palette") != rendererPalette:
+            report.addError(
+                "{0}.palette: independent background palettes require the 3d core".format(
+                    backgroundPath
+                )
+            )
         ranges = {
             "scale": (0.1, 10.0),
             "rotation_deg": (-3600.0, 3600.0),
@@ -607,7 +622,13 @@ class ConfigResolver:
         if not isinstance(decor, dict):
             report.addError("{0}.renderer.decor: expected an object".format(prefix))
         else:
-            self._validateDecor(decor, renderer.get("core"), prefix, report)
+            self._validateDecor(
+                decor,
+                renderer.get("core"),
+                renderer.get("palette"),
+                prefix,
+                report,
+            )
         formStyle = renderer.get("form_style")
         if not isinstance(formStyle, dict):
             report.addError("{0}.renderer.form_style: expected an object".format(prefix))
@@ -681,12 +702,13 @@ class ConfigResolver:
         if core != "3d" and surface.get("post"):
             report.addError("{0}.post: scoped effects require the 3d core".format(surfacePath))
 
-    # :: ARRAY<STRING, ANY>, ANY, STRING, validationReport -> NONE
+    # :: ARRAY<STRING, ANY>, ANY, ANY, STRING, validationReport -> NONE
     # Validates independently authored 3D ribbon and plate geometry and skins
     def _validateDecor(
         self,
         decor: Dict[str, Any],
         core: Any,
+        rendererPalette: Any,
         prefix: str,
         report: ValidationReport,
     ) -> None:
@@ -713,6 +735,13 @@ class ConfigResolver:
                 elementPath + ".material",
                 report,
             )
+            if element == "ribbons":
+                self._validateEnum(
+                    value.get("palette"),
+                    PALETTES,
+                    elementPath + ".palette",
+                    report,
+                )
             surface = value.get("surface")
             if not isinstance(surface, dict):
                 report.addError("{0}.surface: expected an object".format(elementPath))
@@ -722,16 +751,22 @@ class ConfigResolver:
                 self._validatePost(value.get("post"), elementPath + ".post", report)
                 if core != "3d" and value.get("post"):
                     report.addError("{0}.post: scoped effects require the 3d core".format(elementPath))
-        if core != "3d" and self._hasAdvancedDecorControls(decor):
+        if core != "3d" and self._hasAdvancedDecorControls(decor, rendererPalette):
             report.addError("{0}: first-class decor controls require the 3d core".format(decorPath))
 
-    # :: ARRAY<STRING, ANY> -> BOOL
+    # :: ARRAY<STRING, ANY>, ANY -> BOOL
     # Distinguishes legacy all-on/all-off booleans from first-class decor authoring
-    def _hasAdvancedDecorControls(self, decor: Dict[str, Any]) -> bool:
+    def _hasAdvancedDecorControls(
+        self,
+        decor: Dict[str, Any],
+        rendererPalette: Any,
+    ) -> bool:
         ribbons = decor.get("ribbons", {})
         plates = decor.get("plates", {})
         legacyEnabled = bool(decor.get("enabled"))
         if decor.get("seed") is not None:
+            return True
+        if ribbons.get("palette") != rendererPalette:
             return True
         if ribbons.get("enabled") != legacyEnabled or plates.get("enabled") != legacyEnabled:
             return True

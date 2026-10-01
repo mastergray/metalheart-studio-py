@@ -188,6 +188,37 @@ def testEffectRowBypassParticipatesInProjectHistory() -> None:
     application.processEvents()
 
 
+# :: VOID -> NONE
+# Verifies form, background, and ribbon palettes author independently with Undo
+def testLayerPaletteControlsAreIndependentAndUndoable() -> None:
+    application = QApplication.instance() or QApplication([])
+    projectPath = Path(__file__).resolve().parents[1] / "examples" / "layer-effects.json"
+    window = MainWindow.init(str(projectPath))
+    inspector = window._inspector
+    assert inspector._palette.currentText() == "steel"
+    assert inspector._backgroundPalette.currentText() == "steel"
+    assert inspector._ribbonPalette.currentText() == "steel"
+    inspector._backgroundPalette.setCurrentText("ember")
+    application.processEvents()
+    scene = window._authored["scenes"][0]
+    assert scene["background"]["palette"] == "ember"
+    assert scene["renderer"].get("palette", "steel") == "steel"
+    assert scene["renderer"]["decor"]["ribbons"].get("palette", "steel") == "steel"
+    window.undoStack.undo()
+    application.processEvents()
+    assert inspector._backgroundPalette.currentText() == "steel"
+    inspector._ribbonPalette.setCurrentText("acid")
+    application.processEvents()
+    scene = window._authored["scenes"][0]
+    assert scene["renderer"]["decor"]["ribbons"]["palette"] == "acid"
+    assert scene["background"].get("palette", "steel") == "steel"
+    assert scene["renderer"].get("palette", "steel") == "steel"
+    window.undoStack.undo()
+    window.close()
+    window.deleteLater()
+    application.processEvents()
+
+
 # :: PATH -> NONE
 # Verifies Save establishes the clean history point across later edits
 def testUndoHistoryTracksSavedProjectCleanPoint(tmp_path: Path) -> None:

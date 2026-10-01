@@ -2,6 +2,7 @@
 
 from __future__ import annotations  # Preserve forward-compatible annotations on Python 3.8
 
+import copy  # Compare inherited palette defaults without mutating shared catalog data
 import math  # Rotate normalized background coordinates
 from typing import Any, Dict, Optional, Tuple  # Type renderer state and captured foregrounds
 
@@ -23,7 +24,7 @@ def _smoothstep(edge0: float, edge1: float, value: Any) -> Any:
 # Rebuilds the 3D composition around an authored background before finishing
 class BackgroundPass:
 
-    # CONSTRUCTOR :: ANY, ARRAY<STRING, ANY>, effectChain?, layerEffects? -> backgroundPass
+    # CONSTRUCTOR :: ANY, ARRAY<STRING, ANY>, effectChain?, layerEffects?, ARRAY<STRING, ANY>? -> backgroundPass
     # Loads an optional image and prepares foreground capture
     def __init__(
         self,
@@ -31,6 +32,7 @@ class BackgroundPass:
         config: Dict[str, Any],
         backgroundEffects: Optional[EffectChain] = None,
         layerEffects: Optional[LayerEffects] = None,
+        palette: Optional[Dict[str, Any]] = None,
     ) -> None:
         self._renderer = renderer
         self._config = config
@@ -41,7 +43,14 @@ class BackgroundPass:
         self._baseCoreRender: Optional[Any] = None
         self._backgroundEffects = backgroundEffects
         self._layerEffects = layerEffects
-        self._custom = config != DEFAULT_BACKGROUND
+        self._paletteValues = palette or getattr(renderer, "pal", {})
+        comparison = copy.deepcopy(config)
+        default = copy.deepcopy(DEFAULT_BACKGROUND)
+        comparison["palette"] = None
+        default["palette"] = None
+        self._custom = comparison != default or self._paletteValues != getattr(
+            renderer, "pal", self._paletteValues
+        )
         self._texture: Optional[np.ndarray] = None
         imagePath = config.get("image")
         if config["source"] == "image" and imagePath:
@@ -96,7 +105,7 @@ class BackgroundPass:
             background = self._lightSurface(background, surface[2], surface[3], surface[4])
         if self._config["dots"]:
             background = background + self._renderer.dots[..., None] * np.asarray(
-                self._renderer.pal["hud"], np.float32
+                self._paletteValues["hud"], np.float32
             ) * 0.05
         background *= 1.0 + pulse * float(self._config["pulse_brightness"])
         if self._config["ghosts"]:
@@ -171,7 +180,7 @@ class BackgroundPass:
     def _palette(self, timeSec: float, horizontal: Any, vertical: Any) -> Any:
         radius = np.sqrt(horizontal * horizontal + (vertical * 1.3) ** 2)
         gradient = _smoothstep(0.0, 0.95, radius)[..., None]
-        palette = self._renderer.pal
+        palette = self._paletteValues
         center = np.asarray(palette["bg_center"], np.float32)
         edge = np.asarray(palette["bg_edge"], np.float32)
         background = center * (1.0 - gradient) + edge * gradient
@@ -331,7 +340,7 @@ class BackgroundPass:
     def _ghosts(self, background: Any, foreground: Any, alpha: Any) -> Any:
         width = self._renderer.W
         height = self._renderer.H
-        sky = np.asarray(self._renderer.pal["sky_hor"], np.float32)
+        sky = np.asarray(self._paletteValues["sky_hor"], np.float32)
         for scale, sigma, amount, flip, offsetX in (
             (1.9, 0.035, 0.30, False, 0.1),
             (1.35, 0.014, 0.22, True, -0.2),
@@ -365,7 +374,7 @@ class BackgroundPass:
     # Class Methods
     #
 
-    # Class Factory Method :: ANY, ARRAY<STRING, ANY>, effectChain?, layerEffects? -> backgroundPass
+    # Class Factory Method :: ANY, ARRAY<STRING, ANY>, effectChain?, layerEffects?, ARRAY<STRING, ANY>? -> backgroundPass
     # Creates a configured background compositor
     @classmethod
     def init(
@@ -374,5 +383,6 @@ class BackgroundPass:
         config: Dict[str, Any],
         backgroundEffects: Optional[EffectChain] = None,
         layerEffects: Optional[LayerEffects] = None,
+        palette: Optional[Dict[str, Any]] = None,
     ) -> BackgroundPass:
-        return cls(renderer, config, backgroundEffects, layerEffects)
+        return cls(renderer, config, backgroundEffects, layerEffects, palette)

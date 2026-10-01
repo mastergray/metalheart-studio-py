@@ -102,6 +102,7 @@ def _config(audioPath: Path, configPath: Path) -> Dict[str, Any]:
                         "ribbons": {
                             "enabled": True,
                             "count": 1,
+                            "palette": "acid",
                             "post": [{"id": "rgb_shift", "parameters": {"rX": 2, "bX": -2}}],
                         },
                         "plates": {"enabled": False, "count": 0},
@@ -109,7 +110,10 @@ def _config(audioPath: Path, configPath: Path) -> Dict[str, Any]:
                     "surface": {"post": [{"id": "posterize", "parameters": {"levels": 4}}]},
                     "anti_alias": False,
                 },
-                "background": {"post": [{"id": "scanlines", "parameters": {"strength": 0.2}}]},
+                "background": {
+                    "palette": "steel",
+                    "post": [{"id": "scanlines", "parameters": {"strength": 0.2}}],
+                },
                 "finish": {"scanlines": False},
                 "post": [
                     {"id": "rectangles", "parameters": {"n_rects": 2, "seed": 3}},
@@ -174,6 +178,9 @@ def testRendersSynchronizedVideoAndAudio(tmp_path: Path, capsys: Any) -> None:
     assert result.chunkCount == 4
     assert result.workers == 2
     assert result.reusedChunks == 0
+    assert resolved["scenes"][1]["renderer"]["palette"] == "ember"
+    assert resolved["scenes"][1]["background"]["palette"] == "steel"
+    assert resolved["scenes"][1]["renderer"]["decor"]["ribbons"]["palette"] == "acid"
     assert outputPath.is_file()
     assert Path(result.profilePath).is_file()
     assert Path(result.manifestPath).is_file()

@@ -458,6 +458,61 @@ def testFirstClassDecorControlsAndRibbonSkin(tmp_path: Path) -> None:
     assert disabledSession._renderer.core3d.decor is None
 
 
+# :: VOID -> NONE
+# Verifies background and ribbon palettes alter only their owned render layers
+def testIndependentBackgroundAndRibbonPalettesRender() -> None:
+    backend = ReferenceBackend.init()
+    settings = {"width": 80, "height": 64, "fps": 4, "seed": 5}
+    scene = _scene()
+    renderer = copy.deepcopy(DEFAULT_RENDERER)
+    renderer.update(
+        {
+            "core": "3d",
+            "palette": "steel",
+            "forms": ["mercury"],
+            "cameras": ["orbit"],
+            "camera_speed": 0.0,
+            "core_scale": 0.25,
+            "anti_alias": False,
+            "decor": resolveDecorConfig(
+                {
+                    "enabled": True,
+                    "ribbons": {"enabled": True, "count": 4, "palette": "steel"},
+                    "plates": {"enabled": False, "count": 0},
+                }
+            ),
+        }
+    )
+    background = copy.deepcopy(DEFAULT_BACKGROUND)
+    background["palette"] = "steel"
+    scene["renderer"] = renderer
+    scene["background"] = background
+    params = backend.createParams(_analysis(), 0, 0.0, scene["reactivity"])
+    baselineSession = backend.createRenderer(settings, scene)
+    baseline = baselineSession.render(0.5, params, {})
+    baselineForeground = baselineSession._background._foreground[0].copy()
+
+    backgroundScene = copy.deepcopy(scene)
+    backgroundScene["background"]["palette"] = "ember"
+    backgroundSession = backend.createRenderer(settings, backgroundScene)
+    emberBackground = backgroundSession.render(0.5, params, {})
+    assert np.array_equal(
+        baselineForeground,
+        backgroundSession._background._foreground[0],
+    )
+    assert not np.array_equal(emberBackground, baseline)
+
+    ribbonScene = copy.deepcopy(scene)
+    ribbonScene["renderer"]["decor"]["ribbons"]["palette"] = "acid"
+    ribbonSession = backend.createRenderer(settings, ribbonScene)
+    acidRibbons = ribbonSession.render(0.5, params, {})
+    assert not np.array_equal(
+        ribbonSession._background._foreground[0],
+        baselineForeground,
+    )
+    assert not np.array_equal(acidRibbons, baseline)
+
+
 # :: PATH -> NONE
 # Verifies background pulse changes only pixels outside the opaque 3D foreground
 def testImageBackgroundPulseLeavesOpaqueForegroundStable(tmp_path: Path) -> None:

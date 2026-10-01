@@ -106,6 +106,7 @@ class SceneInspector(QWidget):
         self._formEffects.setEffects(surface.get("post", []))
 
         self._backgroundSource.setCurrentText(str(background["source"]))
+        self._backgroundPalette.setCurrentText(str(background["palette"]))
         self._backgroundMaterial.setCurrentText(str(background["material"]))
         self._backgroundFit.setCurrentText(str(background["fit"]))
         self._backgroundImage.setText(str(background.get("image") or ""))
@@ -117,6 +118,7 @@ class SceneInspector(QWidget):
 
         self._ribbonEnabled.setChecked(bool(ribbons["enabled"]))
         self._ribbonCount.setValue(int(ribbons["count"]))
+        self._ribbonPalette.setCurrentText(str(ribbons["palette"]))
         self._ribbonMaterial.setCurrentText(str(ribbons["material"]))
         self._ribbonSampling.setCurrentText(str(ribbonSurface["sampling"]))
         self._ribbonImage.setText(str(ribbonSurface.get("image") or ""))
@@ -204,6 +206,8 @@ class SceneInspector(QWidget):
         form = QFormLayout()
         self._backgroundSource = self._combo(["palette", "image"])
         form.addRow("Source", self._backgroundSource)
+        self._backgroundPalette = self._combo(PALETTES)
+        form.addRow("Palette", self._backgroundPalette)
         self._backgroundMaterial = self._combo(["flat", "matte", "metallic"])
         form.addRow("Material", self._backgroundMaterial)
         self._backgroundFit = self._combo(["cover", "contain", "tile"])
@@ -240,6 +244,8 @@ class SceneInspector(QWidget):
         self._ribbonCount.setRange(0, 8)
         self._ribbonCount.valueChanged.connect(self._publishScene)
         form.addRow("Count", self._ribbonCount)
+        self._ribbonPalette = self._combo(PALETTES)
+        form.addRow("Palette", self._ribbonPalette)
         self._ribbonMaterial = self._combo(["metallic", "matte"])
         form.addRow("Material", self._ribbonMaterial)
         self._ribbonSampling = self._combo(["bilinear", "nearest"])
@@ -337,6 +343,7 @@ class SceneInspector(QWidget):
 
         background = scene.setdefault("background", {})
         background["source"] = self._backgroundSource.currentText()
+        background["palette"] = self._backgroundPalette.currentText()
         background["material"] = self._backgroundMaterial.currentText()
         background["fit"] = self._backgroundFit.currentText()
         background["image"] = self._optionalPath(self._backgroundImage.text())
@@ -352,6 +359,7 @@ class SceneInspector(QWidget):
         ribbons = decor.setdefault("ribbons", {})
         ribbons["enabled"] = self._ribbonEnabled.isChecked()
         ribbons["count"] = self._ribbonCount.value()
+        ribbons["palette"] = self._ribbonPalette.currentText()
         ribbons["material"] = self._ribbonMaterial.currentText()
         ribbons["post"] = self._ribbonEffects.effects
         ribbonSurface = ribbons.setdefault("surface", {})

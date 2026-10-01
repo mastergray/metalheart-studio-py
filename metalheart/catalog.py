@@ -83,6 +83,7 @@ DEFAULT_DECOR: Dict[str, Any] = {
     "ribbons": {
         "enabled": True,
         "count": 4,
+        "palette": None,
         "material": "metallic",
         "surface": dict(DEFAULT_DECOR_SURFACE, mapping="ribbon"),
         "post": [],
@@ -137,6 +138,7 @@ DEFAULT_OVERLAY: Dict[str, Any] = {
 
 DEFAULT_BACKGROUND: Dict[str, Any] = {
     "source": "palette",
+    "palette": None,
     "image": None,
     "fit": "cover",
     "scale": 1.0,
@@ -477,6 +479,7 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                 {
                     "type": "object",
                     "properties": {
+                        "palette": {"enum": PALETTES},
                         "post": {"type": "array", "items": {"$ref": "#/$defs/effect"}},
                     },
                 },
@@ -552,6 +555,7 @@ CONFIG_SCHEMA: Dict[str, Any] = {
             "type": "object",
             "properties": {
                 "source": {"enum": ["palette", "image"]},
+                "palette": {"enum": PALETTES},
                 "image": {"type": ["string", "null"]},
                 "fit": {"enum": ["cover", "contain", "tile"]},
                 "scale": {"type": "number", "minimum": 0.1, "maximum": 10.0},

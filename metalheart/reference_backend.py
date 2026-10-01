@@ -3,7 +3,6 @@
 from __future__ import annotations  # Preserve forward-compatible annotations on Python 3.8
 
 import importlib.util  # Load immutable reference modules without editing their source
-import math  # Evaluate smooth audio binding curves
 import sys  # Register legacy bare-module imports required by the reference files
 from pathlib import Path  # Locate reference modules relative to the repository
 from types import ModuleType  # Annotate dynamically loaded reference modules
@@ -26,7 +25,7 @@ from metalheart.text_overlay import TextOverlay  # Draw configurable author text
 
 
 REFERENCE_DIR = Path(__file__).resolve().parents[1] / "ref" / "audioReactive"
-REFERENCE_VERSION = "audioReactive-2026-09-29-effects-v11"
+REFERENCE_VERSION = "audioReactive-2026-09-30-layer-palettes-v12"
 _REFERENCE_MODULES: Optional[Tuple[ModuleType, ModuleType, ModuleType]] = None
 
 
@@ -80,6 +79,8 @@ class ReferenceRendererSession:
         self._overlay = TextOverlay.init(overlayConfig, rendererModule.FONT_PATH)
         rendererConfig = scene["renderer"]
         decorConfig = resolveDecorConfig(rendererConfig.get("decor", True))
+        ribbonPaletteId = decorConfig["ribbons"].get("palette") or rendererConfig["palette"]
+        ribbonPalette = rendererModule.PRESETS[ribbonPaletteId]
         decorEnabled = bool(
             decorConfig["enabled"]
             and (
@@ -131,6 +132,7 @@ class ReferenceRendererSession:
                     self._renderer.core3d,
                     decorConfig,
                     scene.get("seed", settings["seed"]),
+                    ribbonPalette,
                 )
             surfacePost = rendererConfig.get("surface", {}).get("post", [])
             ribbonPost = decorConfig.get("ribbons", {}).get("post", [])
@@ -154,7 +156,10 @@ class ReferenceRendererSession:
                     formEffects,
                     ribbonEffects,
                 )
-        backgroundPost = scene.get("background", DEFAULT_BACKGROUND).get("post", [])
+        backgroundConfig = scene.get("background", DEFAULT_BACKGROUND)
+        backgroundPaletteId = backgroundConfig.get("palette") or rendererConfig["palette"]
+        backgroundPalette = rendererModule.PRESETS[backgroundPaletteId]
+        backgroundPost = backgroundConfig.get("post", [])
         backgroundEffects = EffectChain.init(
             backgroundPost,
             int(settings["width"]),
@@ -164,9 +169,10 @@ class ReferenceRendererSession:
         ) if backgroundPost else None
         self._background = BackgroundPass.init(
             self._renderer,
-            scene.get("background", DEFAULT_BACKGROUND),
+            backgroundConfig,
             backgroundEffects,
             self._layerEffects,
+            backgroundPalette,
         )
         self._finishing = FinishingPass.init(self._renderer, scene["finish"])
         self._renderer.post = self._finishFrame

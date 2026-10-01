@@ -150,9 +150,16 @@ class DecorTexture:
 # Replaces reference 3D decor construction while delegating its stable SDFs
 class DecorController:
 
-    # CONSTRUCTOR :: moduleType, ANY, ARRAY<STRING, ANY>, INT -> decorController
+    # CONSTRUCTOR :: moduleType, ANY, ARRAY<STRING, ANY>, INT, ARRAY<STRING, ANY>? -> decorController
     # Builds deterministic independent decor sets and installs optional skin shading
-    def __init__(self, liquidModule: ModuleType, coreRenderer: Any, config: Dict[str, Any], seed: int) -> None:
+    def __init__(
+        self,
+        liquidModule: ModuleType,
+        coreRenderer: Any,
+        config: Dict[str, Any],
+        seed: int,
+        ribbonPalette: Optional[Dict[str, Any]] = None,
+    ) -> None:
         self._liquidModule = liquidModule
         self._renderer = coreRenderer
         self._config = config
@@ -165,10 +172,16 @@ class DecorController:
         self._decor = liquidModule.Decor3D(decorSeed, n_ribbons=ribbonCount, n_plates=plateCount)
         self._ribbonTexture = DecorTexture.init(ribbonConfig["surface"], ribbonConfig["material"])
         self._plateTexture = DecorTexture.init(plateConfig["surface"], plateConfig["material"])
+        self._ribbonPalette = ribbonPalette or coreRenderer.pal
+        self._ribbonPaletteCustom = self._ribbonPalette != coreRenderer.pal
         self._baseShade = coreRenderer._shade
         setattr(self, "sdf_parts", self.sdfParts)
         coreRenderer.decor = self
-        if not self._ribbonTexture.isDefault or not self._plateTexture.isDefault:
+        if (
+            self._ribbonPaletteCustom
+            or not self._ribbonTexture.isDefault
+            or not self._plateTexture.isDefault
+        ):
             coreRenderer._shade = self.shade
 
     #
@@ -263,8 +276,34 @@ class DecorController:
         ribbonDistance, plateDistance = self.sdfParts(pointX, pointY, pointZ, decorFrame)
         material = np.argmin(np.stack([coreDistance, ribbonDistance, plateDistance]), axis=0)
         output = chrome.copy()
+        ribbonChrome = chrome
+        ribbonMask = material == 1
+        if (
+            decorFrame["ribbons"]
+            and self._ribbonPaletteCustom
+            and np.any(ribbonMask)
+        ):
+            ribbonChrome = chrome.copy()
+            ribbonChrome[ribbonMask] = self._shadeRibbonPalette(
+                eye,
+                rayX[ribbonMask],
+                rayY[ribbonMask],
+                rayZ[ribbonMask],
+                distance[ribbonMask],
+                coreFrame,
+                decorFrame,
+            )
+            output[ribbonMask] = ribbonChrome[ribbonMask]
         if decorFrame["ribbons"] and not self._ribbonTexture.isDefault:
-            self._shadeRibbons(output, chrome, material, pointX, pointY, pointZ, decorFrame)
+            self._shadeRibbons(
+                output,
+                ribbonChrome,
+                material,
+                pointX,
+                pointY,
+                pointZ,
+                decorFrame,
+            )
         if decorFrame["plates"] and not self._plateTexture.isDefault:
             self._shadePlates(output, chrome, material, pointX, pointY, pointZ, decorFrame)
         return output
@@ -278,6 +317,95 @@ class DecorController:
     def _signal(self, name: str, fallback: float, minimum: float, maximum: float) -> float:
         value = float(self._signals[name]) if name in self._signals else fallback
         return min(max(value, minimum), maximum)
+
+    # :: ANY, ANY, ANY, ANY, ANY, ANY, ARRAY<STRING, ANY> -> ANY
+    # Recreates reference metallic ribbon lighting with its independent palette
+    def _shadeRibbonPalette(
+        self,
+        eye: Any,
+        rayX: Any,
+        rayY: Any,
+        rayZ: Any,
+        distance: Any,
+        coreFrame: Any,
+        decorFrame: Dict[str, Any],
+    ) -> Any:
+        pointX = eye[0] + rayX * distance
+        pointY = eye[1] + rayY * distance
+        pointZ = eye[2] + rayZ * distance
+        epsilon = 0.0016
+        first = self._renderer.scene(
+            pointX + epsilon,
+            pointY - epsilon,
+            pointZ - epsilon,
+            coreFrame,
+            decorFrame,
+        )
+        second = self._renderer.scene(
+            pointX - epsilon,
+            pointY - epsilon,
+            pointZ + epsilon,
+            coreFrame,
+            decorFrame,
+        )
+        third = self._renderer.scene(
+            pointX - epsilon,
+            pointY + epsilon,
+            pointZ - epsilon,
+            coreFrame,
+            decorFrame,
+        )
+        fourth = self._renderer.scene(
+            pointX + epsilon,
+            pointY + epsilon,
+            pointZ + epsilon,
+            coreFrame,
+            decorFrame,
+        )
+        normalX = first - second - third + fourth
+        normalY = -first - second + third + fourth
+        normalZ = -first + second - third + fourth
+        inverseLength = 1.0 / (
+            np.sqrt(normalX * normalX + normalY * normalY + normalZ * normalZ) + 1e-9
+        )
+        normalX *= inverseLength
+        normalY *= inverseLength
+        normalZ *= inverseLength
+        dot = rayX * normalX + rayY * normalY + rayZ * normalZ
+        flip = dot > 0.0
+        normalX = np.where(flip, -normalX, normalX)
+        normalY = np.where(flip, -normalY, normalY)
+        normalZ = np.where(flip, -normalZ, normalZ)
+        dot = -np.abs(dot)
+        reflectionX = rayX - 2.0 * dot * normalX
+        reflectionY = rayY - 2.0 * dot * normalY
+        reflectionZ = rayZ - 2.0 * dot * normalZ
+        environment = self._renderer.env_fn(
+            reflectionX[None],
+            (reflectionY - 0.12)[None],
+            reflectionZ[None],
+            self._ribbonPalette,
+            bands=0.35,
+        )[0] * 0.95
+        occlusion = np.ones_like(pointX)
+        for distanceStep, weight in ((0.06, 3.0), (0.18, 1.2)):
+            sample = self._renderer.scene(
+                pointX + normalX * distanceStep,
+                pointY + normalY * distanceStep,
+                pointZ + normalZ * distanceStep,
+                coreFrame,
+                decorFrame,
+            )
+            occlusion -= weight * np.clip(distanceStep - sample, 0.0, None)
+        occlusion = np.clip(occlusion, 0.25, 1.0)
+        fresnel = (1.0 - np.abs(dot)) ** 4
+        rim = np.asarray(self._ribbonPalette["rim"], np.float32)
+        return (
+            environment
+            * (0.55 + 0.45 * occlusion[:, None])
+            * occlusion[:, None] ** 0.5
+            + fresnel[:, None] * rim * 0.45
+        )
 
     # :: ANY, ANY, ANY, ANY, ANY, ANY, ARRAY<STRING, ANY> -> NONE
     # Shades each ribbon hit from longitudinal and twisted-width coordinates
@@ -363,7 +491,7 @@ class DecorController:
     # Class Methods
     #
 
-    # Class Factory Method :: moduleType, ANY, ARRAY<STRING, ANY>, INT -> decorController
+    # Class Factory Method :: moduleType, ANY, ARRAY<STRING, ANY>, INT, ARRAY<STRING, ANY>? -> decorController
     # Creates an independently configurable 3D decor controller
     @classmethod
     def init(
@@ -372,5 +500,6 @@ class DecorController:
         coreRenderer: Any,
         config: Dict[str, Any],
         seed: int,
+        ribbonPalette: Optional[Dict[str, Any]] = None,
     ) -> DecorController:
-        return cls(liquidModule, coreRenderer, config, seed)
+        return cls(liquidModule, coreRenderer, config, seed, ribbonPalette)
