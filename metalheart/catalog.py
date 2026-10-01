@@ -4,6 +4,8 @@ from __future__ import annotations  # Preserve forward-compatible annotations on
 
 from typing import Any, Dict  # Python 3.8-compatible collection annotations
 
+from metalheart.effect_catalog import effectIds  # Publish owned ordered effects through the schema
+
 
 PALETTES = ["steel", "acid", "ember"]
 CORES = ["3d", "2d"]
@@ -83,6 +85,7 @@ DEFAULT_DECOR: Dict[str, Any] = {
         "count": 4,
         "material": "metallic",
         "surface": dict(DEFAULT_DECOR_SURFACE, mapping="ribbon"),
+        "post": [],
     },
     "plates": {
         "enabled": True,
@@ -116,6 +119,7 @@ DEFAULT_RENDERER: Dict[str, Any] = {
         "sampling": "bilinear",
         "texel_steps": 0,
         "lighting_steps": 0,
+        "post": [],
     },
     "form_style": {
         "faceting": 0.0,
@@ -155,6 +159,7 @@ DEFAULT_BACKGROUND: Dict[str, Any] = {
     "dots": True,
     "ghosts": True,
     "shadow": True,
+    "post": [],
 }
 
 DEFAULT_FINISH: Dict[str, Any] = {
@@ -353,7 +358,7 @@ CONFIG_SCHEMA: Dict[str, Any] = {
             "minItems": 1,
             "items": {"$ref": "#/$defs/scene"},
         },
-        "post": {"type": "array"},
+        "post": {"type": "array", "items": {"$ref": "#/$defs/effect"}},
     },
     "$defs": {
         "binding": {
@@ -366,6 +371,18 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                 "curve": {"enum": CURVES},
                 "threshold": {"type": "number", "minimum": 0.0, "exclusiveMaximum": 1.0},
                 "clamp": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}},
+            },
+            "additionalProperties": True,
+        },
+        "effect": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+                "type": {"const": "post_filter"},
+                "id": {"enum": effectIds()},
+                "enabled": {"type": "boolean"},
+                "mix": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "parameters": {"type": "object"},
             },
             "additionalProperties": True,
         },
@@ -417,6 +434,7 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                         {"type": "integer", "minimum": 2, "maximum": 64},
                     ],
                 },
+                "post": {"type": "array", "items": {"$ref": "#/$defs/effect"}},
             },
             "additionalProperties": True,
         },
@@ -453,12 +471,23 @@ CONFIG_SCHEMA: Dict[str, Any] = {
             },
             "additionalProperties": True,
         },
+        "ribbonElement": {
+            "allOf": [
+                {"$ref": "#/$defs/decorElement"},
+                {
+                    "type": "object",
+                    "properties": {
+                        "post": {"type": "array", "items": {"$ref": "#/$defs/effect"}},
+                    },
+                },
+            ],
+        },
         "decor": {
             "type": "object",
             "properties": {
                 "enabled": {"type": "boolean"},
                 "seed": {"type": ["integer", "null"]},
-                "ribbons": {"$ref": "#/$defs/decorElement"},
+                "ribbons": {"$ref": "#/$defs/ribbonElement"},
                 "plates": {"$ref": "#/$defs/decorElement"},
             },
             "additionalProperties": True,
@@ -559,6 +588,7 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                 "dots": {"type": "boolean"},
                 "ghosts": {"type": "boolean"},
                 "shadow": {"type": "boolean"},
+                "post": {"type": "array", "items": {"$ref": "#/$defs/effect"}},
             },
             "additionalProperties": True,
         },
@@ -584,7 +614,7 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                 "finish": {"$ref": "#/$defs/finish"},
                 "overlay": {"$ref": "#/$defs/overlay"},
                 "background": {"$ref": "#/$defs/background"},
-                "post": {"type": "array"},
+                "post": {"type": "array", "items": {"$ref": "#/$defs/effect"}},
             },
             "additionalProperties": True,
         },

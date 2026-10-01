@@ -18,6 +18,8 @@ from metalheart.catalog import REACTIVITY_PRESETS  # List supported reactivity p
 from metalheart.catalog import TEMPLATES  # List built-in scene templates
 from metalheart.config import ConfigError  # Report authored config failures
 from metalheart.config import ConfigResolver  # Load, resolve, validate, and write configs
+from metalheart.effect_catalog import effectIds  # List stable owned effect identifiers
+from metalheart.effect_catalog import publicEffectCatalog  # Expose typed effect metadata for the desktop UI
 from metalheart.planner import ScenePlanner  # Convert audio analysis into scene-based configs
 from metalheart.reference_backend import ReferenceBackend  # Analyze audio through the pinned backend
 from metalheart.render import RenderPipeline  # Execute resolved render configs
@@ -81,7 +83,7 @@ def _parseWorkers(value: str) -> Any:
 # :: VOID -> argumentParser
 # Builds the complete CLI parser
 def buildParser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="studio.py", description="Headless JSON-driven Metalheart renderer")
+    parser = argparse.ArgumentParser(prog="studio.py", description="Native and headless JSON-driven Metalheart renderer")
     commands = parser.add_subparsers(dest="command", required=True)
 
     analyzeParser = commands.add_parser("analyze", help="analyze audio and write a scene-based JSON config")
@@ -124,6 +126,9 @@ def buildParser() -> argparse.ArgumentParser:
 
     schemaParser = commands.add_parser("schema", help="emit the config JSON Schema")
     schemaParser.add_argument("-o", "--output")
+
+    uiParser = commands.add_parser("ui", help="open the native PySide6 authoring interface")
+    uiParser.add_argument("config", nargs="?", help="optional JSON project to open")
     return parser
 
 
@@ -252,12 +257,15 @@ def _listCommand(args: argparse.Namespace) -> int:
         "looks": list(FORMS),
         "cameras": list(CAMERAS),
         "palettes": list(PALETTES),
-        "effects": [],
+        "effects": effectIds(),
         "reactivity": sorted(REACTIVITY_PRESETS),
     }
     values = catalogs[args.catalog]
     if args.json:
-        print(json.dumps({"catalog": args.catalog, "values": values}, indent=2, sort_keys=True))
+        payload: Dict[str, Any] = {"catalog": args.catalog, "values": values}
+        if args.catalog == "effects":
+            payload["entries"] = publicEffectCatalog()
+        print(json.dumps(payload, indent=2, sort_keys=True))
     else:
         for value in values:
             print(value)
@@ -275,6 +283,20 @@ def _schemaCommand(args: argparse.Namespace, resolver: ConfigResolver) -> int:
     else:
         print(value, end="")
     return 0
+
+
+# :: argumentNamespace -> INT
+# Starts the optional native desktop authoring interface
+def _uiCommand(args: argparse.Namespace) -> int:
+    try:
+        from metalheart.ui.application import runGui  # Load Qt only for the explicit UI command
+    except ModuleNotFoundError as error:
+        if error.name == "PySide6":
+            raise ConfigError(
+                "PySide6 is not installed; install the 'ui' optional dependency before running the native editor"
+            )
+        raise
+    return runGui(args.config)
 
 
 # :: [STRING]? -> INT
@@ -296,6 +318,8 @@ def main(arguments: Optional[List[str]] = None) -> int:
             return _listCommand(args)
         if args.command == "schema":
             return _schemaCommand(args, resolver)
+        if args.command == "ui":
+            return _uiCommand(args)
     except (ConfigError, RuntimeError, OSError, subprocess.SubprocessError) as error:
         print("error: {0}".format(error), file=sys.stderr)
         return 2

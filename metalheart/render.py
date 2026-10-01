@@ -455,6 +455,7 @@ class RenderPipeline:
                     "scene_ranges": sceneRanges,
                     "first_frame": firstFrame,
                     "last_frame": lastFrame,
+                    "history_frames": self._historyFrames(config),
                     "output": str(chunkPath),
                     "ffmpeg": self._ffmpeg,
                 }
@@ -475,6 +476,37 @@ class RenderPipeline:
                     completed += 1
                     print("[render] chunk {0}/{1} complete".format(completed, len(chunkRanges)), file=sys.stderr, flush=True)
         return chunkPaths, reused
+
+    # :: ARRAY<STRING, ANY> -> INT
+    # Finds the largest finite frame-history window required by authored effects
+    def _historyFrames(self, config: Dict[str, Any]) -> int:
+        maximum = 0
+        chains = [config.get("post", [])]
+        for scene in config.get("scenes", []):
+            chains.append(scene.get("post", []))
+            background = scene.get("background", {})
+            if isinstance(background, dict):
+                chains.append(background.get("post", []))
+            renderer = scene.get("renderer", {})
+            if not isinstance(renderer, dict):
+                continue
+            surface = renderer.get("surface", {})
+            if isinstance(surface, dict):
+                chains.append(surface.get("post", []))
+            decor = renderer.get("decor", {})
+            ribbons = decor.get("ribbons", {}) if isinstance(decor, dict) else {}
+            if isinstance(ribbons, dict):
+                chains.append(ribbons.get("post", []))
+        for chain in chains:
+            if not isinstance(chain, list):
+                continue
+            for effect in chain:
+                if not isinstance(effect, dict) or not effect.get("enabled", True):
+                    continue
+                for operation in effect.get("operations", []):
+                    if isinstance(operation, dict) and operation.get("op") == "slitscan":
+                        maximum = max(maximum, max(1, int(operation.get("max_delay_frames", 30))))
+        return maximum
 
     # :: PATH, STRING, INT, INT -> BOOL
     # Verifies one chunk marker matches the requested render identity and range
@@ -579,7 +611,7 @@ class RenderPipeline:
                 if nextSceneIndex != sceneIndex:
                     sceneIndex = nextSceneIndex
                     sceneStartFrame = ranges[sceneIndex][0]
-                    session = self._backend.createRenderer(settings, ranges[sceneIndex][2])
+                    session = self._backend.createRenderer(settings, ranges[sceneIndex][2], config.get("post", []))
                     print("[render] scene {0}: {1}".format(sceneIndex + 1, ranges[sceneIndex][2]["id"]), file=sys.stderr, flush=True)
                 if session is None:
                     raise RuntimeError("frame schedule did not select a scene")
@@ -588,9 +620,21 @@ class RenderPipeline:
                 scene = ranges[sceneIndex][2]
                 params = self._backend.createParams(analysisResult.analysis, analysisFrame, relativeTimeSec, scene["reactivity"])
                 modulators = self._backend.createModulators(analysisResult.analysis, analysisFrame, relativeTimeSec, scene["reactivity"])
+                effectSignals = self._backend.createEffectSignals(
+                    analysisResult.analysis,
+                    analysisFrame,
+                    sceneStartFrame - firstFrame,
+                )
                 timeMode = scene.get("time_mode", settings["time_mode"])
                 rendererTime = sourceFrame / float(fps) if timeMode == "global" else (sourceFrame - sceneStartFrame) / float(fps)
-                frame = session.render(rendererTime, params, modulators)
+                frame = session.render(
+                    rendererTime,
+                    params,
+                    modulators,
+                    sourceFrame,
+                    sourceFrame - sceneStartFrame,
+                    effectSignals,
+                )
                 process.stdin.write(frame.tobytes())
                 now = time.monotonic()
                 if now - lastUpdate >= 1.0:

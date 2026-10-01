@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "audio": "../ref/audioReactive/metalheart_audio_test_small.mp4",
+  "settings": {
+    "width": 320,
+    "height": 180,
+    "fps": 12,
+    "crf": 23,
+    "seed": 17,
+    "quality": "preview",
+    "time_mode": "global"
+  },
+  "scenes": [
+    {
+      "id": "glitzle-effects",
+      "start_sec": 0.0,
+      "end_sec": 3.0,
+      "template": "builtins/ferro-impact",
+      "renderer": {
+        "core": "3d",
+        "forms": ["chaos"],
+        "cameras": ["dutch"],
+        "core_scale": 0.25,
+        "anti_alias": false,
+        "decor": false
+      },
+      "reactivity": {
+        "preset": "ferro-impact"
+      },
+      "overlay": {
+        "enabled": false
+      },
+      "post": [
+        {
+          "type": "post_filter",
+          "id": "rgb_shift",
+          "parameters": {
+            "rX": 7,
+            "bX": -9
+          },
+          "mix": 0.7
+        },
+        {
+          "type": "post_filter",
+          "id": "chaos_breach_like",
+          "enabled": true,
+          "mix": 0.45
+        }
+      ]
+    }
+  ],
+  "post": [
+    {
+      "type": "post_filter",
+      "id": "retro_crt_like",
+      "mix": 0.25
+    }
+  ]
+}

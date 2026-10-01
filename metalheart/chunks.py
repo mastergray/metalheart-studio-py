@@ -28,6 +28,7 @@ def renderChunk(task: Dict[str, Any]) -> Dict[str, Any]:
     settings = config["settings"]
     firstFrame = int(task["first_frame"])
     lastFrame = int(task["last_frame"])
+    historyFrames = max(0, int(task.get("history_frames", 0)))
     analysisFirstFrame = int(task["analysis_first_frame"])
     outputPath = Path(task["output"])
     partialPath = outputPath.with_suffix(".partial.mp4")
@@ -66,27 +67,38 @@ def renderChunk(task: Dict[str, Any]) -> Dict[str, Any]:
     if process.stdin is None:
         raise RuntimeError("unable to open FFmpeg frame input for chunk {0}".format(task["index"]))
     ranges = task["scene_ranges"]
+    warmupFirstFrame = max(int(ranges[0][0]), firstFrame - historyFrames)
     activeId: Optional[str] = None
     session: Optional[ReferenceRendererSession] = None
     sceneStartFrame = firstFrame
     started = time.monotonic()
     try:
-        for sourceFrame in range(firstFrame, lastFrame):
+        for sourceFrame in range(warmupFirstFrame, lastFrame):
             nextStartFrame, nextEndFrame, scene = _sceneRange(ranges, sourceFrame)
             del nextEndFrame
             if scene["id"] != activeId:
                 activeId = scene["id"]
                 sceneStartFrame = nextStartFrame
-                session = backend.createRenderer(settings, scene)
+                session = backend.createRenderer(settings, scene, config.get("post", []))
             if session is None:
                 raise RuntimeError("chunk frame schedule did not select a scene")
             analysisFrame = sourceFrame - analysisFirstFrame
             relativeTimeSec = analysisFrame / float(fps)
             params = backend.createParams(analysis, analysisFrame, relativeTimeSec, scene["reactivity"])
             modulators = backend.createModulators(analysis, analysisFrame, relativeTimeSec, scene["reactivity"])
+            effectSignals = backend.createEffectSignals(analysis, analysisFrame, sceneStartFrame - analysisFirstFrame)
             timeMode = scene.get("time_mode", settings["time_mode"])
             rendererTime = sourceFrame / float(fps) if timeMode == "global" else (sourceFrame - sceneStartFrame) / float(fps)
-            process.stdin.write(session.render(rendererTime, params, modulators).tobytes())
+            frame = session.render(
+                rendererTime,
+                params,
+                modulators,
+                sourceFrame,
+                sourceFrame - sceneStartFrame,
+                effectSignals,
+            )
+            if sourceFrame >= firstFrame:
+                process.stdin.write(frame.tobytes())
         process.stdin.close()
         errorBytes = process.stderr.read() if process.stderr is not None else b""
         returnCode = process.wait()

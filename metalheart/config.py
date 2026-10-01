@@ -26,6 +26,7 @@ from metalheart.catalog import QUALITY_RENDERER_PROFILES  # Concrete renderer-qu
 from metalheart.catalog import REACTIVITY_PRESETS  # Built-in audio binding presets
 from metalheart.catalog import SOURCES  # Supported audio feature sources
 from metalheart.catalog import TEMPLATES  # Built-in scene templates
+from metalheart.effect_catalog import effectDefinition  # Expand owned effects into reproducible operations
 
 
 # Raised when a config cannot be parsed or resolved
@@ -126,7 +127,7 @@ class ConfigResolver:
         resolved["analysis"] = analysis
         scenes = authored.get("scenes", [])
         resolved["scenes"] = [self._resolveScene(scene, index, quality, basePath) for index, scene in enumerate(scenes)] if isinstance(scenes, list) else scenes
-        resolved["post"] = copy.deepcopy(authored.get("post", []))
+        resolved["post"] = self._resolvePost(authored.get("post", []))
         resolved["_meta"] = {
             "config_path": str(Path(configPath).resolve()),
             "schema_version": 1,
@@ -156,8 +157,7 @@ class ConfigResolver:
         for index, scene in enumerate(scenes):
             self._validateScene(scene, index, report)
         self._validateSceneOrder(scenes, settings, report)
-        if config.get("post"):
-            report.addError("$.post: global post effects are not implemented in the first vertical slice")
+        self._validatePost(config.get("post"), "$.post", report)
         return report
 
     # :: ARRAY<STRING, ANY>, STRING -> NONE
@@ -206,13 +206,20 @@ class ConfigResolver:
                 surfaceConfig = elementConfig.get("surface") if isinstance(elementConfig, dict) else None
                 if isinstance(surfaceConfig, dict) and surfaceConfig.get("image"):
                     surfaceConfig["image"] = self._resolvePath(surfaceConfig["image"], basePath)
+            ribbons = decor.get("ribbons")
+            if isinstance(ribbons, dict):
+                ribbons["post"] = self._resolvePost(ribbons.get("post", []))
         surface = scene["renderer"].get("surface")
-        if isinstance(surface, dict) and surface.get("image"):
-            surface["image"] = self._resolvePath(surface["image"], basePath)
+        if isinstance(surface, dict):
+            if surface.get("image"):
+                surface["image"] = self._resolvePath(surface["image"], basePath)
+            surface["post"] = self._resolvePost(surface.get("post", []))
         scene["background"] = self._deepMerge(DEFAULT_BACKGROUND, scene.get("background", {}))
         background = scene["background"]
-        if isinstance(background, dict) and background.get("image"):
-            background["image"] = self._resolvePath(background["image"], basePath)
+        if isinstance(background, dict):
+            if background.get("image"):
+                background["image"] = self._resolvePath(background["image"], basePath)
+            background["post"] = self._resolvePost(background.get("post", []))
         legacyFinish = self._deepMerge(templateFinish, authoredFinish)
         scene["finish"] = self._deepMerge(DEFAULT_FINISH, self._deepMerge(legacyFinish, scene.get("finish", {})))
         reactivity = copy.deepcopy(scene.get("reactivity", {}))
@@ -221,8 +228,45 @@ class ConfigResolver:
         scene["reactivity"] = self._deepMerge(preset, reactivity)
         scene["reactivity"]["preset"] = presetId
         scene["overlay"] = self._deepMerge(DEFAULT_OVERLAY, scene.get("overlay", {}))
-        scene["post"] = copy.deepcopy(scene.get("post", []))
+        scene["post"] = self._resolvePost(scene.get("post", []))
         return scene
+
+    # :: ANY -> ANY
+    # Expands one authored effect chain while preserving invalid values for validation
+    def _resolvePost(self, value: Any) -> Any:
+        if not isinstance(value, list):
+            return copy.deepcopy(value)
+        return [self._resolveEffect(entry) for entry in value]
+
+    # :: ANY -> ANY
+    # Expands one catalog reference into deterministic render-profile operations
+    def _resolveEffect(self, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return copy.deepcopy(value)
+        effectId = value.get("id")
+        definition = effectDefinition(effectId) if isinstance(effectId, str) else None
+        resolved = copy.deepcopy(value)
+        resolved["type"] = value.get("type", "post_filter")
+        resolved["enabled"] = value.get("enabled", True)
+        resolved["mix"] = value.get("mix", 1.0)
+        authoredParameters = value.get("parameters", value.get("props", {}))
+        parameters: Dict[str, Any] = {}
+        if definition is not None:
+            for name, metadata in definition["parameters"].items():
+                parameters[name] = copy.deepcopy(metadata["default"])
+        if isinstance(authoredParameters, dict):
+            parameters.update(copy.deepcopy(authoredParameters))
+        else:
+            parameters = copy.deepcopy(authoredParameters)
+        resolved["parameters"] = parameters
+        resolved.pop("props", None)
+        if definition is not None:
+            authoredOperations = value.get("operations")
+            operations = copy.deepcopy(authoredOperations) if isinstance(authoredOperations, list) else copy.deepcopy(definition["operations"])
+            if len(operations) == 1 and isinstance(parameters, dict):
+                operations[0].update(parameters)
+            resolved["operations"] = operations
+        return resolved
 
     # :: ANY -> (ARRAY<STRING, ANY>, ARRAY<STRING, ANY>)
     # Migrates legacy backend renderer keys into the public authoring vocabulary
@@ -375,8 +419,66 @@ class ConfigResolver:
             report.addError("{0}.finish: expected an object".format(prefix))
         else:
             self._validateFinish(finish, prefix, report)
-        if scene.get("post"):
-            report.addError("{0}.post: scene post effects are not implemented in the first vertical slice".format(prefix))
+        self._validatePost(scene.get("post"), prefix + ".post", report)
+
+    # :: ANY, STRING, validationReport -> NONE
+    # Validates an ordered scene or global effect chain
+    def _validatePost(self, value: Any, path: str, report: ValidationReport) -> None:
+        if not isinstance(value, list):
+            report.addError("{0}: expected an array".format(path))
+            return
+        for index, entry in enumerate(value):
+            self._validateEffect(entry, "{0}[{1}]".format(path, index), report)
+
+    # :: ANY, STRING, validationReport -> NONE
+    # Validates one resolved catalog effect and its typed parameters
+    def _validateEffect(self, value: Any, path: str, report: ValidationReport) -> None:
+        if not isinstance(value, dict):
+            report.addError("{0}: expected an object".format(path))
+            return
+        if value.get("type") != "post_filter":
+            report.addError("{0}.type: expected 'post_filter'".format(path))
+        effectId = value.get("id")
+        definition = effectDefinition(effectId) if isinstance(effectId, str) else None
+        if definition is None:
+            report.addError("{0}.id: unknown effect {1!r}".format(path, effectId))
+            return
+        if not isinstance(value.get("enabled"), bool):
+            report.addError("{0}.enabled: expected a boolean".format(path))
+        mix = value.get("mix")
+        if isinstance(mix, bool) or not isinstance(mix, (int, float)) or not 0.0 <= mix <= 1.0:
+            report.addError("{0}.mix: expected 0.0 through 1.0".format(path))
+        parameters = value.get("parameters")
+        if not isinstance(parameters, dict):
+            report.addError("{0}.parameters: expected an object".format(path))
+            return
+        parameterDefinitions = definition["parameters"]
+        for name in parameters:
+            if name not in parameterDefinitions:
+                report.addError("{0}.parameters.{1}: unknown parameter".format(path, name))
+        for name, metadata in parameterDefinitions.items():
+            parameterPath = "{0}.parameters.{1}".format(path, name)
+            parameterValue = parameters.get(name)
+            expectedType = metadata["type"]
+            if expectedType == "integer":
+                validType = isinstance(parameterValue, int) and not isinstance(parameterValue, bool)
+            elif expectedType == "boolean":
+                validType = isinstance(parameterValue, bool)
+            elif expectedType == "string":
+                validType = isinstance(parameterValue, str)
+            else:
+                validType = isinstance(parameterValue, (int, float)) and not isinstance(parameterValue, bool)
+            if not validType:
+                report.addError("{0}: expected a {1}".format(parameterPath, expectedType))
+                continue
+            allowed = metadata.get("enum")
+            if allowed is not None and parameterValue not in allowed:
+                report.addError("{0}: expected one of {1}".format(parameterPath, ", ".join(allowed)))
+                continue
+            minimum = metadata.get("minimum")
+            maximum = metadata.get("maximum")
+            if (minimum is not None and parameterValue < minimum) or (maximum is not None and parameterValue > maximum):
+                report.addError("{0}: expected {1} through {2}".format(parameterPath, minimum, maximum))
 
     # :: ARRAY<STRING, ANY>, ANY, STRING, validationReport -> NONE
     # Validates configurable palette or image backgrounds and bounded pulse behavior
@@ -436,6 +538,9 @@ class ConfigResolver:
         for key in ("dots", "ghosts", "shadow"):
             if not isinstance(background.get(key), bool):
                 report.addError("{0}.{1}: expected a boolean".format(backgroundPath, key))
+        self._validatePost(background.get("post"), backgroundPath + ".post", report)
+        if core != "3d" and background.get("post"):
+            report.addError("{0}.post: scoped effects require the 3d core".format(backgroundPath))
         ripple = background.get("ripple")
         if not isinstance(ripple, dict):
             report.addError("{0}.ripple: expected an object".format(backgroundPath))
@@ -572,6 +677,9 @@ class ConfigResolver:
                         surfacePath, key, limits[0], limits[1]
                     )
                 )
+        self._validatePost(surface.get("post"), surfacePath + ".post", report)
+        if core != "3d" and surface.get("post"):
+            report.addError("{0}.post: scoped effects require the 3d core".format(surfacePath))
 
     # :: ARRAY<STRING, ANY>, ANY, STRING, validationReport -> NONE
     # Validates independently authored 3D ribbon and plate geometry and skins
@@ -610,6 +718,10 @@ class ConfigResolver:
                 report.addError("{0}.surface: expected an object".format(elementPath))
             else:
                 self._validateDecorSurface(surface, mapping, core, elementPath, report)
+            if element == "ribbons":
+                self._validatePost(value.get("post"), elementPath + ".post", report)
+                if core != "3d" and value.get("post"):
+                    report.addError("{0}.post: scoped effects require the 3d core".format(elementPath))
         if core != "3d" and self._hasAdvancedDecorControls(decor):
             report.addError("{0}: first-class decor controls require the 3d core".format(decorPath))
 
@@ -628,6 +740,8 @@ class ConfigResolver:
             (plates, DEFAULT_DECOR["plates"]),
         ):
             if value.get("count") != default["count"] or value.get("material") != "metallic":
+                return True
+            if value.get("post"):
                 return True
             surface = value.get("surface", {})
             if surface != default["surface"]:

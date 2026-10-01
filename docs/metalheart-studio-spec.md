@@ -6,7 +6,7 @@ Working name: **Metalheart Studio**
 
 ## 1. Summary
 
-Metalheart Studio is a local, headless audio-reactive video rendering pipeline. It keeps the useful parts of Glitzle Studio—audio analysis, scene-based composition, declarative JSON files, reusable templates, effect chains, validation, and reproducible rendering—but replaces Dazzle as the base visual generator with the Metalheart/Depthcore renderer currently prototyped in `ref/metalheart.py` and `ref/liquid3d.py`.
+Metalheart Studio is a local audio-reactive video authoring application backed by a headless rendering pipeline. It keeps the useful parts of Glitzle Studio—audio analysis, scene-based composition, declarative JSON files, reusable templates, effect chains, validation, and reproducible rendering—but replaces Dazzle as the base visual generator with the Metalheart/Depthcore renderer currently prototyped in `ref/metalheart.py` and `ref/liquid3d.py`.
 
 The first version should let an author:
 
@@ -14,9 +14,10 @@ The first version should let an author:
 2. choose a Metalheart form, camera, palette, and renderer options for each scene;
 3. map audio features to renderer parameters without writing Python;
 4. stack glitch, post-filter, and FFmpeg effects per scene or globally; and
-5. render a deterministic final video plus a portable render profile directly from JSON.
+5. preview scenes and effects in a native desktop application; and
+6. render a deterministic final video plus a portable render profile from either the desktop application or CLI.
 
-The first version is an evolution of Glitzle's headless workflow, not a line-for-line fork. There is no browser, local web server, or interactive UI in v1. Configuration is authored by editing or generating JSON templates. A UI may be considered only after the JSON contract and renderer are stable.
+The first version is an evolution of Glitzle's workflow, not a line-for-line fork. JSON remains the canonical project and interchange format, while a native PySide6/Qt desktop application provides the primary visual authoring surface. The rendering engine and CLI remain independently usable for automation and testing. The project must not introduce a browser frontend, embedded webview, JavaScript UI, or local web server.
 
 ## 2. Source systems and current capabilities
 
@@ -78,6 +79,7 @@ The production implementation should reuse validated behavior and algorithms fro
 ### 3.1 Goals
 
 - Make compelling audio-reactive Metalheart videos without code changes.
+- Provide a native desktop workflow for previewing, authoring, and producing those videos.
 - Make JSON composition templates concise enough for experimentation and iteration.
 - Keep timelines human-readable, versioned, deterministic, and validatable.
 - Separate audio analysis, authored intent, rendering, and post-processing.
@@ -90,7 +92,8 @@ The production implementation should reuse validated behavior and algorithms fro
 
 - Real-time full-resolution playback of the CPU ray marcher.
 - A general-purpose nonlinear video editor.
-- Any browser, local web server, or interactive authoring UI.
+- Any browser frontend, embedded webview, JavaScript UI, or local web server.
+- Real-time editing semantics that bypass the canonical JSON project model.
 - Arbitrary keyframe curves for every internal renderer variable.
 - Live microphone or performance/VJ input.
 - GPU rendering or a rewrite of the renderer in WebGL.
@@ -100,7 +103,7 @@ The production implementation should reuse validated behavior and algorithms fro
 
 Glitch and post-filter compatibility is desirable, but should be implemented as copied, owned modules or clean package dependencies—not runtime coupling to sibling repositories.
 
-## 4. JSON-first workflow
+## 4. JSON-backed workflow
 
 ### 4.1 Create or copy a config template
 
@@ -165,7 +168,15 @@ python3 studio.py render song.metalheart.json \
 
 `render` always runs validation before expensive work. It analyzes or loads audio features once, renders independent scene segments, applies ordered post chains, concatenates segments in timeline order, muxes the original audio, applies global post-processing, and writes a resolved render profile.
 
-Optional `--quality preview` and `--range START:END` flags provide fast, low-resolution test renders without introducing a separate UI or preview service.
+Optional `--quality preview` and `--range START:END` flags provide fast, low-resolution test renders for automation and use by the desktop application's preview workflow.
+
+### 4.4 Author in the desktop application
+
+The PySide6/Qt application opens and saves the same versioned JSON documents accepted by the CLI. It presents the audio waveform and hard-cut scene timeline, scene renderer and reactivity controls, ordered scene/global effect stacks, still-frame previews, short range previews, and final or per-scene export actions. It calls the same resolver, validator, analyzer, renderer, and effect registry used by the CLI; UI-only project state must not become a second rendering contract.
+
+The implemented first shell exposes the canonical authored JSON directly, resolved scene selection, effect counts for form, ribbon, background, scene, and global scopes, persistent validation feedback, and a normalized scene-time control. Still previews run in a worker thread through the production resolver, analysis cache, renderer adapter, and effect-history calculation. They are capped at 480×270, 12 fps, 0.2 core scale, and disabled antialiasing; these preview-only cost settings never mutate the authored export profile. Full video export runs as a cancellable child CLI process so the Qt event loop remains responsive.
+
+Preview is progressive rather than full-resolution real-time playback. A playhead change may request a low-cost still immediately, while an explicit preview action renders a selected range with the preview quality profile. Preview work must be cancellable and must never replace a valid final output.
 
 ## 5. Architecture
 
@@ -602,14 +613,50 @@ Every effect registry entry must declare:
 - supported pixel formats and resolutions;
 - quality-profile support and estimated cost.
 
-Effect properties may gain audio bindings later, but version 1 only requires audio reactivity in the base Metalheart renderer. Existing Glitzle filters must be audited before import; malformed, resolution-hardcoded, or unsupported FFmpeg recipes should not enter the initial catalog merely for numeric parity.
+Scalar effect properties may opt into audio bindings through declared typed destinations. Existing Glitzle filters must be audited before import; malformed, resolution-hardcoded, or unsupported FFmpeg recipes should not enter the initial catalog merely for numeric parity.
 
-## 11. CLI and JSON authoring contract
+The implemented first slice owns Glitzle's NumPy-style frame operations rather than invoking Glitzle at runtime. It provides configurable building blocks and curated presets across Glitch, Chaos, Decay, Destructive, Retro/CRT, and Violent categories. Scene and global chains use the same ordered entry shape:
 
-Version 1 has no browser application, local API server, or interactive editor. The supported interface is the CLI plus version-controlled JSON files.
+```json
+{
+  "type": "post_filter",
+  "id": "rgb_shift",
+  "enabled": true,
+  "mix": 0.7,
+  "parameters": {
+    "rX": 7,
+    "bX": -9
+  }
+}
+```
+
+Resolution-safe operations execute on BGR frames inside render workers. Randomized operations derive their state from the render seed and the appropriate scene-local or global frame index so chunk count, worker scheduling, resume, and scene-clip export do not change their pixels. Finite-history effects declare their maximum lookback; workers render and discard that preroll before encoding an assigned chunk. Resolution-hardcoded FFmpeg recipes, external glitch-maker processes, unbounded-history effects, and arbitrary source-to-effect-property bindings remain outside this slice pending separate audits and integration contracts.
+
+Three-dimensional scenes may place the same ordered effect entries at `background.post`, `renderer.surface.post`, and `renderer.decor.ribbons.post`. The renderer captures the visible frontmost form and ribbon materials from the immutable ray marcher, expands those classifications to output resolution, and processes each as a transparent layer. Spatial primitives carry their alpha matte, so effects such as Tear, Block Jitter, mirrors, Tetrys, Ziti, Slitscan, RGB Shift, Chromatic, VHS tracking, and Arcade curvature can move layer pixels instead of being clipped to the original silhouette. Background effects run after background ripple, ghosts, and shadow but before foreground composition. Form and ribbon effects then composite independently, followed by finishing, scene post, global post, and finally text overlay. Scoped chains require the 3D core; plate-scoped chains are not part of version 1.
+
+```json
+{
+  "background": {"post": [{"id": "vhs", "mix": 0.35}]},
+  "renderer": {
+    "surface": {"post": [{"id": "posterize", "parameters": {"levels": 4}}]},
+    "decor": {
+      "ribbons": {"post": [{"id": "tear", "parameters": {"direction": "vertical"}}]}
+    }
+  }
+}
+```
+
+The next owned catalog slice ports Dazzle's horizontal, vertical, quad, and diamond mirrors; VidGlitch's byte-equivalent Tetrys column drops; Dazzle's Ziti cylindrical projection; and animated XOR interference. Tetrys extends its original downward column motion to upward columns and left/right row motion while retaining `down` as the compatible default. Ziti likewise supports right, left, down, and up: `right` preserves the original horizontal projection, `left` reverses its phase, and down/up transpose the cylinder vertically with matching phase direction. Spatial effects retain their source geometry on Metalheart BGR frames. XOR operates per BGR channel rather than on Dazzle palette indices, so it is an intentional Metalheart adaptation rather than pixel identity with the Dazzle output. The complete 19-preset Glitzle Glitch post-filter category is represented as exact ordered operation recipes; Datamosh Breakup, Stutter Tear, Bitplane Scramble, Channel Smear, Scanline Desync, and Glitch Warpfield carry featured catalog metadata. Glitchstation contributes a six-effect Color family: contrast, saturation, posterize, independent RGB channel gain, grayscale blending, and invert blending. Those controls retain Glitchstation's defaults, bounds, increments, semantic roles, Rec.601 luminance, and rounded byte behavior. Its selected utility pedals add wrapping or clamped RGB Shift, horizontal or vertical seeded Tear, seeded Block Jitter, deterministic rectangle swaps, configurable VHS tracking/chroma/noise/head-switch processing, and configurable Arcade curvature/mask/palette/scan processing. Legacy Glitzle compound recipes retain their prior RGB Shift and Block Jitter semantics because their owned operation definitions do not opt into the Glitchstation parameters. Blister, Randomize, and Handheld are intentionally excluded. Glitzle Studio's Glitch Maker stack separately contributes horizontal, vertical, or circular `chromatic` aberration, contiguous-run `pixel_sort`, and finite-history `slitscan`. `scanline_corrupt` remains a deterministic full-width tear-and-chromatic recipe distinct from the simpler alternating-row `scanlines` primitive. These audio-aware effects retain bounded `audio_scale` parameters; fully general effect-property bindings remain future work.
+
+## 11. Desktop, CLI, and JSON authoring contract
+
+The native PySide6/Qt desktop application is the interactive authoring interface. The CLI remains a complete automation and diagnostic interface, and version-controlled JSON remains authoritative. Both interfaces use the same application services and validation rules. A browser application, embedded webview, or local HTTP API is explicitly outside the architecture.
+
+The implemented primary workflow begins with **New from Audio**, which runs the shared analyzer and phrase-aligned scene planner outside the UI thread. The workspace presents cached audio energy as a waveform/hard-cut timeline and edits the selected scene through structured Form, Background, and Ribbons inspectors. Each layer owns an independent ordered effect stack generated from the effect catalog, including typed parameter, mix, bypass, add, remove, and reorder controls. Project-level Undo and Redo restore canonical authored snapshots across structured controls and applied Advanced JSON; Save marks the current history position as clean. JSON is available through an optional advanced dock rather than serving as the normal authoring surface. Still previews remain explicit and bounded for the target machine.
 
 ### 11.1 Required commands
 
+- `ui [CONFIG]`: open the native PySide6 authoring application, optionally with a project.
 - `render CONFIG`: validate, analyze when needed, and produce the requested video.
 - `validate CONFIG`: resolve and validate without rendering.
 - `analyze AUDIO`: inspect audio features/events and optionally emit a scene skeleton.
@@ -795,7 +842,7 @@ Version 1 is complete when a user can:
 - Add version metadata, typed configuration, and a minimal adapter.
 - Benchmark stills and clips across preview/draft/final settings.
 
-Phases 0 through 2 constitute version 1. Later phases are explicitly outside the first release.
+Phases 0 through 3 constitute version 1. Phase 4 is explicitly outside the first release.
 
 ### Phase 1 — audio-reactive headless renderer
 
@@ -812,23 +859,27 @@ Phases 0 through 2 constitute version 1. Later phases are explicitly outside the
 - Add range/preview renders, global post, cancellation, conservative parallel rendering, and recovery behavior.
 - Complete visual regressions and duration/sync tests.
 
-### Phase 3 — advanced headless authoring, after v1
+### Phase 3 — effects and native desktop authoring
+
+- implement the typed, ordered scene and global effect registry;
+- expose effect metadata and parameters to both CLI and desktop UI;
+- build the PySide6/Qt project window, waveform, hard-cut scene timeline, and inspectors;
+- add cancellable playhead stills and selected-range preview renders;
+- launch final and per-scene exports through the shared render pipeline.
+
+### Phase 4 — advanced authoring
 
 - keyframes and automation lanes;
 - audio-bound post-effect properties;
 - user-defined reactivity presets;
 - renderer plug-ins or additional base generators;
 
-### Phase 4 — optional UI exploration
-
-Only after the headless contract is stable, evaluate whether a UI is worthwhile. Any future UI should consume the same JSON Schema, resolver, validator, and render CLI/API rather than introduce a second composition model. A browser is one possible client, not a v1 dependency or architectural requirement.
-
 ## 16. Initial implementation decisions
 
 The following decisions are accepted for the initial build:
 
 1. Use Python for orchestration, analysis, rendering, and the CLI.
-2. Treat the CLI and JSON format as the complete v1 product surface; do not build a browser or server.
+2. Use PySide6/Qt for the native desktop authoring surface. Do not build a browser frontend, embedded webview, JavaScript UI, or local web server.
 3. Use timeline JSON plus a separate NPZ audio-feature cache.
 4. Default to 1920×1080 at 30 fps; preserve arbitrary even dimensions and common frame rates.
 5. Default animation time to global song time, with a per-scene restart option.
@@ -841,6 +892,7 @@ The following decisions are accepted for the initial build:
 12. Begin with owned Python post filters and a small audited glitch subset; defer the broad FFmpeg recipe catalog.
 13. Require a fixed seed for final renders and guarantee repeatability on the pinned local software stack. Cross-machine pixel identity is not a v1 requirement.
 14. Make the first implementation checkpoint a deterministic 3–5 second low-resolution render from one JSON config with synchronized generated audio.
+15. Keep JSON as the canonical project format and share resolver, validation, preview, render, and effect services between the desktop application and CLI.
 
 ## 17. Engineering and repository standards
 

@@ -13,6 +13,7 @@ import pytest  # Mark media integration coverage
 
 from metalheart.analysis import AudioAnalysisCache  # Precompute the same full-track cache emitted by analyze
 from metalheart.config import ConfigResolver  # Resolve and validate the temporary config
+from metalheart.preview import PreviewService  # Render bounded native-UI still frames
 from metalheart.reference_backend import ReferenceBackend  # Share the pinned backend across analysis and render
 from metalheart.render import RenderPipeline  # Execute the complete render pipeline
 
@@ -78,17 +79,46 @@ def _config(audioPath: Path, configPath: Path) -> Dict[str, Any]:
                 "renderer": {"core": "2d", "decor": False, "anti_alias": False},
                 "finish": {"scanlines": False},
                 "reactivity": {"preset": "balanced"},
+                "post": [
+                    {"id": "rgb_shift", "parameters": {"rX": 2, "bX": -2}},
+                    {"id": "tear", "parameters": {"direction": "horizontal", "bands": 5, "strength": 4, "seed": 2}},
+                    {"id": "vhs", "parameters": {"tracking": 0.15, "chromaBleed": 0.2, "noise": 0.1, "headSwitch": 0.2}},
+                ],
             },
             {
                 "id": "impact",
                 "start_sec": 1.0,
                 "end_sec": 2.0,
                 "template": "builtins/ferro-impact",
-                "renderer": {"core": "2d", "palette": "ember", "decor": False, "anti_alias": False},
+                "renderer": {
+                    "core": "3d",
+                    "palette": "ember",
+                    "forms": ["mercury"],
+                    "cameras": ["orbit"],
+                    "core_scale": 0.1,
+                    "decor": {
+                        "enabled": True,
+                        "ribbons": {
+                            "enabled": True,
+                            "count": 1,
+                            "post": [{"id": "rgb_shift", "parameters": {"rX": 2, "bX": -2}}],
+                        },
+                        "plates": {"enabled": False, "count": 0},
+                    },
+                    "surface": {"post": [{"id": "posterize", "parameters": {"levels": 4}}]},
+                    "anti_alias": False,
+                },
+                "background": {"post": [{"id": "scanlines", "parameters": {"strength": 0.2}}]},
                 "finish": {"scanlines": False},
+                "post": [
+                    {"id": "rectangles", "parameters": {"n_rects": 2, "seed": 3}},
+                    {"id": "tetrys", "parameters": {"block_size": 8, "direction": "left"}},
+                    {"id": "ziti", "parameters": {"curvature": 0.35, "direction": "down"}},
+                    {"id": "arcade", "parameters": {"curvature": 0.1, "maskStrength": 0.2, "paletteLevels": 5, "scanStrength": 0.15}},
+                ],
             }
         ],
-        "post": [],
+        "post": [{"id": "posterize", "parameters": {"levels": 6}, "mix": 0.35}],
     }
 
 
@@ -157,6 +187,7 @@ def testRendersSynchronizedVideoAndAudio(tmp_path: Path) -> None:
         assert len(profile["scenes"]) == 1
         assert profile["scenes"][0]["id"] == resolved["scenes"][index]["id"]
         assert profile["scenes"][0]["renderer"] == resolved["scenes"][index]["renderer"]
+        assert profile["post"] == resolved["post"]
         clipProbe = subprocess.run(
             ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,nb_frames,duration", "-of", "json", str(clipPath)],
             stdout=subprocess.PIPE,
@@ -172,3 +203,55 @@ def testRendersSynchronizedVideoAndAudio(tmp_path: Path) -> None:
         assert abs(float(clipAudio["duration"]) - 1.0) < 0.001
         clipFrameHashes.extend(_frameHashes(clipPath))
     assert clipFrameHashes == _frameHashes(outputPath)
+
+
+# :: PATH -> NONE
+# Verifies finite-history Slitscan preroll produces the same frames across chunk boundaries
+@pytest.mark.integration
+def testSlitscanHistorySurvivesParallelChunks(tmp_path: Path) -> None:
+    if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
+        pytest.skip("ffmpeg and ffprobe are required")
+    audioPath = tmp_path / "slitscan.wav"
+    configPath = tmp_path / "slitscan.json"
+    _writeAudio(audioPath)
+    authored = _config(audioPath, configPath)
+    authored["settings"].update({"crf": 0, "workers": 1, "chunk_sec": 2.0, "resume": False})
+    scene = authored["scenes"][0]
+    scene["end_sec"] = 2.0
+    scene["post"] = [
+        {
+            "id": "slitscan",
+            "parameters": {"direction": "horizontal", "max_delay_frames": 3, "audio_scale": 0.0},
+        }
+    ]
+    authored["scenes"] = [scene]
+    authored["post"] = []
+    configPath.write_text(json.dumps(authored), encoding="utf-8")
+    resolver = ConfigResolver.init()
+    singleConfig = resolver.resolve(resolver.load(str(configPath)), str(configPath))
+    singlePath = tmp_path / "slitscan-single.mp4"
+    RenderPipeline.init().render(singleConfig, str(singlePath))
+    authored["settings"].update({"workers": 2, "chunk_sec": 0.5})
+    configPath.write_text(json.dumps(authored), encoding="utf-8")
+    chunkedConfig = resolver.resolve(resolver.load(str(configPath)), str(configPath))
+    chunkedPath = tmp_path / "slitscan-chunked.mp4"
+    RenderPipeline.init().render(chunkedConfig, str(chunkedPath))
+    assert _frameHashes(chunkedPath) == _frameHashes(singlePath)
+
+
+# :: PATH -> NONE
+# Verifies the UI preview path shares resolution, validation, audio, and renderer services
+@pytest.mark.integration
+def testRendersBoundedStillPreview(tmp_path: Path) -> None:
+    audioPath = tmp_path / "preview.wav"
+    configPath = tmp_path / "preview.json"
+    _writeAudio(audioPath, 1.0)
+    authored = _config(audioPath, configPath)
+    authored["settings"].update({"width": 1920, "height": 1080, "fps": 30})
+    authored["scenes"] = [authored["scenes"][0]]
+    authored["scenes"][0]["end_sec"] = 1.0
+    result = PreviewService.init().render(authored, str(configPath), 0, 0.5)
+    assert result.frame.shape == (270, 480, 3)
+    assert result.frame.dtype.name == "uint8"
+    assert result.sceneId == "calm"
+    assert abs(result.timeSec - 0.5) < 0.1

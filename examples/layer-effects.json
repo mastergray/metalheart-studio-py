@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "audio": "../ref/audioReactive/metalheart_audio_test_small.mp4",
+  "settings": {
+    "width": 320,
+    "height": 180,
+    "fps": 12,
+    "crf": 23,
+    "seed": 23,
+    "quality": "preview",
+    "time_mode": "global"
+  },
+  "scenes": [
+    {
+      "id": "layer-effects",
+      "start_sec": 0.0,
+      "end_sec": 3.0,
+      "renderer": {
+        "core": "3d",
+        "forms": ["radial"],
+        "cameras": ["orbit"],
+        "core_scale": 0.25,
+        "anti_alias": false,
+        "surface": {
+          "post": [
+            {"id": "posterize", "parameters": {"levels": 4}},
+            {"id": "chromatic", "parameters": {"amount": 8.0}, "mix": 0.6}
+          ]
+        },
+        "decor": {
+          "enabled": true,
+          "ribbons": {
+            "enabled": true,
+            "count": 3,
+            "post": [
+              {"id": "tear", "parameters": {"direction": "vertical", "strength": 8}}
+            ]
+          },
+          "plates": {"enabled": false, "count": 0}
+        }
+      },
+      "background": {
+        "post": [
+          {"id": "vhs", "parameters": {"tracking": 0.2, "chromaBleed": 0.25, "noise": 0.08}}
+        ]
+      },
+      "reactivity": {"preset": "spectral-radial"},
+      "overlay": {"enabled": false}
+    }
+  ]
+}

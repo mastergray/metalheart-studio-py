@@ -132,6 +132,84 @@ def testRejectsInvalidFinishControls(tmp_path: Path) -> None:
     assert any("finish.slice_glitch" in error for error in report.errors)
 
 
+# :: PATH -> NONE
+# Verifies scene and global effect references expand to reproducible ordered operations
+def testResolvesAndValidatesOrderedEffects(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["post"] = [
+        {
+            "type": "post_filter",
+            "id": "rgb_shift",
+            "parameters": {"rX": 9, "bX": -4},
+        },
+        {"id": "hyper_glitch_like", "enabled": False, "mix": 0.6},
+    ]
+    authored["post"] = [{"id": "retro_crt_like"}]
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert report.isValid, report.errors
+    sceneEffects = resolved["scenes"][0]["post"]
+    assert [effect["id"] for effect in sceneEffects] == ["rgb_shift", "hyper_glitch_like"]
+    assert sceneEffects[0]["parameters"] == {"rX": 9, "bX": -4, "edge_mode": "wrap"}
+    assert sceneEffects[0]["operations"] == [{"op": "rgbShift", "rX": 9, "bX": -4, "edge_mode": "wrap"}]
+    assert not sceneEffects[1]["enabled"]
+    assert resolved["post"][0]["operations"][0]["op"] == "pixelate"
+    rerenderedProfile = resolver.resolve(resolved, str(tmp_path / "profile.json"))
+    assert rerenderedProfile["scenes"][0]["post"] == resolved["scenes"][0]["post"]
+    assert rerenderedProfile["post"] == resolved["post"]
+
+
+# :: PATH -> NONE
+# Verifies background, form, and ribbon chains share effect resolution and validation
+def testResolvesLayerScopedEffects(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["renderer"] = {
+        "core": "3d",
+        "surface": {"post": [{"id": "posterize", "parameters": {"levels": 3}}]},
+        "decor": {"ribbons": {"post": [{"id": "tear", "parameters": {"strength": 7}}]}},
+    }
+    authored["scenes"][0]["background"] = {"post": [{"id": "invert", "mix": 0.5}]}
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert report.isValid, report.errors
+    scene = resolved["scenes"][0]
+    assert scene["renderer"]["surface"]["post"][0]["operations"][0]["levels"] == 3
+    assert scene["renderer"]["decor"]["ribbons"]["post"][0]["operations"][0]["strength"] == 7
+    assert scene["background"]["post"][0]["mix"] == 0.5
+
+    authored["scenes"][0]["renderer"]["core"] = "2d"
+    invalid = resolver.resolve(authored, str(tmp_path / "project.json"))
+    invalidReport = resolver.validate(invalid)
+    assert any("surface.post: scoped effects require the 3d core" in error for error in invalidReport.errors)
+    assert any("ribbons.post: scoped effects require the 3d core" in error for error in invalidReport.errors)
+    assert any("background.post: scoped effects require the 3d core" in error for error in invalidReport.errors)
+
+
+# :: PATH -> NONE
+# Verifies invalid effect identifiers and typed parameters fail before rendering
+def testRejectsInvalidEffects(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["post"] = [
+        {"id": "not-an-effect"},
+        {"id": "pixelate", "parameters": {"size": 0}},
+        {"id": "contrast", "parameters": {"value": True}, "mix": 2.0},
+        {"id": "chromatic", "parameters": {"direction": "diagonal"}},
+    ]
+    authored["post"] = "not-an-array"
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert not report.isValid
+    assert any("unknown effect" in error for error in report.errors)
+    assert any("parameters.size" in error for error in report.errors)
+    assert any("parameters.value" in error for error in report.errors)
+    assert any("parameters.direction" in error for error in report.errors)
+    assert any(".mix" in error for error in report.errors)
+    assert any("$.post: expected an array" == error for error in report.errors)
+
+
 # :: VOID -> NONE
 # Verifies generated schema documents the stable public vocabulary
 def testSchemaPublishesFormsFinishAndOverlay() -> None:
@@ -158,7 +236,11 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
     assert surface["sampling"]["enum"] == ["bilinear", "nearest"]
     assert "texel_steps" in surface
     assert "lighting_steps" in surface
+    assert surface["post"] == {"type": "array", "items": {"$ref": "#/$defs/effect"}}
     assert "finish" in scene
+    assert scene["post"] == {"type": "array", "items": {"$ref": "#/$defs/effect"}}
+    assert schema["properties"]["post"] == {"type": "array", "items": {"$ref": "#/$defs/effect"}}
+    assert "hyper_glitch_like" in schema["$defs"]["effect"]["properties"]["id"]["enum"]
     assert "overlay" in scene
     assert scene["background"] == {"$ref": "#/$defs/background"}
     assert schema["$defs"]["background"]["properties"]["fit"]["enum"] == [
@@ -167,6 +249,11 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
         "tile",
     ]
     background = schema["$defs"]["background"]["properties"]
+    assert background["post"] == {"type": "array", "items": {"$ref": "#/$defs/effect"}}
+    assert schema["$defs"]["ribbonElement"]["allOf"][1]["properties"]["post"] == {
+        "type": "array",
+        "items": {"$ref": "#/$defs/effect"},
+    }
     assert background["material"]["enum"] == ["flat", "matte", "metallic"]
     assert "amount" in background["ripple"]["properties"]
     assert "roughness" in background["ripple"]["properties"]

@@ -9,6 +9,8 @@ import cv2  # Fit, transform, blur, and composite background imagery
 import numpy as np  # Evaluate procedural backgrounds and alpha composition
 
 from metalheart.catalog import DEFAULT_BACKGROUND  # Detect the unchanged reference background contract
+from metalheart.effects import EffectChain  # Apply a scoped chain before foreground composition
+from metalheart.layer_effects import LayerEffects  # Process captured form and ribbon materials
 
 
 # :: FLOAT, FLOAT, ANY -> ANY
@@ -21,14 +23,24 @@ def _smoothstep(edge0: float, edge1: float, value: Any) -> Any:
 # Rebuilds the 3D composition around an authored background before finishing
 class BackgroundPass:
 
-    # CONSTRUCTOR :: ANY, ARRAY<STRING, ANY> -> backgroundPass
+    # CONSTRUCTOR :: ANY, ARRAY<STRING, ANY>, effectChain?, layerEffects? -> backgroundPass
     # Loads an optional image and prepares foreground capture
-    def __init__(self, renderer: Any, config: Dict[str, Any]) -> None:
+    def __init__(
+        self,
+        renderer: Any,
+        config: Dict[str, Any],
+        backgroundEffects: Optional[EffectChain] = None,
+        layerEffects: Optional[LayerEffects] = None,
+    ) -> None:
         self._renderer = renderer
         self._config = config
         self._signals: Dict[str, float] = {}
+        self._effectSignals: Dict[str, Any] = {}
+        self._frameIndex: Optional[int] = None
         self._foreground: Optional[Tuple[Any, Any, Any]] = None
         self._baseCoreRender: Optional[Any] = None
+        self._backgroundEffects = backgroundEffects
+        self._layerEffects = layerEffects
         self._custom = config != DEFAULT_BACKGROUND
         self._texture: Optional[np.ndarray] = None
         imagePath = config.get("image")
@@ -50,11 +62,22 @@ class BackgroundPass:
     def setSignals(self, signals: Dict[str, float]) -> None:
         self._signals = signals
 
+    # :: INT?, ARRAY<STRING, ANY> -> NONE
+    # Stores frame-local post-filter timing and audio signals before rendering
+    def setEffectContext(self, frameIndex: Optional[int], signals: Dict[str, Any]) -> None:
+        self._frameIndex = frameIndex
+        self._effectSignals = signals
+
     # :: ANY, FLOAT, ANY -> ANY
     # Replaces only the background while retaining captured foreground and HUD layers
     def apply(self, referenceImage: Any, timeSec: float, params: Any) -> Any:
         pulse = min(max(float(self._signals.get("background_pulse", 0.0)), 0.0), 1.0)
-        if not self._custom and pulse <= 0.0:
+        if (
+            not self._custom
+            and pulse <= 0.0
+            and self._backgroundEffects is None
+            and self._layerEffects is None
+        ):
             return referenceImage
         if self._foreground is None:
             return referenceImage
@@ -80,6 +103,24 @@ class BackgroundPass:
             background = self._ghosts(background, foreground * alpha[..., None], alpha)
         if self._config["shadow"]:
             background = self._shadow(background, alpha)
+        if self._backgroundEffects is not None:
+            backgroundRgb = np.clip(background * 255.0, 0.0, 255.0).astype(np.uint8)
+            backgroundBgr = cv2.cvtColor(backgroundRgb, cv2.COLOR_RGB2BGR)
+            backgroundBgr = self._backgroundEffects.apply(
+                backgroundBgr,
+                timeSec,
+                self._frameIndex,
+                self._effectSignals,
+            )
+            background = cv2.cvtColor(backgroundBgr, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+        if self._layerEffects is not None:
+            foreground, alpha = self._layerEffects.apply(
+                foreground,
+                alpha,
+                timeSec,
+                self._frameIndex,
+                self._effectSignals,
+            )
         alphaLayer = alpha[..., None]
         image = background * (1.0 - alphaLayer) + foreground * alphaLayer
         hudColor, hudAlpha = self._renderer.hud(timeSec, params, focus)
@@ -324,8 +365,14 @@ class BackgroundPass:
     # Class Methods
     #
 
-    # Class Factory Method :: ANY, ARRAY<STRING, ANY> -> backgroundPass
+    # Class Factory Method :: ANY, ARRAY<STRING, ANY>, effectChain?, layerEffects? -> backgroundPass
     # Creates a configured background compositor
     @classmethod
-    def init(cls, renderer: Any, config: Dict[str, Any]) -> BackgroundPass:
-        return cls(renderer, config)
+    def init(
+        cls,
+        renderer: Any,
+        config: Dict[str, Any],
+        backgroundEffects: Optional[EffectChain] = None,
+        layerEffects: Optional[LayerEffects] = None,
+    ) -> BackgroundPass:
+        return cls(renderer, config, backgroundEffects, layerEffects)

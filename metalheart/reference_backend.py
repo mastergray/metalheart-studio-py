@@ -7,7 +7,7 @@ import math  # Evaluate smooth audio binding curves
 import sys  # Register legacy bare-module imports required by the reference files
 from pathlib import Path  # Locate reference modules relative to the repository
 from types import ModuleType  # Annotate dynamically loaded reference modules
-from typing import Any, Dict, Optional, Tuple  # Python 3.8-compatible type annotations
+from typing import Any, Dict, List, Optional, Tuple  # Python 3.8-compatible type annotations
 
 import numpy as np  # Build renderer parameters and blank HUD buffers
 
@@ -17,14 +17,16 @@ from metalheart.camera_choreo import CameraChoreo  # Strengthen camera timing wi
 from metalheart.catalog import DEFAULT_BACKGROUND  # Preserve defaults for direct backend callers
 from metalheart.decor import DecorController  # Configure and skin 3D ribbons and plates independently
 from metalheart.decor import resolveDecorConfig  # Expand legacy direct-backend decor booleans
+from metalheart.effects import EffectChain  # Apply ordered Glitzle-derived post-filter effects
 from metalheart.frame_effects import FrameEffects  # Apply authored audio-driven frame transforms
+from metalheart.layer_effects import LayerEffects  # Isolate form and ribbon post-filter layers
 from metalheart.finishing import FinishingPass  # Replace immutable finishing with authored controls
 from metalheart.surface_skin import SurfaceSkin  # Project authored images across 3D core surfaces
 from metalheart.text_overlay import TextOverlay  # Draw configurable author text after modulation
 
 
 REFERENCE_DIR = Path(__file__).resolve().parents[1] / "ref" / "audioReactive"
-REFERENCE_VERSION = "audioReactive-2026-09-23"
+REFERENCE_VERSION = "audioReactive-2026-09-29-effects-v11"
 _REFERENCE_MODULES: Optional[Tuple[ModuleType, ModuleType, ModuleType]] = None
 
 
@@ -55,19 +57,25 @@ def _loadReferenceModules() -> Tuple[ModuleType, ModuleType, ModuleType]:
 # Wraps one configured reference-renderer instance
 class ReferenceRendererSession:
 
-    # CONSTRUCTOR :: moduleType, moduleType, ARRAY<STRING, ANY>, ARRAY<STRING, ANY> -> referenceRendererSession
+    # CONSTRUCTOR :: moduleType, moduleType, ARRAY<STRING, ANY>, ARRAY<STRING, ANY>, [ARRAY<STRING, ANY>]? -> referenceRendererSession
     # Creates a renderer for one resolved scene
-    def __init__(self, liquidModule: ModuleType, rendererModule: ModuleType, settings: Dict[str, Any], scene: Dict[str, Any]) -> None:
+    def __init__(self, liquidModule: ModuleType, rendererModule: ModuleType, settings: Dict[str, Any], scene: Dict[str, Any], globalPost: Optional[List[Dict[str, Any]]] = None) -> None:
         self._liquidModule = liquidModule
         self._rendererModule = rendererModule
         self._settings = settings
         self._scene = scene
         self._frameEffects = FrameEffects.init()
+        sceneSeed = int(scene.get("seed", settings["seed"]))
+        globalSeed = int(settings["seed"]) + 1000003
+        self._sceneEffects = EffectChain.init(scene.get("post", []), int(settings["width"]), int(settings["height"]), int(settings.get("fps", 30)), sceneSeed)
+        self._globalEffects = EffectChain.init(globalPost or [], int(settings["width"]), int(settings["height"]), int(settings.get("fps", 30)), globalSeed)
         self._cameraChoreo: Optional[CameraChoreo] = None
         self._audioFormCore: Optional[AudioFormCore] = None
         self._surfaceSkin: Optional[SurfaceSkin] = None
         self._decorController: Optional[DecorController] = None
+        self._layerEffects: Optional[LayerEffects] = None
         self._background: Optional[BackgroundPass] = None
+        self._previousEffectOnset: float = 0.0
         overlayConfig = scene["overlay"]
         self._overlay = TextOverlay.init(overlayConfig, rendererModule.FONT_PATH)
         rendererConfig = scene["renderer"]
@@ -124,9 +132,41 @@ class ReferenceRendererSession:
                     decorConfig,
                     scene.get("seed", settings["seed"]),
                 )
+            surfacePost = rendererConfig.get("surface", {}).get("post", [])
+            ribbonPost = decorConfig.get("ribbons", {}).get("post", [])
+            formEffects = EffectChain.init(
+                surfacePost,
+                int(settings["width"]),
+                int(settings["height"]),
+                int(settings.get("fps", 30)),
+                sceneSeed + 2000003,
+            ) if surfacePost else None
+            ribbonEffects = EffectChain.init(
+                ribbonPost,
+                int(settings["width"]),
+                int(settings["height"]),
+                int(settings.get("fps", 30)),
+                sceneSeed + 3000017,
+            ) if ribbonPost else None
+            if formEffects is not None or ribbonEffects is not None:
+                self._layerEffects = LayerEffects.init(
+                    self._renderer.core3d,
+                    formEffects,
+                    ribbonEffects,
+                )
+        backgroundPost = scene.get("background", DEFAULT_BACKGROUND).get("post", [])
+        backgroundEffects = EffectChain.init(
+            backgroundPost,
+            int(settings["width"]),
+            int(settings["height"]),
+            int(settings.get("fps", 30)),
+            sceneSeed + 4000037,
+        ) if backgroundPost else None
         self._background = BackgroundPass.init(
             self._renderer,
             scene.get("background", DEFAULT_BACKGROUND),
+            backgroundEffects,
+            self._layerEffects,
         )
         self._finishing = FinishingPass.init(self._renderer, scene["finish"])
         self._renderer.post = self._finishFrame
@@ -138,9 +178,17 @@ class ReferenceRendererSession:
     # Instance Methods
     #
 
-    # :: FLOAT, ANY, ARRAY<STRING, FLOAT> -> ANY
+    # :: FLOAT, ANY, ARRAY<STRING, FLOAT>, INT?, INT?, ARRAY<STRING, ANY>? -> ANY
     # Renders, visibly modulates, and overlays one BGR frame
-    def render(self, timeSec: float, params: Any, modulators: Dict[str, float]) -> Any:
+    def render(
+        self,
+        timeSec: float,
+        params: Any,
+        modulators: Dict[str, float],
+        frameIndex: Optional[int] = None,
+        sceneFrameIndex: Optional[int] = None,
+        rawEffectSignals: Optional[Dict[str, Any]] = None,
+    ) -> Any:
         if self._cameraChoreo is not None:
             self._cameraChoreo.setSignals(modulators)
         if self._audioFormCore is not None:
@@ -149,8 +197,34 @@ class ReferenceRendererSession:
             self._decorController.setSignals(modulators)
         if self._background is not None:
             self._background.setSignals(modulators)
+        localFrame = frameIndex if sceneFrameIndex is None else sceneFrameIndex
+        effectOnset = float(params.onset)
+        effectSignals: Dict[str, Any] = rawEffectSignals or {
+            "bass": float(params.bass),
+            "mid": float(params.mid),
+            "high": float(params.high),
+            "treble": float(params.high),
+            "rms": min(max(float(params.bass) * 0.5 + float(params.mid) * 0.3 + float(params.high) * 0.2, 0.0), 1.0),
+            "onset": effectOnset,
+            "transient": effectOnset >= 0.65 and self._previousEffectOnset < 0.65,
+        }
+        self._previousEffectOnset = effectOnset
+        sceneEffectSignals = dict(effectSignals)
+        globalEffectSignals = dict(effectSignals)
+        if "chromatic_phase_scene" in effectSignals:
+            sceneEffectSignals["chromatic_phase"] = effectSignals["chromatic_phase_scene"]
+        if "chromatic_sign_scene" in effectSignals:
+            sceneEffectSignals["chromatic_sign"] = effectSignals["chromatic_sign_scene"]
+        if "chromatic_phase_global" in effectSignals:
+            globalEffectSignals["chromatic_phase"] = effectSignals["chromatic_phase_global"]
+        if "chromatic_sign_global" in effectSignals:
+            globalEffectSignals["chromatic_sign"] = effectSignals["chromatic_sign_global"]
+        if self._background is not None:
+            self._background.setEffectContext(localFrame, sceneEffectSignals)
         frame = self._renderer.render(timeSec, params)
         frame = self._frameEffects.apply(frame, timeSec, modulators)
+        frame = self._sceneEffects.apply(frame, timeSec, localFrame, sceneEffectSignals)
+        frame = self._globalEffects.apply(frame, timeSec, frameIndex, globalEffectSignals)
         return self._overlay.apply(frame)
 
     #
@@ -179,11 +253,11 @@ class ReferenceRendererSession:
     # Class Methods
     #
 
-    # Class Factory Method :: moduleType, moduleType, ARRAY<STRING, ANY>, ARRAY<STRING, ANY> -> referenceRendererSession
+    # Class Factory Method :: moduleType, moduleType, ARRAY<STRING, ANY>, ARRAY<STRING, ANY>, [ARRAY<STRING, ANY>]? -> referenceRendererSession
     # Creates a configured reference renderer session
     @classmethod
-    def init(cls, liquidModule: ModuleType, rendererModule: ModuleType, settings: Dict[str, Any], scene: Dict[str, Any]) -> ReferenceRendererSession:
-        return cls(liquidModule, rendererModule, settings, scene)
+    def init(cls, liquidModule: ModuleType, rendererModule: ModuleType, settings: Dict[str, Any], scene: Dict[str, Any], globalPost: Optional[List[Dict[str, Any]]] = None) -> ReferenceRendererSession:
+        return cls(liquidModule, rendererModule, settings, scene, globalPost)
 
 
 # Provides analysis, Params mapping, and renderer construction through a stable boundary
@@ -196,6 +270,9 @@ class ReferenceBackend:
         self._audioModule = audioModule
         self._liquidModule = liquidModule
         self._rendererModule = rendererModule
+        self._effectAnalysis: Optional[Any] = None
+        self._effectBassPrefix: Optional[np.ndarray] = None
+        self._effectTransientPrefix: Optional[np.ndarray] = None
 
     #
     # Properties
@@ -226,10 +303,10 @@ class ReferenceBackend:
     def loadAnalysis(self, path: str) -> Any:
         return self._audioModule.Analysis.load(path)
 
-    # :: ARRAY<STRING, ANY>, ARRAY<STRING, ANY> -> referenceRendererSession
+    # :: ARRAY<STRING, ANY>, ARRAY<STRING, ANY>, [ARRAY<STRING, ANY>]? -> referenceRendererSession
     # Creates a per-scene renderer session
-    def createRenderer(self, settings: Dict[str, Any], scene: Dict[str, Any]) -> ReferenceRendererSession:
-        return ReferenceRendererSession.init(self._liquidModule, self._rendererModule, settings, scene)
+    def createRenderer(self, settings: Dict[str, Any], scene: Dict[str, Any], globalPost: Optional[List[Dict[str, Any]]] = None) -> ReferenceRendererSession:
+        return ReferenceRendererSession.init(self._liquidModule, self._rendererModule, settings, scene, globalPost)
 
     # :: ANY, INT, FLOAT, ARRAY<STRING, ANY> -> ANY
     # Maps analyzed features through resolved bindings into reference Params
@@ -257,9 +334,56 @@ class ReferenceBackend:
             for destination, binding in reactivity.get("modulators", {}).items()
         }
 
+    # :: ANY, INT, INT -> ARRAY<STRING, ANY>
+    # Builds raw Glitch Maker-style signals with deterministic scene and global phase history
+    def createEffectSignals(self, analysis: Any, frameIndex: int, sceneFirstFrame: int) -> Dict[str, Any]:
+        self._prepareEffectPrefixes(analysis)
+        index = min(max(frameIndex, 0), max(0, analysis.n_frames - 1))
+        sceneStart = min(max(sceneFirstFrame, 0), index)
+        bassPrefix = self._effectBassPrefix
+        transientPrefix = self._effectTransientPrefix
+        if bassPrefix is None or transientPrefix is None:
+            raise RuntimeError("effect signal prefixes were not initialized")
+        globalBass = float(bassPrefix[index + 1])
+        sceneBass = globalBass - float(bassPrefix[sceneStart])
+        globalTransientCount = int(transientPrefix[index + 1])
+        sceneTransientCount = globalTransientCount - int(transientPrefix[sceneStart])
+        bass = min(max(float(analysis.bass[index]), 0.0), 1.0)
+        mid = min(max(float(analysis.mid[index]), 0.0), 1.0)
+        high = min(max(float(analysis.high[index]), 0.0), 1.0)
+        onset = min(max(float(analysis.onset[index]), 0.0), 1.0)
+        transient = int(transientPrefix[index + 1]) > int(transientPrefix[index])
+        return {
+            "bass": bass,
+            "mid": mid,
+            "high": high,
+            "treble": high,
+            "rms": bass * 0.5 + mid * 0.3 + high * 0.2,
+            "onset": onset,
+            "transient": transient,
+            "chromatic_phase_global": (index + 1) * 0.12 + globalBass * 0.35,
+            "chromatic_phase_scene": (index - sceneStart + 1) * 0.12 + sceneBass * 0.35,
+            "chromatic_sign_global": -1.0 if globalTransientCount % 2 else 1.0,
+            "chromatic_sign_scene": -1.0 if sceneTransientCount % 2 else 1.0,
+        }
+
     #
     # Protected Methods
     #
+
+    # :: ANY -> NONE
+    # Caches cumulative bass and transient events for constant-time effect phase lookup
+    def _prepareEffectPrefixes(self, analysis: Any) -> None:
+        if self._effectAnalysis is analysis:
+            return
+        bass = np.asarray(analysis.bass, dtype=np.float64)
+        onset = np.asarray(analysis.onset, dtype=np.float32)
+        active = onset >= 0.65
+        previous = np.concatenate((np.asarray([False]), active[:-1])) if active.size else active
+        transients = np.logical_and(active, np.logical_not(previous)).astype(np.int64)
+        self._effectAnalysis = analysis
+        self._effectBassPrefix = np.concatenate((np.asarray([0.0]), np.cumsum(bass, dtype=np.float64)))
+        self._effectTransientPrefix = np.concatenate((np.asarray([0], dtype=np.int64), np.cumsum(transients, dtype=np.int64)))
 
     # :: ANY, INT, FLOAT -> (INT, ARRAY<STRING, FLOAT>)
     # Samples all public analysis sources once for a render frame

@@ -1,5 +1,6 @@
 # Unit tests for audio binding evaluation and deterministic reference frames
 
+import copy  # Build independent nested scoped-effect scene fixtures
 from pathlib import Path  # Type temporary image-skin paths
 from types import SimpleNamespace  # Build compact in-memory analysis fixtures
 from typing import Any, Dict  # Python 3.8-compatible config annotations
@@ -112,6 +113,23 @@ def testBalancedBindingsMapAnalysisValues() -> None:
     assert abs(params.mid - 0.5) < 1e-6
     assert abs(params.high - 0.2) < 1e-6
     assert params.onset == 0.0
+
+
+# :: VOID -> NONE
+# Verifies Glitch Maker phase and transient sign remain stable across scene and chunk starts
+def testEffectSignalsPreserveChromaticHistory() -> None:
+    backend = ReferenceBackend.init()
+    analysis = _analysis()
+    first = backend.createEffectSignals(analysis, 0, 0)
+    second = backend.createEffectSignals(analysis, 1, 1)
+    assert abs(first["chromatic_phase_global"] - 0.2075) < 1e-6
+    assert first["chromatic_sign_global"] == -1.0
+    assert first["transient"]
+    assert abs(second["chromatic_phase_global"] - 0.59) < 1e-6
+    assert abs(second["chromatic_phase_scene"] - 0.3825) < 1e-6
+    assert second["chromatic_sign_global"] == -1.0
+    assert second["chromatic_sign_scene"] == 1.0
+    assert not second["transient"]
 
 
 # :: VOID -> NONE
@@ -491,6 +509,98 @@ def testImageBackgroundPulseLeavesOpaqueForegroundStable(tmp_path: Path) -> None
     assert np.any(exposed)
     assert np.array_equal(quiet[opaque], loud[opaque])
     assert not np.array_equal(quiet[exposed], loud[exposed])
+
+
+# :: VOID -> NONE
+# Verifies scoped chains alter only their captured background, form, or ribbon layer
+def testLayerScopedEffectsRemainMaterialIsolated() -> None:
+    backend = ReferenceBackend.init()
+    settings = {"width": 80, "height": 64, "fps": 4, "seed": 5}
+    baseScene = _scene()
+    baseScene["renderer"] = copy.deepcopy(DEFAULT_RENDERER)
+    baseScene["renderer"].update(
+        {
+            "core": "3d",
+            "forms": ["mercury"],
+            "cameras": ["orbit"],
+            "camera_speed": 0.0,
+            "core_scale": 0.25,
+            "anti_alias": False,
+            "decor": resolveDecorConfig(
+                {
+                    "enabled": True,
+                    "seed": 19,
+                    "ribbons": {"enabled": True, "count": 4},
+                    "plates": {"enabled": False, "count": 0},
+                }
+            ),
+        }
+    )
+    baseScene["background"] = copy.deepcopy(DEFAULT_BACKGROUND)
+    baseScene["finish"].update(
+        {
+            "bloom": 0.0,
+            "wide_bloom": 0.0,
+            "streaks": 0.0,
+            "onset_streaks": 0.0,
+            "flash": 0.0,
+            "chroma": 0.0,
+            "chroma_onset": 0.0,
+            "vignette": 0.0,
+            "grain": 0.0,
+            "grain_high": 0.0,
+        }
+    )
+    params = backend.createParams(_analysis(), 0, 0.0, baseScene["reactivity"])
+
+    def rendered(scope: str, mix: float) -> Any:
+        scene = copy.deepcopy(baseScene)
+        effect = [{"id": "invert", "mix": mix}]
+        if scope == "background":
+            scene["background"]["post"] = effect
+        elif scope == "form":
+            scene["renderer"]["surface"]["post"] = effect
+        else:
+            scene["renderer"]["decor"]["ribbons"]["post"] = effect
+        session = backend.createRenderer(settings, scene)
+        frame = session.render(0.5, params, {}, frameIndex=2, sceneFrameIndex=2)
+        return frame, session
+
+    quietBackground, quietBackgroundSession = rendered("background", 0.0)
+    loudBackground, loudBackgroundSession = rendered("background", 1.0)
+    assert quietBackgroundSession._background is not None
+    assert quietBackgroundSession._background._foreground is not None
+    foregroundAlpha = quietBackgroundSession._background._foreground[1]
+    opaque = foregroundAlpha >= 0.999
+    exposed = foregroundAlpha < 0.5
+    assert np.any(opaque)
+    assert np.any(exposed)
+    assert int(np.max(np.abs(quietBackground[opaque].astype(np.int16) - loudBackground[opaque].astype(np.int16)))) <= 1
+    assert not np.array_equal(quietBackground[exposed], loudBackground[exposed])
+    assert loudBackgroundSession._background is not None
+
+    quietForm, _ = rendered("form", 0.0)
+    loudForm, formSession = rendered("form", 1.0)
+    assert formSession._layerEffects is not None
+    formMask, formRibbonMask = formSession._layerEffects.visibleMasks
+    assert formMask is not None
+    assert formRibbonMask is not None
+    formPixels = formMask >= 1.0
+    outsideMaterials = (formMask + formRibbonMask) == 0.0
+    assert np.any(formPixels)
+    assert np.any(outsideMaterials)
+    assert np.array_equal(quietForm[outsideMaterials], loudForm[outsideMaterials])
+    assert not np.array_equal(quietForm[formPixels], loudForm[formPixels])
+
+    quietRibbon, _ = rendered("ribbon", 0.0)
+    loudRibbon, ribbonSession = rendered("ribbon", 1.0)
+    assert ribbonSession._layerEffects is not None
+    _, ribbonMask = ribbonSession._layerEffects.visibleMasks
+    assert ribbonMask is not None
+    ribbonPixels = ribbonMask >= 1.0
+    assert np.any(ribbonPixels)
+    assert np.array_equal(quietRibbon[outsideMaterials], loudRibbon[outsideMaterials])
+    assert not np.array_equal(quietRibbon[ribbonPixels], loudRibbon[ribbonPixels])
 
 
 # :: PATH -> NONE

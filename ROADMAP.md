@@ -1,8 +1,8 @@
 # Metalheart Studio Roadmap
 
-Status: planning baseline, 2026-09-26
+Status: active implementation roadmap, 2026-09-28
 
-This roadmap covers the next visual-system work after image-skinned 3D forms. It is intentionally JSON-first and headless. It does not authorize implementation by itself; each milestone begins with a small visual study and an agreed configuration contract.
+This roadmap covers the visual system, ordered effects, and native authoring application. JSON remains canonical and the renderer remains headless-capable, but the product includes a PySide6/Qt desktop UI for previewing and producing visuals. Each visual milestone begins with a small study and an agreed configuration contract.
 
 ## Product direction
 
@@ -10,7 +10,8 @@ Metalheart should support rough, authored, audio-reactive imagery without conver
 
 The following rules apply across the roadmap:
 
-- JSON remains the complete authoring surface; no browser or UI work is planned yet.
+- JSON remains the canonical project and interchange format, not the only authoring surface.
+- The interactive interface is native PySide6/Qt. Browser frontends, embedded webviews, JavaScript UI stacks, and local web servers are excluded.
 - The image is the base color for a skinned element. Palettes may light the surrounding scene but must not recolor the image.
 - Visual roughness is opt-in and deterministic for a fixed seed.
 - Audio sources remain factual signals such as amplitude, bands, centroid, beats, and onsets. No sentiment inference is introduced.
@@ -200,6 +201,76 @@ The integration render should use the existing 30-second audio clip and demonstr
 
 Multi-scene work uses hard cuts. Transition authoring is not planned. The implemented `--scene-clips` mode exports every scene as an independent, audio-synchronized clip without changing its scene-local form, background, ribbon, or plate image skins.
 
+## Milestone 6: Ordered effects system (first slice implemented)
+
+Replace the currently empty public effect catalog with typed, ordered scene and global effect chains. The existing fixed `finish` controls provide the first owned implementations but do not, by themselves, satisfy this milestone.
+
+The implemented library owns Glitzle's configurable primitives, the complete 19-preset Glitzle Glitch category, five of seven Retro/CRT presets, a curated cross-category preset set, four Dazzle mirrors, Dazzle XOR, four-direction Ziti, four-direction VidGlitch-compatible Tetrys, Glitzle Studio's Glitch Maker chromatic aberration and pixel sort, finite-history Slitscan, and scanline corruption. Audited Glitchstation controls include the six-effect Color family, RGB Shift, Tear, Block Jitter, Rectangles, VHS, and Arcade; Blister, Randomize, and Handheld are deliberately excluded. Six visually distinct Glitch recipes carry featured metadata for the future Qt browser. Effects run deterministically inside render workers, support global and scene chains plus 3D background, form-surface, and ribbon chains, and expose typed metadata for the future Qt inspector. Material masks captured from the immutable ray marcher let spatial effects carry form and ribbon alpha without filtering unrelated layers or the final text overlay. Slitscan workers preroll their declared history window so parallel chunks remain continuous. External process integration, audited FFmpeg recipes, plate-scoped effects, and fully general audio-to-effect-property bindings remain subsequent slices.
+
+The first catalog should expose audited versions of bloom, streaks, flash, chroma displacement, slice glitch, vignette, scanlines, and grain. Each effect declares its stable ID, display metadata, typed properties and ranges, determinism, temporal requirements, supported quality profiles, and estimated cost. Existing `finish` documents continue to resolve compatibly while new documents may author ordered effect instances with enable/bypass controls.
+
+Effects use the same registry in schema generation, validation, `list effects`, rendering, and the desktop inspector. Audio-reactive effect parameters are supported through typed public destinations rather than arbitrary access to implementation fields.
+
+Acceptance criteria:
+
+- `list effects` returns the implemented catalog instead of an empty list;
+- scene and global chains preserve authored order;
+- background, form-surface, and ribbon chains remain isolated from one another;
+- enable/bypass does not destroy effect settings;
+- effect validation fails before rendering and reports the exact instance/property;
+- fixed seed and inputs reproduce deterministic effects;
+- temporal effects declare and test their frame-history behavior;
+- legacy `finish` configurations retain their current appearance.
+
+## Milestone 7: Native PySide6/Qt authoring application (audio-led slice implemented)
+
+Build a native desktop application over the existing JSON contract and application services. It must not contain a webview or require an HTTP server.
+
+The implemented authoring slice begins with audio selection and background analysis into phrase-aligned scenes. The primary workspace combines a cached-energy waveform/hard-cut timeline, scene navigation, an explicit production-backed still preview, and structured per-scene Form, Background, and Ribbons inspectors. Each layer has an independent ordered effect stack with catalog-generated controls for bypass, mix, order, and typed parameters. Canonical JSON is an optional advanced dock rather than the primary workflow.
+
+Analysis, preview, and full export run outside the GUI thread and support cancellation. Preview work is explicit and capped at 480×270, 12 fps, 0.2 core scale, and no antialiasing for older hardware. PySide6 6.4 through 6.6 retains the Python 3.8 runtime target and is a normal application dependency.
+
+The remaining vertical-slice work includes:
+
+- timeline boundary editing;
+- structured controls for plates, overlay items, and custom reactivity bindings;
+- a cancellable selected-range video preview;
+- explicit preview/final quality selection and per-scene export actions with detailed progress.
+
+The UI must call the same resolver, validator, analyzer, effect registry, and render pipeline as the CLI. Widget state is never an alternative project format. Long analysis, preview, and render operations run outside the Qt UI thread and support cancellation. Full-resolution real-time ray-marched playback is not required.
+
+Acceptance criteria:
+
+- a CLI-authored project opens and round-trips without semantic changes;
+- a UI-authored project validates and renders through the CLI;
+- changing a scene invalidates only relevant preview artifacts;
+- preview timing selects the same scene and audio features as a final render at that timestamp;
+- render progress never blocks or freezes the UI event loop;
+- invalid controls are identified before expensive preview or render work;
+- no browser, webview, JavaScript runtime, or local server is introduced.
+
+## Milestone 8: Authoring ergonomics and visual discovery
+
+This milestone incorporates the first hands-on feedback from the audio-led desktop workflow. Work proceeds in dependency order so later controls inherit consistent editing behavior rather than introducing separate state systems.
+
+1. **Implemented:** project-level Undo and Redo for authored content changes. Scene controls, image choices, effect add/remove/reorder/bypass, effect parameters, and applied Advanced JSON share one canonical snapshot history. Opening, saving, analysis, preview, and rendering remain lifecycle operations rather than undoable content edits. Saving establishes the clean history point.
+2. Replace bare numeric effect controls with a combined slider and directly editable number field generated from catalog minimum, maximum, step, and type metadata.
+3. Put enable/bypass controls directly on effect-stack rows and visually distinguish bypassed instances while preserving their parameters.
+4. Publish determinate analysis and render progress, including current scene or chunk, completed and total frames, elapsed time, and an estimated remaining duration where enough samples exist.
+5. Add independent stable palette selection for form, palette-based background, and ribbons. The public contract should use `renderer.palette`, `background.palette`, and `renderer.decor.ribbons.palette` rather than silently sharing one value.
+6. Audit Dazzle palette sources and adapt a curated set as stable Metalheart catalog entries with deterministic rendering tests.
+7. Generate versioned low-resolution option thumbnails from a fixed fixture for forms, cameras, palettes, and effects. The UI may display these in selector popovers without invoking the 3D renderer during ordinary navigation.
+
+Acceptance criteria:
+
+- Undo and Redo restore the canonical authored document, structured controls, validation state, dirty marker, and preview-invalidated state together.
+- Layer-local history never moves an effect or palette change into another layer or scene.
+- Numeric controls retain precise keyboard entry in addition to fast slider adjustment.
+- A bypassed effect remains in its authored order with all parameters intact.
+- palette ownership is explicit in resolved profiles and backward-compatible documents retain their current appearance;
+- progress never blocks the Qt event loop and cancellation remains scoped to the active task;
+- preview thumbnails declare the renderer/catalog version used to generate them and do not become a second rendering contract.
+
 ## Test and review requirements
 
 Every milestone requires more than confirming that a render completes:
@@ -217,11 +288,11 @@ Visual studies should have no overlays unless text is specifically under test. R
 
 ## Recommended sequence
 
-1. Produce the Milestone 1 surface-only visual study and choose the minimum PSX control set.
-2. Stabilize that schema and its tests before combining it with new geometry.
-3. Prototype faceting and jaggedness separately, then approve their audio mappings.
-4. Add the background contract and isolated pulse before extending skins to other geometry.
-5. Split ribbons from plates, add local-coordinate skins, and expose their existing audio behavior.
-6. Build the 30-second integration render only after the isolated fixtures pass.
+1. Define and implement the typed ordered-effects contract, beginning with the existing finishing controls.
+2. Build the PySide6 audio-led application slice: create from audio, select a scene on the waveform, edit layer controls and effects, preview a still, save, and render.
+3. Expand the scene inspector to the full public renderer and reactivity vocabulary.
+4. Add waveform boundary editing, effect reordering, final export, and per-scene export.
+5. Add scene-aware preview caching and incremental final-render reuse.
+6. Complete the remaining PSX finish candidates and reusable presets through the same effect/UI contracts.
 
-This sequence keeps each visual decision independently reviewable and avoids hiding a texture, geometry, background, or reactivity problem inside a heavily combined render.
+This sequence proves the effects and UI architecture early while keeping the tested headless renderer and canonical JSON contract intact.

@@ -96,3 +96,43 @@ def testRenderCliOutputModesAreExclusive() -> None:
         parser.parse_args(["render", "project.json"])
     with pytest.raises(SystemExit):
         parser.parse_args(["render", "project.json", "-o", "movie.mp4", "--scene-clips", "clips"])
+
+
+# :: VOID -> NONE
+# Verifies the native editor accepts an optional startup project
+def testUiCommandAcceptsOptionalProject() -> None:
+    parser = buildParser()
+    emptyArgs = parser.parse_args(["ui"])
+    projectArgs = parser.parse_args(["ui", "examples/minimal.json"])
+    assert emptyArgs.command == "ui"
+    assert emptyArgs.config is None
+    assert projectArgs.config == "examples/minimal.json"
+
+
+# :: VOID -> NONE
+# Verifies temporal scoped effects receive the same worker preroll as scene chains
+def testLayerScopedSlitscanContributesHistory() -> None:
+    slitscan = {
+        "enabled": True,
+        "operations": [{"op": "slitscan", "max_delay_frames": 17}],
+    }
+    config = {
+        "post": [],
+        "scenes": [
+            {
+                "post": [],
+                "background": {"post": [dict(slitscan, enabled=False)]},
+                "renderer": {
+                    "surface": {"post": [slitscan]},
+                    "decor": {
+                        "ribbons": {
+                            "post": [
+                                {"enabled": True, "operations": [{"op": "slitscan", "max_delay_frames": 9}]}
+                            ]
+                        }
+                    },
+                },
+            }
+        ],
+    }
+    assert RenderPipeline.init()._historyFrames(config) == 17
