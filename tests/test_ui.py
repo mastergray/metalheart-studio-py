@@ -14,6 +14,7 @@ from PySide6.QtCore import Qt  # Toggle native effect-row checkboxes  # noqa: E4
 from PySide6.QtWidgets import QApplication  # Create the Qt event loop after headless setup  # noqa: E402
 from PySide6.QtWidgets import QTabWidget  # Find the structured layer inspector  # noqa: E402
 
+from metalheart.catalog import PALETTES  # Verify every stable palette reaches each layer selector  # noqa: E402
 from metalheart.ui.effect_stack_widget import EffectStackWidget  # Verify authored stacks  # noqa: E402
 from metalheart.ui.main_window import MainWindow  # Exercise the native shell  # noqa: E402
 from metalheart.ui.numeric_parameter_widget import NumericParameterWidget  # Verify slider-number controls  # noqa: E402
@@ -195,6 +196,12 @@ def testLayerPaletteControlsAreIndependentAndUndoable() -> None:
     projectPath = Path(__file__).resolve().parents[1] / "examples" / "layer-effects.json"
     window = MainWindow.init(str(projectPath))
     inspector = window._inspector
+    for selector in (
+        inspector._palette,
+        inspector._backgroundPalette,
+        inspector._ribbonPalette,
+    ):
+        assert [selector.itemText(index) for index in range(selector.count())] == PALETTES
     assert inspector._palette.currentText() == "steel"
     assert inspector._backgroundPalette.currentText() == "steel"
     assert inspector._ribbonPalette.currentText() == "steel"

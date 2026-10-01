@@ -15,6 +15,7 @@ from metalheart.catalog import DEFAULT_FINISH  # Supply owned finishing defaults
 from metalheart.catalog import REACTIVITY_PRESETS  # Exercise resolved audio mappings
 from metalheart.decor import resolveDecorConfig  # Build first-class decor fixtures
 from metalheart.frame_effects import FrameEffects  # Exercise visible post-render modulation
+from metalheart.palette_catalog import DAZZLE_PALETTE_IDS  # Exercise every adapted Dazzle palette
 from metalheart.reference_backend import ReferenceBackend  # Adapt immutable renderer reference code
 from metalheart.surface_skin import SurfaceSkin  # Exercise resolution-independent image sampling
 
@@ -63,6 +64,34 @@ def testFixedSeedFrameIsDeterministic() -> None:
     assert first.shape == (64, 64, 3)
     assert first.dtype == np.uint8
     assert np.array_equal(first, second)
+
+
+# :: VOID -> NONE
+# Verifies every adapted Dazzle palette renders repeatably and remains distinct
+def testAdaptedDazzlePalettesRenderDeterministically() -> None:
+    backend = ReferenceBackend.init()
+    settings = {"width": 48, "height": 40, "seed": 5}
+    analysis = _analysis()
+    rendered = set()
+    for paletteId in DAZZLE_PALETTE_IDS:
+        scene = _scene()
+        scene["renderer"].update(
+            {
+                "palette": paletteId,
+                "core": "3d",
+                "forms": ["mercury"],
+                "cameras": ["orbit"],
+                "core_scale": 0.2,
+            }
+        )
+        params = backend.createParams(analysis, 0, 0.0, scene["reactivity"])
+        modulators = backend.createModulators(analysis, 0, 0.0, scene["reactivity"])
+        first = backend.createRenderer(settings, scene).render(0.5, params, modulators)
+        second = backend.createRenderer(settings, scene).render(0.5, params, modulators)
+        assert np.array_equal(first, second)
+        assert int(first.max()) > 0
+        rendered.add(first.tobytes())
+    assert len(rendered) == len(DAZZLE_PALETTE_IDS)
 
 
 # :: VOID -> NONE
@@ -493,24 +522,24 @@ def testIndependentBackgroundAndRibbonPalettesRender() -> None:
     baselineForeground = baselineSession._background._foreground[0].copy()
 
     backgroundScene = copy.deepcopy(scene)
-    backgroundScene["background"]["palette"] = "ember"
+    backgroundScene["background"]["palette"] = "ice"
     backgroundSession = backend.createRenderer(settings, backgroundScene)
-    emberBackground = backgroundSession.render(0.5, params, {})
+    iceBackground = backgroundSession.render(0.5, params, {})
     assert np.array_equal(
         baselineForeground,
         backgroundSession._background._foreground[0],
     )
-    assert not np.array_equal(emberBackground, baseline)
+    assert not np.array_equal(iceBackground, baseline)
 
     ribbonScene = copy.deepcopy(scene)
-    ribbonScene["renderer"]["decor"]["ribbons"]["palette"] = "acid"
+    ribbonScene["renderer"]["decor"]["ribbons"]["palette"] = "neon"
     ribbonSession = backend.createRenderer(settings, ribbonScene)
-    acidRibbons = ribbonSession.render(0.5, params, {})
+    neonRibbons = ribbonSession.render(0.5, params, {})
     assert not np.array_equal(
         ribbonSession._background._foreground[0],
         baselineForeground,
     )
-    assert not np.array_equal(acidRibbons, baseline)
+    assert not np.array_equal(neonRibbons, baseline)
 
 
 # :: PATH -> NONE

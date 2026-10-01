@@ -3,6 +3,7 @@
 from pathlib import Path  # Type temporary test paths and create audio placeholders
 from typing import Any, Dict  # Python 3.8-compatible config annotations
 
+from metalheart.catalog import PALETTES  # Verify every stable palette reaches the public schema
 from metalheart.config import ConfigResolver  # Resolve and validate authored configs
 
 
@@ -130,17 +131,17 @@ def testResolvesIndependentLayerPalettes(tmp_path: Path) -> None:
     authored = _validConfig(tmp_path)
     authored["scenes"][0]["renderer"] = {
         "core": "3d",
-        "palette": "ember",
-        "decor": {"ribbons": {"palette": "acid"}},
+        "palette": "rainbow",
+        "decor": {"ribbons": {"palette": "electric"}},
     }
-    authored["scenes"][0]["background"] = {"palette": "steel"}
+    authored["scenes"][0]["background"] = {"palette": "ice"}
     resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
     report = resolver.validate(resolved)
     assert report.isValid, report.errors
     scene = resolved["scenes"][0]
-    assert scene["renderer"]["palette"] == "ember"
-    assert scene["background"]["palette"] == "steel"
-    assert scene["renderer"]["decor"]["ribbons"]["palette"] == "acid"
+    assert scene["renderer"]["palette"] == "rainbow"
+    assert scene["background"]["palette"] == "ice"
+    assert scene["renderer"]["decor"]["ribbons"]["palette"] == "electric"
     authored["scenes"][0]["background"]["palette"] = "unknown"
     authored["scenes"][0]["renderer"]["decor"]["ribbons"]["palette"] = "invalid"
     invalid = resolver.validate(
@@ -249,6 +250,7 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
     scene = schema["$defs"]["scene"]["properties"]
     assert "forms" in renderer
     assert "palette" in renderer
+    assert renderer["palette"]["enum"] == PALETTES
     assert "looks" not in renderer
     assert "preset" not in renderer
     assert "camera_speed" in renderer
@@ -280,10 +282,10 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
         "tile",
     ]
     background = schema["$defs"]["background"]["properties"]
-    assert background["palette"]["enum"] == ["steel", "acid", "ember"]
+    assert background["palette"]["enum"] == PALETTES
     assert background["post"] == {"type": "array", "items": {"$ref": "#/$defs/effect"}}
     ribbon = schema["$defs"]["ribbonElement"]["allOf"][1]["properties"]
-    assert ribbon["palette"]["enum"] == ["steel", "acid", "ember"]
+    assert ribbon["palette"]["enum"] == PALETTES
     assert schema["$defs"]["ribbonElement"]["allOf"][1]["properties"]["post"] == {
         "type": "array",
         "items": {"$ref": "#/$defs/effect"},

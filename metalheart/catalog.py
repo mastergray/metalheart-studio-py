@@ -5,9 +5,10 @@ from __future__ import annotations  # Preserve forward-compatible annotations on
 from typing import Any, Dict  # Python 3.8-compatible collection annotations
 
 from metalheart.effect_catalog import effectIds  # Publish owned ordered effects through the schema
+from metalheart.palette_catalog import PALETTE_IDS  # Publish stable native and adapted palette identifiers
 
 
-PALETTES = ["steel", "acid", "ember"]
+PALETTES = list(PALETTE_IDS)
 CORES = ["3d", "2d"]
 FORMS = ["mercury", "wring", "ferro", "drip", "split", "fold", "morph", "gyro", "chaos", "resonance", "radial"]
 LOOKS = FORMS

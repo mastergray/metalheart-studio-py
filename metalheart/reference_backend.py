@@ -20,12 +20,13 @@ from metalheart.effects import EffectChain  # Apply ordered Glitzle-derived post
 from metalheart.frame_effects import FrameEffects  # Apply authored audio-driven frame transforms
 from metalheart.layer_effects import LayerEffects  # Isolate form and ribbon post-filter layers
 from metalheart.finishing import FinishingPass  # Replace immutable finishing with authored controls
+from metalheart.palette_catalog import adaptedDazzlePalettes  # Install owned Dazzle palette adaptations
 from metalheart.surface_skin import SurfaceSkin  # Project authored images across 3D core surfaces
 from metalheart.text_overlay import TextOverlay  # Draw configurable author text after modulation
 
 
 REFERENCE_DIR = Path(__file__).resolve().parents[1] / "ref" / "audioReactive"
-REFERENCE_VERSION = "audioReactive-2026-09-30-layer-palettes-v12"
+REFERENCE_VERSION = "audioReactive-2026-10-01-dazzle-palettes-v13"
 _REFERENCE_MODULES: Optional[Tuple[ModuleType, ModuleType, ModuleType]] = None
 
 
@@ -49,6 +50,7 @@ def _loadReferenceModules() -> Tuple[ModuleType, ModuleType, ModuleType]:
         audioModule = _loadModule("audio", REFERENCE_DIR / "audio.py")
         liquidModule = _loadModule("liquid3d", REFERENCE_DIR / "liquid3d.py")
         rendererModule = _loadModule("_metalheart_reference", REFERENCE_DIR / "metalheart.py")
+        rendererModule.PRESETS.update(adaptedDazzlePalettes())
         _REFERENCE_MODULES = (audioModule, liquidModule, rendererModule)
     return _REFERENCE_MODULES
 
