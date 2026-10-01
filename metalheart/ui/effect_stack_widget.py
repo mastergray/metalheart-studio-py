@@ -18,6 +18,7 @@ from PySide6.QtWidgets import QLineEdit  # Edit uncommon free-form string parame
 from PySide6.QtWidgets import QListWidget  # Display ordered effect instances
 from PySide6.QtWidgets import QListWidgetItem  # Attach effect identifiers to stack rows
 from PySide6.QtWidgets import QPushButton  # Add, remove, and reorder effects
+from PySide6.QtWidgets import QSizePolicy  # Let long effect labels shrink inside the inspector
 from PySide6.QtWidgets import QVBoxLayout  # Stack the editor sections
 from PySide6.QtWidgets import QWidget  # Host the reusable native editor
 
@@ -92,16 +93,28 @@ class EffectStackWidget(QWidget):
         picker = QHBoxLayout()
         self._effectPicker = QComboBox()
         for entry in sorted(self._catalog, key=lambda item: (str(item["category"]), str(item["label"]))):
-            self._effectPicker.addItem(
-                "{0} — {1}".format(entry["category"], entry["label"]),
-                entry["id"],
+            label = "{0} — {1}".format(entry["category"], entry["label"])
+            self._effectPicker.addItem(label, entry["id"])
+            self._effectPicker.setItemData(
+                self._effectPicker.count() - 1,
+                label,
+                Qt.ItemDataRole.ToolTipRole,
             )
+        self._effectPicker.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self._effectPicker.setMinimumContentsLength(16)
+        self._effectPicker.setSizePolicy(
+            QSizePolicy.Policy.Ignored,
+            QSizePolicy.Policy.Fixed,
+        )
         applyComboThumbnails(self._effectPicker, "effects", True)
         self._effectPicker.currentIndexChanged.connect(self._effectPreviewSelected)
-        addButton = QPushButton("Add")
-        addButton.clicked.connect(self._addSelected)
+        self._addButton = QPushButton("Add")
+        self._addButton.setObjectName("addEffectButton")
+        self._addButton.clicked.connect(self._addSelected)
         picker.addWidget(self._effectPicker, 1)
-        picker.addWidget(addButton)
+        picker.addWidget(self._addButton)
         layout.addLayout(picker)
         self._effectPreview = AnimatedThumbnailWidget.init()
         self._effectPreview.setOption("effects", str(self._effectPicker.currentData()))

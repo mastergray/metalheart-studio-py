@@ -12,6 +12,8 @@ pytest.importorskip("PySide6")
 
 from PySide6.QtCore import Qt  # Toggle native effect-row checkboxes  # noqa: E402
 from PySide6.QtWidgets import QApplication  # Create the Qt event loop after headless setup  # noqa: E402
+from PySide6.QtWidgets import QScrollArea  # Verify responsive inspector sizing  # noqa: E402
+from PySide6.QtWidgets import QSizePolicy  # Verify long effect labels may shrink  # noqa: E402
 from PySide6.QtWidgets import QTabWidget  # Find the structured layer inspector  # noqa: E402
 
 from metalheart.catalog import PALETTES  # Verify every stable palette reaches each layer selector  # noqa: E402
@@ -78,11 +80,16 @@ def testMainWindowDisplaysStructuredProgress() -> None:
 def testEffectStackBuildsCanonicalCatalogEntries() -> None:
     application = QApplication.instance() or QApplication([])
     stack = EffectStackWidget()
+    stack.show()
+    application.processEvents()
     posterizeIndex = stack._effectPicker.findData("posterize")
     assert posterizeIndex >= 0
     assert not stack._effectPicker.itemIcon(posterizeIndex).isNull()
     assert stack._effectPicker.iconSize().width() == 64
     assert stack._effectPicker.iconSize().height() == 36
+    assert stack._effectPicker.minimumContentsLength() == 16
+    assert stack._effectPicker.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Ignored
+    assert stack._addButton.isVisible()
     stack._effectPicker.setCurrentIndex(posterizeIndex)
     application.processEvents()
     assert not stack._effectPreview.isHidden()
@@ -141,7 +148,11 @@ def testMainWindowLoadsStructuredSceneWorkflow() -> None:
     window.show()
     application.processEvents()
     tabs = window.findChild(QTabWidget, "layerTabs")
+    inspectorScroll = window.findChild(QScrollArea, "inspectorScroll")
     assert tabs is not None
+    assert inspectorScroll is not None
+    assert inspectorScroll.minimumWidth() == 440
+    assert inspectorScroll.horizontalScrollBarPolicy() == Qt.ScrollBarPolicy.ScrollBarAlwaysOff
     assert [tabs.tabText(index) for index in range(tabs.count())] == [
         "Form",
         "Background",
@@ -245,6 +256,40 @@ def testLayerPaletteControlsAreIndependentAndUndoable() -> None:
     assert scene["background"].get("palette", "steel") == "steel"
     assert scene["renderer"].get("palette", "steel") == "steel"
     window.undoStack.undo()
+    window.close()
+    window.deleteLater()
+    application.processEvents()
+
+
+# :: VOID -> NONE
+# Verifies leaving Radial removes inapplicable style state instead of invalidating the scene
+def testFormSelectionOwnsRadialOnlyStyleControls() -> None:
+    application = QApplication.instance() or QApplication([])
+    projectPath = Path(__file__).resolve().parents[1] / "examples" / "layer-effects.json"
+    window = MainWindow.init(str(projectPath))
+    inspector = window._inspector
+    assert inspector._jaggedness.maximum() == 0.12
+    assert inspector._jaggedScale.minimum() == 1.0
+    assert inspector._jaggedScale.maximum() == 16.0
+    assert inspector._geometrySteps.maximum() == 32
+    inspector._jaggedness.setValue(0.02)
+    application.processEvents()
+    assert window._authored["scenes"][0]["renderer"]["form_style"]["jaggedness"] == 0.02
+    inspector._form.setCurrentText("fold")
+    application.processEvents()
+    renderer = window._authored["scenes"][0]["renderer"]
+    assert renderer["forms"] == ["fold"]
+    assert "form_style" not in renderer
+    assert not inspector._jaggedness.isEnabled()
+    assert window._diagnostics.text() == "✓ Project is valid"
+    window.undoStack.undo()
+    application.processEvents()
+    assert inspector._form.currentText() == "radial"
+    assert inspector._jaggedness.isEnabled()
+    assert inspector._jaggedness.value() == 0.02
+    window.undoStack.undo()
+    application.processEvents()
+    assert not window.dirty
     window.close()
     window.deleteLater()
     application.processEvents()

@@ -77,7 +77,7 @@ class MainWindow(QMainWindow):
         self._analysisProjectPath: Optional[Path] = None
         self._analysisOutputBuffer = ""
         self._renderOutputBuffer = ""
-        self.resize(1440, 850)
+        self.resize(1500, 850)
         self.setMinimumSize(1020, 650)
         self._buildUi()
         self._buildActions()
@@ -165,7 +165,7 @@ class MainWindow(QMainWindow):
         splitter.addWidget(self._buildScenePanel())
         splitter.addWidget(self._buildPreviewPanel())
         splitter.addWidget(self._buildInspectorPanel())
-        splitter.setSizes([230, 720, 430])
+        splitter.setSizes([220, 700, 500])
         splitter.setStretchFactor(1, 1)
         rootLayout.addWidget(splitter, 1)
         statusRow = QHBoxLayout()
@@ -253,7 +253,8 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setObjectName("inspectorScroll")
         scroll.setWidgetResizable(True)
-        scroll.setMinimumWidth(380)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setMinimumWidth(440)
         self._inspector = SceneInspector()
         self._inspector.sceneEdited.connect(self._sceneEdited)
         scroll.setWidget(self._inspector)

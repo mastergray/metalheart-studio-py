@@ -172,6 +172,7 @@ class SceneInspector(QWidget):
         layout = QVBoxLayout(tab)
         form = QFormLayout()
         self._form = self._combo(FORMS, "forms")
+        self._form.currentTextChanged.connect(self._formSelected)
         form.addRow("Geometry", self._form)
         self._palette = self._combo(PALETTES, "palettes")
         form.addRow("Palette", self._palette)
@@ -189,14 +190,16 @@ class SceneInspector(QWidget):
         form.addRow("Image skin", self._pathField(self._formImage, "Select Form Skin"))
         self._faceting = self._number(0.0, 1.0, 0.01)
         form.addRow("Faceting", self._faceting)
-        self._jaggedness = self._number(0.0, 1.0, 0.01)
+        self._jaggedness = self._number(0.0, 0.12, 0.01)
         form.addRow("Jaggedness", self._jaggedness)
-        self._jaggedScale = self._number(0.25, 24.0, 0.25)
+        self._jaggedScale = self._number(1.0, 16.0, 0.25)
         form.addRow("Jagged scale", self._jaggedScale)
         self._geometrySteps = QSpinBox()
-        self._geometrySteps.setRange(0, 128)
-        self._geometrySteps.valueChanged.connect(self._publishScene)
+        self._geometrySteps.setRange(0, 32)
+        self._geometrySteps.setSingleStep(2)
+        self._geometrySteps.valueChanged.connect(self._geometryStepsChanged)
         form.addRow("Geometry steps", self._geometrySteps)
+        self._formSelected(self._form.currentText())
         layout.addLayout(form)
         layout.addWidget(QLabel("FORM EFFECT STACK"))
         self._formEffects = EffectStackWidget()
@@ -284,6 +287,28 @@ class SceneInspector(QWidget):
     def _cameraPreviewSelected(self, cameraId: str) -> None:
         self._cameraPreview.setOption("cameras", cameraId)
 
+    # :: STRING -> NONE
+    # Enables owned style controls only for the radial geometry they affect
+    def _formSelected(self, formId: str) -> None:
+        enabled = formId == "radial"
+        description = "" if enabled else "Available for radial geometry"
+        for control in (
+            self._faceting,
+            self._jaggedness,
+            self._jaggedScale,
+            self._geometrySteps,
+        ):
+            control.setEnabled(enabled)
+            control.setToolTip(description)
+
+    # :: INT -> NONE
+    # Skips the one invalid geometry-step value before publishing a scene edit
+    def _geometryStepsChanged(self, value: int) -> None:
+        if value == 1:
+            self._geometrySteps.setValue(2)
+            return
+        self._publishScene()
+
     # :: FLOAT, FLOAT, FLOAT, INT -> qDoubleSpinBox
     # Creates a bounded floating-point scene property control
     def _number(
@@ -351,11 +376,14 @@ class SceneInspector(QWidget):
         surface["sampling"] = self._formSampling.currentText()
         surface["image"] = self._optionalPath(self._formImage.text())
         surface["post"] = self._formEffects.effects
-        style = renderer.setdefault("form_style", {})
-        style["faceting"] = self._faceting.value()
-        style["jaggedness"] = self._jaggedness.value()
-        style["jagged_scale"] = self._jaggedScale.value()
-        style["geometry_steps"] = self._geometrySteps.value()
+        if self._form.currentText() == "radial":
+            style = renderer.setdefault("form_style", {})
+            style["faceting"] = self._faceting.value()
+            style["jaggedness"] = self._jaggedness.value()
+            style["jagged_scale"] = self._jaggedScale.value()
+            style["geometry_steps"] = self._geometrySteps.value()
+        else:
+            renderer.pop("form_style", None)
 
         background = scene.setdefault("background", {})
         background["source"] = self._backgroundSource.currentText()
