@@ -9,7 +9,6 @@ from PySide6.QtCore import Qt  # Store stable effect identifiers on native list 
 from PySide6.QtCore import Signal  # Publish authored stack changes
 from PySide6.QtWidgets import QCheckBox  # Edit boolean parameters and effect bypass
 from PySide6.QtWidgets import QComboBox  # Select effects and enumerated parameters
-from PySide6.QtWidgets import QDoubleSpinBox  # Edit bounded floating-point properties
 from PySide6.QtWidgets import QFormLayout  # Align dynamic parameter labels and controls
 from PySide6.QtWidgets import QHBoxLayout  # Arrange stack actions compactly
 from PySide6.QtWidgets import QLabel  # Label empty parameter state
@@ -17,11 +16,11 @@ from PySide6.QtWidgets import QLineEdit  # Edit uncommon free-form string parame
 from PySide6.QtWidgets import QListWidget  # Display ordered effect instances
 from PySide6.QtWidgets import QListWidgetItem  # Attach effect identifiers to stack rows
 from PySide6.QtWidgets import QPushButton  # Add, remove, and reorder effects
-from PySide6.QtWidgets import QSpinBox  # Edit bounded integer properties
 from PySide6.QtWidgets import QVBoxLayout  # Stack the editor sections
 from PySide6.QtWidgets import QWidget  # Host the reusable native editor
 
 from metalheart.effect_catalog import publicEffectCatalog  # Build controls from renderer metadata
+from metalheart.ui.numeric_parameter_widget import NumericParameterWidget  # Pair sliders and numbers
 
 
 # Edits an ordered effect chain including bypass, mix, order, and typed properties
@@ -201,12 +200,9 @@ class EffectStackWidget(QWidget):
         enabled.setChecked(bool(effect["enabled"]))
         enabled.toggled.connect(lambda value: self._setEnabled(index, value))
         self._parameterForm.addRow("Enabled", enabled)
-        mix = QDoubleSpinBox()
-        mix.setRange(0.0, 1.0)
-        mix.setSingleStep(0.01)
-        mix.setDecimals(2)
-        mix.setValue(float(effect["mix"]))
-        mix.valueChanged.connect(lambda value: self._setMix(index, float(value)))
+        mix = NumericParameterWidget.init(0.0, 1.0, 0.01, float(effect["mix"]), False)
+        mix.setObjectName("effectMix")
+        mix.valueCommitted.connect(lambda value: self._setMix(index, float(value)))
         self._parameterForm.addRow("Mix", mix)
         definition = self._definitions.get(effect["id"], {})
         for name, metadata in definition.get("parameters", {}).items():
@@ -234,21 +230,28 @@ class EffectStackWidget(QWidget):
             )
             return control
         if valueType == "integer":
-            integer = QSpinBox()
-            integer.setRange(int(metadata.get("minimum", -100000)), int(metadata.get("maximum", 100000)))
-            integer.setSingleStep(int(metadata.get("step", 1)))
-            integer.setValue(int(value))
-            integer.valueChanged.connect(
+            integer = NumericParameterWidget.init(
+                float(metadata.get("minimum", -100000)),
+                float(metadata.get("maximum", 100000)),
+                float(metadata.get("step", 1)),
+                int(value),
+                True,
+            )
+            integer.setObjectName("effectParameter_{0}".format(name))
+            integer.valueCommitted.connect(
                 lambda current: self._setParameter(index, name, int(current))
             )
             return integer
         if valueType == "number":
-            number = QDoubleSpinBox()
-            number.setRange(float(metadata.get("minimum", -100000.0)), float(metadata.get("maximum", 100000.0)))
-            number.setSingleStep(float(metadata.get("step", 0.01)))
-            number.setDecimals(4)
-            number.setValue(float(value))
-            number.valueChanged.connect(
+            number = NumericParameterWidget.init(
+                float(metadata.get("minimum", -100000.0)),
+                float(metadata.get("maximum", 100000.0)),
+                float(metadata.get("step", 0.01)),
+                float(value),
+                False,
+            )
+            number.setObjectName("effectParameter_{0}".format(name))
+            number.valueCommitted.connect(
                 lambda current: self._setParameter(index, name, float(current))
             )
             return number

@@ -254,7 +254,7 @@ Acceptance criteria:
 This milestone incorporates the first hands-on feedback from the audio-led desktop workflow. Work proceeds in dependency order so later controls inherit consistent editing behavior rather than introducing separate state systems.
 
 1. **Implemented:** project-level Undo and Redo for authored content changes. Scene controls, image choices, effect add/remove/reorder/bypass, effect parameters, and applied Advanced JSON share one canonical snapshot history. Opening, saving, analysis, preview, and rendering remain lifecycle operations rather than undoable content edits. Saving establishes the clean history point.
-2. Replace bare numeric effect controls with a combined slider and directly editable number field generated from catalog minimum, maximum, step, and type metadata.
+2. **Implemented:** numeric effect parameters and Mix use a combined slider and directly editable number field generated from catalog minimum, maximum, step, and type metadata. Slider drags update the number continuously but commit once on release so project history remains useful; direct entry preserves precise values.
 3. Put enable/bypass controls directly on effect-stack rows and visually distinguish bypassed instances while preserving their parameters.
 4. Publish determinate analysis and render progress, including current scene or chunk, completed and total frames, elapsed time, and an estimated remaining duration where enough samples exist.
 5. Add independent stable palette selection for form, palette-based background, and ribbons. The public contract should use `renderer.palette`, `background.palette`, and `renderer.decor.ribbons.palette` rather than silently sharing one value.

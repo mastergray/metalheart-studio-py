@@ -15,6 +15,7 @@ from PySide6.QtWidgets import QTabWidget  # Find the structured layer inspector 
 
 from metalheart.ui.main_window import MainWindow  # Exercise the native shell  # noqa: E402
 from metalheart.ui.effect_stack_widget import EffectStackWidget  # Verify authored stacks  # noqa: E402
+from metalheart.ui.numeric_parameter_widget import NumericParameterWidget  # Verify slider-number controls  # noqa: E402
 from metalheart.ui.waveform_widget import WaveformTimelineWidget  # Verify audio-led navigation  # noqa: E402
 
 
@@ -30,6 +31,8 @@ def testMainWindowBuildsLightweightEmptyShell() -> None:
     assert "Create a project from audio" in window.preview.text()
     assert window.findChild(WaveformTimelineWidget, "sceneTimeline") is not None
     window.close()
+    window.deleteLater()
+    application.processEvents()
 
 
 # :: VOID -> NONE
@@ -43,6 +46,31 @@ def testEffectStackBuildsCanonicalCatalogEntries() -> None:
     assert [effect["id"] for effect in stack.effects] == ["posterize", "tear"]
     assert stack.effects[0]["parameters"]["levels"] == 5
     assert stack.effects[1]["parameters"]["direction"] == "horizontal"
+    stack.close()
+    stack.deleteLater()
+    application.processEvents()
+
+
+# :: VOID -> NONE
+# Verifies sliders and direct number entry publish one precise committed value
+def testNumericParameterPairsSliderAndEditableNumber() -> None:
+    application = QApplication.instance() or QApplication([])
+    control = NumericParameterWidget.init(2.0, 12.0, 1.0, 5, True)
+    committed = []
+    control.valueCommitted.connect(committed.append)
+    control.slider.setValue(control.slider.maximum())
+    control.slider.sliderReleased.emit()
+    application.processEvents()
+    assert control.value == 12
+    assert committed == [12]
+    control.numberField.setValue(7)
+    control.numberField.editingFinished.emit()
+    application.processEvents()
+    assert control.value == 7
+    assert committed == [12, 7]
+    control.close()
+    control.deleteLater()
+    application.processEvents()
 
 
 # :: VOID -> NONE
@@ -87,6 +115,8 @@ def testMainWindowLoadsStructuredSceneWorkflow() -> None:
     ] == ["vhs", "invert"]
     window.undoStack.undo()
     window.close()
+    window.deleteLater()
+    application.processEvents()
 
 
 # :: PATH -> NONE
@@ -132,3 +162,5 @@ def testUndoHistoryTracksSavedProjectCleanPoint(tmp_path: Path) -> None:
     assert window._authored["scenes"][0].get("name") == originalName
     assert not window.dirty
     window.close()
+    window.deleteLater()
+    application.processEvents()
