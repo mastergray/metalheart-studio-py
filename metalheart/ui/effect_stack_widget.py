@@ -7,7 +7,9 @@ from typing import Any, Dict, List, Optional  # Python 3.8-compatible collection
 
 from PySide6.QtCore import Qt  # Store stable effect identifiers on native list items
 from PySide6.QtCore import Signal  # Publish authored stack changes
-from PySide6.QtWidgets import QCheckBox  # Edit boolean parameters and effect bypass
+from PySide6.QtGui import QBrush  # Dim bypassed effect rows without removing them
+from PySide6.QtGui import QColor  # Define enabled and bypassed row colors
+from PySide6.QtWidgets import QCheckBox  # Edit boolean effect parameters
 from PySide6.QtWidgets import QComboBox  # Select effects and enumerated parameters
 from PySide6.QtWidgets import QFormLayout  # Align dynamic parameter labels and controls
 from PySide6.QtWidgets import QHBoxLayout  # Arrange stack actions compactly
@@ -102,6 +104,7 @@ class EffectStackWidget(QWidget):
         self._list.setObjectName("effectStackList")
         self._list.setMinimumHeight(105)
         self._list.currentRowChanged.connect(self._effectSelected)
+        self._list.itemChanged.connect(self._itemToggled)
         layout.addWidget(self._list)
 
         actions = QHBoxLayout()
@@ -151,8 +154,11 @@ class EffectStackWidget(QWidget):
         for index, effect in enumerate(self._effects):
             definition = self._definitions.get(effect["id"], {})
             label = definition.get("label", effect["id"])
-            prefix = "" if effect.get("enabled", True) else "[off] "
-            item = QListWidgetItem("{0:02d}  {1}{2}".format(index + 1, prefix, label))
+            enabled = bool(effect.get("enabled", True))
+            item = QListWidgetItem("{0:02d}  {1}".format(index + 1, label))
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            self._styleEffectItem(item, enabled)
+            item.setToolTip("Checked: enabled • Unchecked: bypassed")
             item.setData(Qt.ItemDataRole.UserRole, effect["id"])
             self._list.addItem(item)
         self._list.setCurrentRow(selected)
@@ -196,10 +202,6 @@ class EffectStackWidget(QWidget):
             self._showEmptyParameters()
             return
         effect = self._effects[index]
-        enabled = QCheckBox()
-        enabled.setChecked(bool(effect["enabled"]))
-        enabled.toggled.connect(lambda value: self._setEnabled(index, value))
-        self._parameterForm.addRow("Enabled", enabled)
         mix = NumericParameterWidget.init(0.0, 1.0, 0.01, float(effect["mix"]), False)
         mix.setObjectName("effectMix")
         mix.valueCommitted.connect(lambda value: self._setMix(index, float(value)))
@@ -269,13 +271,39 @@ class EffectStackWidget(QWidget):
         return text
 
     # :: INT, BOOL -> NONE
-    # Changes bypass state and refreshes its row marker
+    # Changes bypass state and refreshes its row appearance
     def _setEnabled(self, index: int, enabled: bool) -> None:
         if self._loading or index >= len(self._effects):
             return
+        if bool(self._effects[index]["enabled"]) == enabled:
+            return
         self._effects[index]["enabled"] = enabled
-        self._refreshList(index)
+        item = self._list.item(index)
+        if item is not None:
+            self._list.blockSignals(True)
+            self._styleEffectItem(item, enabled)
+            self._list.blockSignals(False)
         self._publishChange()
+
+    # :: qListWidgetItem -> NONE
+    # Applies a visible row checkbox as the canonical bypass state
+    def _itemToggled(self, item: QListWidgetItem) -> None:
+        if self._loading:
+            return
+        index = self._list.row(item)
+        if index < 0:
+            return
+        self._setEnabled(index, item.checkState() == Qt.CheckState.Checked)
+
+    # :: qListWidgetItem, BOOL -> NONE
+    # Synchronizes the visible checkbox and bypassed row color
+    def _styleEffectItem(self, item: QListWidgetItem, enabled: bool) -> None:
+        item.setCheckState(
+            Qt.CheckState.Checked if enabled else Qt.CheckState.Unchecked
+        )
+        item.setForeground(
+            QBrush(QColor("#ccd5d6" if enabled else "#596568"))
+        )
 
     # :: INT, FLOAT -> NONE
     # Changes the selected effect output mix

@@ -10,11 +10,12 @@ import pytest  # Skip cleanly when the optional UI dependency is absent
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6")
 
+from PySide6.QtCore import Qt  # Toggle native effect-row checkboxes  # noqa: E402
 from PySide6.QtWidgets import QApplication  # Create the Qt event loop after headless setup  # noqa: E402
 from PySide6.QtWidgets import QTabWidget  # Find the structured layer inspector  # noqa: E402
 
-from metalheart.ui.main_window import MainWindow  # Exercise the native shell  # noqa: E402
 from metalheart.ui.effect_stack_widget import EffectStackWidget  # Verify authored stacks  # noqa: E402
+from metalheart.ui.main_window import MainWindow  # Exercise the native shell  # noqa: E402
 from metalheart.ui.numeric_parameter_widget import NumericParameterWidget  # Verify slider-number controls  # noqa: E402
 from metalheart.ui.waveform_widget import WaveformTimelineWidget  # Verify audio-led navigation  # noqa: E402
 
@@ -46,6 +47,15 @@ def testEffectStackBuildsCanonicalCatalogEntries() -> None:
     assert [effect["id"] for effect in stack.effects] == ["posterize", "tear"]
     assert stack.effects[0]["parameters"]["levels"] == 5
     assert stack.effects[1]["parameters"]["direction"] == "horizontal"
+    stack._list.item(0).setCheckState(Qt.CheckState.Unchecked)
+    application.processEvents()
+    assert not stack.effects[0]["enabled"]
+    assert stack.effects[0]["parameters"]["levels"] == 5
+    assert stack._list.item(0).foreground().color().name() == "#596568"
+    stack._list.item(0).setCheckState(Qt.CheckState.Checked)
+    application.processEvents()
+    assert stack.effects[0]["enabled"]
+    assert stack.effects[0]["parameters"]["levels"] == 5
     stack.close()
     stack.deleteLater()
     application.processEvents()
@@ -114,6 +124,29 @@ def testMainWindowLoadsStructuredSceneWorkflow() -> None:
         effect["id"] for effect in window._authored["scenes"][0]["background"]["post"]
     ] == ["vhs", "invert"]
     window.undoStack.undo()
+    window.close()
+    window.deleteLater()
+    application.processEvents()
+
+
+# :: VOID -> NONE
+# Verifies row bypass is layer-local, parameter-preserving, and undoable
+def testEffectRowBypassParticipatesInProjectHistory() -> None:
+    application = QApplication.instance() or QApplication([])
+    projectPath = Path(__file__).resolve().parents[1] / "examples" / "layer-effects.json"
+    window = MainWindow.init(str(projectPath))
+    formEffects = window._inspector._formEffects
+    formEffects._list.item(0).setCheckState(Qt.CheckState.Unchecked)
+    application.processEvents()
+    effect = window._authored["scenes"][0]["renderer"]["surface"]["post"][0]
+    assert not effect["enabled"]
+    assert effect["parameters"]["levels"] == 4
+    assert window._authored["scenes"][0]["background"]["post"][0]["enabled"]
+    window.undoStack.undo()
+    application.processEvents()
+    restored = window._authored["scenes"][0]["renderer"]["surface"]["post"][0]
+    assert restored.get("enabled", True)
+    assert restored["parameters"]["levels"] == 4
     window.close()
     window.deleteLater()
     application.processEvents()
