@@ -658,6 +658,8 @@ The native PySide6/Qt desktop application is the interactive authoring interface
 
 The implemented primary workflow begins with **New from Audio**, which runs the shared analyzer and phrase-aligned scene planner outside the UI thread. The workspace presents cached audio energy as a waveform/hard-cut timeline and edits the selected scene through structured Form, Background, and Ribbons inspectors. Each layer owns an independent palette selector and ordered effect stack generated from the effect catalog, including typed parameter, mix, add, remove, and reorder controls. A native checkbox on every stack row controls enable/bypass; bypassed rows remain ordered with retained properties and use a dimmed label. Numeric effect values use catalog-driven slider/number pairs that retain precise direct entry and commit slider drags once. Project-level Undo and Redo restore canonical authored snapshots across structured controls and applied Advanced JSON; Save marks the current history position as clean. JSON is available through an optional advanced dock rather than serving as the normal authoring surface. Still previews remain explicit and bounded for the target machine. Analysis reports named workflow stages, and full export reports current scene/chunk, completed and total frames, elapsed time, and measured ETA through an optional line-oriented CLI protocol consumed by the native task area.
 
+Form, camera, palette, and effect selectors use packaged 128×72 PNG thumbnails generated offline from a deterministic fixed renderer fixture. Their versioned manifest declares the renderer revision, a fingerprint of every represented catalog definition, fixture settings, dimensions, portable paths, and content hashes. The native application only reads this manifest and its images; opening a selector never invokes the renderer. A missing, incomplete, or stale manifest leaves the same controls usable in text-only form. Thumbnails are discovery aids and do not define preview or export behavior.
+
 ### 11.1 Required commands
 
 - `ui [CONFIG]`: open the native PySide6 authoring application, optionally with a project.
@@ -667,6 +669,7 @@ The implemented primary workflow begins with **New from Audio**, which runs the 
 - `list {templates|forms|cameras|palettes|effects|reactivity}`: enumerate stable IDs and concise descriptions. `looks` remains a compatibility CLI alias.
 - `schema`: emit JSON Schema for validation support and external tooling.
 - `resolve CONFIG`: write the fully expanded config without rendering.
+- `thumbnails [-o DIRECTORY]`: regenerate the complete renderer- and catalog-pinned option-thumbnail set for review or packaging.
 
 All commands support `--json` for machine-readable output where applicable. Normal progress goes to stderr so stdout can safely carry JSON.
 

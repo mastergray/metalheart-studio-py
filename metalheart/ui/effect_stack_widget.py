@@ -23,6 +23,7 @@ from PySide6.QtWidgets import QWidget  # Host the reusable native editor
 
 from metalheart.effect_catalog import publicEffectCatalog  # Build controls from renderer metadata
 from metalheart.ui.numeric_parameter_widget import NumericParameterWidget  # Pair sliders and numbers
+from metalheart.ui.thumbnail_icons import applyComboThumbnails  # Decorate the effect picker from packaged assets
 
 
 # Edits an ordered effect chain including bypass, mix, order, and typed properties
@@ -94,6 +95,7 @@ class EffectStackWidget(QWidget):
                 "{0} — {1}".format(entry["category"], entry["label"]),
                 entry["id"],
             )
+        applyComboThumbnails(self._effectPicker, "effects", True)
         addButton = QPushButton("Add")
         addButton.clicked.connect(self._addSelected)
         picker.addWidget(self._effectPicker, 1)

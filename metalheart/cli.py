@@ -25,6 +25,8 @@ from metalheart.planner import ScenePlanner  # Convert audio analysis into scene
 from metalheart.progress import reportProgress  # Publish native-UI progress records
 from metalheart.reference_backend import ReferenceBackend  # Analyze audio through the pinned backend
 from metalheart.render import RenderPipeline  # Execute resolved render configs
+from metalheart.thumbnails import THUMBNAIL_ROOT  # Select the packaged thumbnail destination
+from metalheart.thumbnails import ThumbnailGenerator  # Generate offline option thumbnails
 
 
 # :: configResolver, STRING -> ARRAY<STRING, ANY>
@@ -130,6 +132,18 @@ def buildParser() -> argparse.ArgumentParser:
 
     schemaParser = commands.add_parser("schema", help="emit the config JSON Schema")
     schemaParser.add_argument("-o", "--output")
+
+    thumbnailParser = commands.add_parser(
+        "thumbnails",
+        help="generate versioned offline option thumbnails",
+    )
+    thumbnailParser.add_argument(
+        "-o",
+        "--output",
+        default=str(THUMBNAIL_ROOT),
+        help="asset directory containing manifest.json",
+    )
+    _addJsonFlag(thumbnailParser)
 
     uiParser = commands.add_parser("ui", help="open the native PySide6 authoring interface")
     uiParser.add_argument("config", nargs="?", help="optional JSON project to open")
@@ -342,6 +356,30 @@ def _schemaCommand(args: argparse.Namespace, resolver: ConfigResolver) -> int:
 
 
 # :: argumentNamespace -> INT
+# Generates the complete renderer/catalog-pinned thumbnail asset set
+def _thumbnailCommand(args: argparse.Namespace) -> int:
+    root = Path(args.output).resolve()
+    manifest = ThumbnailGenerator.init().generate(root)
+    summary = {
+        "output": str(root),
+        "manifest": str(root / "manifest.json"),
+        "renderer_version": manifest["renderer_version"],
+        "thumbnail_version": manifest["thumbnail_version"],
+        "count": sum(len(entries) for entries in manifest["catalogs"].values()),
+    }
+    if args.json:
+        print(json.dumps(summary, indent=2, sort_keys=True))
+    else:
+        print(
+            "wrote {0} thumbnails: {1}".format(
+                summary["count"],
+                summary["manifest"],
+            )
+        )
+    return 0
+
+
+# :: argumentNamespace -> INT
 # Starts the optional native desktop authoring interface
 def _uiCommand(args: argparse.Namespace) -> int:
     try:
@@ -374,6 +412,8 @@ def main(arguments: Optional[List[str]] = None) -> int:
             return _listCommand(args)
         if args.command == "schema":
             return _schemaCommand(args, resolver)
+        if args.command == "thumbnails":
+            return _thumbnailCommand(args)
         if args.command == "ui":
             return _uiCommand(args)
     except (ConfigError, RuntimeError, OSError, subprocess.SubprocessError) as error:

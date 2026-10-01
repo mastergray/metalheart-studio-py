@@ -78,6 +78,11 @@ def testMainWindowDisplaysStructuredProgress() -> None:
 def testEffectStackBuildsCanonicalCatalogEntries() -> None:
     application = QApplication.instance() or QApplication([])
     stack = EffectStackWidget()
+    posterizeIndex = stack._effectPicker.findData("posterize")
+    assert posterizeIndex >= 0
+    assert not stack._effectPicker.itemIcon(posterizeIndex).isNull()
+    assert stack._effectPicker.iconSize().width() == 64
+    assert stack._effectPicker.iconSize().height() == 36
     stack.addEffect("posterize")
     stack.addEffect("tear")
     application.processEvents()
@@ -196,12 +201,15 @@ def testLayerPaletteControlsAreIndependentAndUndoable() -> None:
     projectPath = Path(__file__).resolve().parents[1] / "examples" / "layer-effects.json"
     window = MainWindow.init(str(projectPath))
     inspector = window._inspector
+    assert not inspector._form.itemIcon(inspector._form.findText("radial")).isNull()
+    assert not inspector._camera.itemIcon(inspector._camera.findText("dutch")).isNull()
     for selector in (
         inspector._palette,
         inspector._backgroundPalette,
         inspector._ribbonPalette,
     ):
         assert [selector.itemText(index) for index in range(selector.count())] == PALETTES
+        assert not selector.itemIcon(selector.findText("jungle")).isNull()
     assert inspector._palette.currentText() == "steel"
     assert inspector._backgroundPalette.currentText() == "steel"
     assert inspector._backgroundIntensity.value() == 1.0

@@ -115,6 +115,21 @@ def testUiCommandAcceptsOptionalProject() -> None:
 
 
 # :: VOID -> NONE
+# Verifies offline thumbnail generation has a packaged default and explicit output
+def testThumbnailCommandAcceptsOptionalOutput() -> None:
+    parser = buildParser()
+    defaultArgs = parser.parse_args(["thumbnails"])
+    outputArgs = parser.parse_args(
+        ["thumbnails", "-o", "/tmp/metalheart-thumbnails", "--json"]
+    )
+    assert defaultArgs.command == "thumbnails"
+    assert defaultArgs.output.endswith("metalheart/assets/thumbnails/v1")
+    assert not defaultArgs.json
+    assert outputArgs.output == "/tmp/metalheart-thumbnails"
+    assert outputArgs.json
+
+
+# :: VOID -> NONE
 # Verifies temporal scoped effects receive the same worker preroll as scene chains
 def testLayerScopedSlitscanContributesHistory() -> None:
     slitscan = {

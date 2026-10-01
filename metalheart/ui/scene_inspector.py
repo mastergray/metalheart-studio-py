@@ -26,6 +26,7 @@ from metalheart.catalog import FORMS  # Populate supported form geometries
 from metalheart.catalog import PALETTES  # Populate supported form palettes
 from metalheart.catalog import REACTIVITY_PRESETS  # Populate explicit audio mappings
 from metalheart.ui.effect_stack_widget import EffectStackWidget  # Edit scoped post chains
+from metalheart.ui.thumbnail_icons import applyComboThumbnails  # Decorate catalog selectors from packaged assets
 
 
 IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.webp *.bmp *.tif *.tiff);;All Files (*)"
@@ -169,11 +170,11 @@ class SceneInspector(QWidget):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         form = QFormLayout()
-        self._form = self._combo(FORMS)
+        self._form = self._combo(FORMS, "forms")
         form.addRow("Geometry", self._form)
-        self._palette = self._combo(PALETTES)
+        self._palette = self._combo(PALETTES, "palettes")
         form.addRow("Palette", self._palette)
-        self._camera = self._combo(CAMERAS)
+        self._camera = self._combo(CAMERAS, "cameras")
         form.addRow("Camera", self._camera)
         self._formMaterial = self._combo(["metallic", "matte"])
         form.addRow("Material", self._formMaterial)
@@ -207,7 +208,7 @@ class SceneInspector(QWidget):
         form = QFormLayout()
         self._backgroundSource = self._combo(["palette", "image"])
         form.addRow("Source", self._backgroundSource)
-        self._backgroundPalette = self._combo(PALETTES)
+        self._backgroundPalette = self._combo(PALETTES, "palettes")
         form.addRow("Palette", self._backgroundPalette)
         self._backgroundIntensity = self._number(0.0, 4.0, 0.05)
         form.addRow("Palette intensity", self._backgroundIntensity)
@@ -247,7 +248,7 @@ class SceneInspector(QWidget):
         self._ribbonCount.setRange(0, 8)
         self._ribbonCount.valueChanged.connect(self._publishScene)
         form.addRow("Count", self._ribbonCount)
-        self._ribbonPalette = self._combo(PALETTES)
+        self._ribbonPalette = self._combo(PALETTES, "palettes")
         form.addRow("Palette", self._ribbonPalette)
         self._ribbonMaterial = self._combo(["metallic", "matte"])
         form.addRow("Material", self._ribbonMaterial)
@@ -263,11 +264,13 @@ class SceneInspector(QWidget):
         layout.addStretch(1)
         return tab
 
-    # :: [STRING] -> qComboBox
+    # :: [STRING], STRING? -> qComboBox
     # Creates a catalog selector that publishes structured changes
-    def _combo(self, values: Any) -> QComboBox:
+    def _combo(self, values: Any, thumbnailCatalog: Optional[str] = None) -> QComboBox:
         control = QComboBox()
         control.addItems([str(value) for value in values])
+        if thumbnailCatalog is not None:
+            applyComboThumbnails(control, thumbnailCatalog)
         control.currentTextChanged.connect(self._publishScene)
         return control
 

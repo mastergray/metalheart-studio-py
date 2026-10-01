@@ -1,0 +1,484 @@
+{
+  "schema_version": 1,
+  "thumbnail_version": "2026-10-01-v1",
+  "renderer_version": "audioReactive-2026-10-01-visible-backgrounds-v15",
+  "catalog_fingerprint": "b89d3c6f050cb1f3e8f37488bdf896e740da73a345e3045eac9f3751171d0d23",
+  "width": 128,
+  "height": 72,
+  "fixture": {
+    "fps": 12,
+    "seed": 23,
+    "time_sec": 1.75,
+    "effect_frames": 32
+  },
+  "catalogs": {
+    "forms": {
+      "mercury": {
+        "label": "Mercury",
+        "file": "forms/mercury.png",
+        "sha256": "618f92bf31e5fad524d55eae632c8900e27e49550cd984c0e3100029b245cda4"
+      },
+      "wring": {
+        "label": "Wring",
+        "file": "forms/wring.png",
+        "sha256": "8a859b699da5b89a12c515ce0f8b2fd8ec11f748993783e6d03e36e878430072"
+      },
+      "ferro": {
+        "label": "Ferro",
+        "file": "forms/ferro.png",
+        "sha256": "70bc2770ec728dd21c3e19b2337ba0c1c81bea4cbf0fcbd0bafc810430eebec6"
+      },
+      "drip": {
+        "label": "Drip",
+        "file": "forms/drip.png",
+        "sha256": "7b727583aeaef9352502a4fb5cb2b3e66f614737fc3a1142d8002f5c9b18209a"
+      },
+      "split": {
+        "label": "Split",
+        "file": "forms/split.png",
+        "sha256": "230639253e32d83760ca2c8e84711066dacaafaa9d0cf0c4228c5eabeb7b6035"
+      },
+      "fold": {
+        "label": "Fold",
+        "file": "forms/fold.png",
+        "sha256": "91ce2b567114458358e9f719f3fd2a524197b819ee8821ac21c1f891f45c1865"
+      },
+      "morph": {
+        "label": "Morph",
+        "file": "forms/morph.png",
+        "sha256": "2a1564ea3f22c365c2cb81d6844488299c1605f5329b658835f67504e7042101"
+      },
+      "gyro": {
+        "label": "Gyro",
+        "file": "forms/gyro.png",
+        "sha256": "f1bf50546a2baf9b1606195dfbaf4841de51bdbcc66e07dc9803fdf6c14d9dcd"
+      },
+      "chaos": {
+        "label": "Chaos",
+        "file": "forms/chaos.png",
+        "sha256": "65345613de2d6f5ec9e253e36b60c5abe8825a1b457550bc9396af2c8cd44beb"
+      },
+      "resonance": {
+        "label": "Resonance",
+        "file": "forms/resonance.png",
+        "sha256": "a3beb9061370a6fcc20982acca4946590cde489b6cf97e079fee0a28b5f51296"
+      },
+      "radial": {
+        "label": "Radial",
+        "file": "forms/radial.png",
+        "sha256": "acbf60fbfc3e2bed7813c851db70c17f0e9eab033cb28bfe5e8b076f10c0ee9b"
+      }
+    },
+    "cameras": {
+      "orbit": {
+        "label": "Orbit",
+        "file": "cameras/orbit.png",
+        "sha256": "71e8c1357f440890f177b36e49d0e78e262ce028cd5849dc5a159cba830fad0b"
+      },
+      "crane": {
+        "label": "Crane",
+        "file": "cameras/crane.png",
+        "sha256": "7c398eadabe4075c611e9b09a410c12814c793b1d9c25dd0f530193e811622fb"
+      },
+      "dolly": {
+        "label": "Dolly",
+        "file": "cameras/dolly.png",
+        "sha256": "3b93f89bcdab34e1bdd7293e5786098c9e031437c9aeacdb3202fbf4fbb46fe3"
+      },
+      "low": {
+        "label": "Low",
+        "file": "cameras/low.png",
+        "sha256": "52d12d239a5e61252311fa00141ec0d286e63e4f9b8e931b7af442a88ff098c4"
+      },
+      "top": {
+        "label": "Top",
+        "file": "cameras/top.png",
+        "sha256": "b30567d3196c2872437da12278bec0a82ee6e774d41feb70deb39f5f0d24016f"
+      },
+      "macro": {
+        "label": "Macro",
+        "file": "cameras/macro.png",
+        "sha256": "c9204708d61a0056e13ab771b6ee1acfcdfe8b838c9db7872b03af11b4f87bdc"
+      },
+      "dutch": {
+        "label": "Dutch",
+        "file": "cameras/dutch.png",
+        "sha256": "67ea0471e3e2725c7dd952243b1d113998f3b0917d8a916866d2820c04abd338"
+      },
+      "drift": {
+        "label": "Drift",
+        "file": "cameras/drift.png",
+        "sha256": "c8cc988c573448f15b2af325890e744d384e8e8376d0121b3d3a42aba5689da2"
+      }
+    },
+    "palettes": {
+      "steel": {
+        "label": "Steel",
+        "file": "palettes/steel.png",
+        "sha256": "ead5273675c69bdc06a81a5cf62adaddbe343ed9e76875fd73006b9c1406c6b1"
+      },
+      "acid": {
+        "label": "Acid",
+        "file": "palettes/acid.png",
+        "sha256": "088e3cec1068949c03e9478b95c5afbc8e7988b3c39af30680dab7a915de278a"
+      },
+      "ember": {
+        "label": "Ember",
+        "file": "palettes/ember.png",
+        "sha256": "cdd93e1d1b24731956b8ded31cda73525bb9609d7d839fc1b754448eee234ac5"
+      },
+      "jungle": {
+        "label": "Jungle",
+        "file": "palettes/jungle.png",
+        "sha256": "4e04f002bb46c4063c36b48f8d4a7b3a4020ed4643121d69ff79d9d9461dc00f"
+      },
+      "rainbow": {
+        "label": "Rainbow",
+        "file": "palettes/rainbow.png",
+        "sha256": "057888726393f9e5f4d739ee48a1ff034c2c85f3394f1e463e3590b521810ca4"
+      },
+      "ice": {
+        "label": "Ice",
+        "file": "palettes/ice.png",
+        "sha256": "eb56ef6f6ab4ab8c1d195ffca30f49bb1508d6a4d294e67d00693fe08ac74736"
+      },
+      "electric": {
+        "label": "Electric",
+        "file": "palettes/electric.png",
+        "sha256": "fe571259aa3ceacaf6131423cbab60a09ffcf6b9971c6dd4d5e033da12b99b51"
+      },
+      "neon": {
+        "label": "Neon",
+        "file": "palettes/neon.png",
+        "sha256": "1cdd5771dd5b98f540982b268b5338d928faa2abd9b4592917f603ac1862513a"
+      },
+      "grayscale": {
+        "label": "Grayscale",
+        "file": "palettes/grayscale.png",
+        "sha256": "256493e3dcf735b18fc5b977e89befcf4a4567fa60380def226033cadc76d6a3"
+      }
+    },
+    "effects": {
+      "aged_tape_decay_like": {
+        "label": "Aged Tape Decay",
+        "file": "effects/aged_tape_decay_like.png",
+        "sha256": "b96832e2cb22c185a502b3a61ba546249c7a30a2801978b2b11dca8e31fe937e"
+      },
+      "arcade": {
+        "label": "Arcade",
+        "file": "effects/arcade.png",
+        "sha256": "e0d71bf2c70fe23cab8ad31df9684782ec8addbe73d7c108e1240022e63510f7"
+      },
+      "arcade_night_like": {
+        "label": "Arcade Night",
+        "file": "effects/arcade_night_like.png",
+        "sha256": "c917805a13a4e7ae84550a9f41a13b2fa2bce849d15358a7ba42edd17acfdc28"
+      },
+      "arcade_phosphor_like": {
+        "label": "Arcade Phosphor",
+        "file": "effects/arcade_phosphor_like.png",
+        "sha256": "148bc7de636c5cfb479eea9e4dd7cfbcabd39dfe726cea7b9f02844c0a93399a"
+      },
+      "bitplane_scramble_like": {
+        "label": "Bitplane Scramble",
+        "file": "effects/bitplane_scramble_like.png",
+        "sha256": "868fd8f1ac9eb1945951e2d8fb10b6df3bae93de60ae70c6fed36ebee2d0c37d"
+      },
+      "block_corrupt_like": {
+        "label": "Block Corrupt",
+        "file": "effects/block_corrupt_like.png",
+        "sha256": "401bc645ddcd51caa3d111b4fb23df29c034150edb5672600861879919c6572a"
+      },
+      "block_jitter": {
+        "label": "Block Jitter",
+        "file": "effects/block_jitter.png",
+        "sha256": "17871e5f05aae23cec0bc338b2ae89d67ed229213b74d2a66c37cec315cf7f6b"
+      },
+      "blur": {
+        "label": "Blur",
+        "file": "effects/blur.png",
+        "sha256": "c0f79c0a9229e80820981c42561e7b9abc7eb126f6c269ebaf539a6864377799"
+      },
+      "broken_mux_like": {
+        "label": "Broken Mux",
+        "file": "effects/broken_mux_like.png",
+        "sha256": "ffd644cccbd74f1310823c617047ad6679aaa5341bc521d467868ec7abb1c14e"
+      },
+      "channel_drift_like": {
+        "label": "Channel Drift",
+        "file": "effects/channel_drift_like.png",
+        "sha256": "0a5851d3f18bd09b34514b5c125dd98127e687ffe40fbf599196cf60c796298d"
+      },
+      "channel_smear_like": {
+        "label": "Channel Smear",
+        "file": "effects/channel_smear_like.png",
+        "sha256": "55b8b5a1d1208504de640817fec8e242c203eecdf57454b373efaf3f23764d1e"
+      },
+      "channels": {
+        "label": "Channels",
+        "file": "effects/channels.png",
+        "sha256": "f1161181f321709b63d9d334f5f47316c206e6aac345ee62e3aeb0f15e503ab3"
+      },
+      "chaos_breach_like": {
+        "label": "Chaos Breach",
+        "file": "effects/chaos_breach_like.png",
+        "sha256": "a60e00a5c21b4f20de3bb1ae60df4cfbc077a92f8630eac24a0e93c0e20a8da9"
+      },
+      "chaos_vortex_like": {
+        "label": "Chaos Vortex",
+        "file": "effects/chaos_vortex_like.png",
+        "sha256": "649a76db313be6e3f062019f436b47e9a0e91befe50a3eee2da22cf6a38e9e1b"
+      },
+      "chromatic": {
+        "label": "Chromatic (Glitzle)",
+        "file": "effects/chromatic.png",
+        "sha256": "4293c43b7d1b256509b3ea5397f3759fa24c83ea2e8ae86386edb1770b893286"
+      },
+      "codec_crush_like": {
+        "label": "Codec Crush",
+        "file": "effects/codec_crush_like.png",
+        "sha256": "00769e1f021befa0db4b8e1b872611faf8379d3a5cd2a47972fd8bfb7a28184b"
+      },
+      "compression_spike_like": {
+        "label": "Compression Spike",
+        "file": "effects/compression_spike_like.png",
+        "sha256": "5bb08397428a3f6b5528269a078bb939d84bec8e3071276bc83f179aadbfed2f"
+      },
+      "contrast": {
+        "label": "Contrast",
+        "file": "effects/contrast.png",
+        "sha256": "10a5c72c2dffe0b296ce3eb06155d410f0c53846d50ddbd53e033d7bd49d337d"
+      },
+      "datamosh_breakup_like": {
+        "label": "Datamosh Breakup",
+        "file": "effects/datamosh_breakup_like.png",
+        "sha256": "118de305a0977d4339663a943bb6d69643132fc309255c39b6c46eed498133b3"
+      },
+      "datamosh_drift_like": {
+        "label": "Datamosh Drift",
+        "file": "effects/datamosh_drift_like.png",
+        "sha256": "5588544b967af89427e510e9eca1d1af07d1bd1475d9a9ae8c3de5396cfe0994"
+      },
+      "destructive_shatter_corrupt_like": {
+        "label": "Destructive Shatter Corrupt",
+        "file": "effects/destructive_shatter_corrupt_like.png",
+        "sha256": "400238a3bc802da4b06eede967746538dfe252c221a984089db12d0fe4e46e58"
+      },
+      "digital_tear_like": {
+        "label": "Digital Tear",
+        "file": "effects/digital_tear_like.png",
+        "sha256": "3eeb0892e7552c75547f5bdc425c3354c6bc78fcb0447895801742913acacd9d"
+      },
+      "film_decay_like": {
+        "label": "Film Decay",
+        "file": "effects/film_decay_like.png",
+        "sha256": "f4ab7e5ead00ad2f869fe23c3174fcf1c42a64d69330997e7190055141c324b8"
+      },
+      "glitch_warpfield_like": {
+        "label": "Glitch Warpfield",
+        "file": "effects/glitch_warpfield_like.png",
+        "sha256": "8417d2bc0272b5e86ca9fe3e244bd7264eb883be5d48f8f2182e608d8a1de208"
+      },
+      "grayscale": {
+        "label": "Grayscale",
+        "file": "effects/grayscale.png",
+        "sha256": "5ec2c454c43a60b8912536c2933cb72cf7e6df243e837ff3649190d7c887d709"
+      },
+      "hyper_glitch_like": {
+        "label": "Hyper Glitch",
+        "file": "effects/hyper_glitch_like.png",
+        "sha256": "3bdf2b7dbb518684eaded55ad0c49e16d494e917990b043bb387e2b5b7955bdf"
+      },
+      "invert": {
+        "label": "Invert",
+        "file": "effects/invert.png",
+        "sha256": "5e25a332a0c30e6d4fd73c2827b6b89817aa404d4720b32d803572a7f9060bce"
+      },
+      "mirror_diamond": {
+        "label": "Diamond Mirror",
+        "file": "effects/mirror_diamond.png",
+        "sha256": "ae5018776585a9acbf1e47e88b536c3ec2de2ea90f2f6c8c74426cb4ca9fe31f"
+      },
+      "mirror_h": {
+        "label": "Horizontal Mirror",
+        "file": "effects/mirror_h.png",
+        "sha256": "e4381b5b21bd603408e7fba18ec891e6c5fb96483dcd48e44d442522fd8866fa"
+      },
+      "mirror_quad": {
+        "label": "Quad Mirror",
+        "file": "effects/mirror_quad.png",
+        "sha256": "ace2f792181ad6222c8be546d543104dafbca9808a346e5303a906422c867b79"
+      },
+      "mirror_v": {
+        "label": "Vertical Mirror",
+        "file": "effects/mirror_v.png",
+        "sha256": "72dd1ca2007d2b439a417ac34978624d79588d20a027a43a663bf5380e523b72"
+      },
+      "noise": {
+        "label": "Noise",
+        "file": "effects/noise.png",
+        "sha256": "57c61c9257028833993df79555ced73213e5ae4d9ee0e221de7a765ef6e1b565"
+      },
+      "packet_desync_like": {
+        "label": "Packet Desync",
+        "file": "effects/packet_desync_like.png",
+        "sha256": "b8cb2dd1dc1110d745c8fb2e7f65bbba6840f5dbb2806bdd6d8a2175d177aaea"
+      },
+      "packet_loss_like": {
+        "label": "Packet Loss",
+        "file": "effects/packet_loss_like.png",
+        "sha256": "cef67d97409b543045024bf2176d14114324fc05b0fcaf03b09797c815e04440"
+      },
+      "phase_error_like": {
+        "label": "Phase Error",
+        "file": "effects/phase_error_like.png",
+        "sha256": "0320d9d8dc63bc7cdec9c0b8f18bbaaf1a3d2b30e7231f1ac28212a8cc6a07d7"
+      },
+      "pixel_sort": {
+        "label": "Pixel Sort (Glitzle)",
+        "file": "effects/pixel_sort.png",
+        "sha256": "0f0036c9268f5eb59b25dcbdd406f5008312f7766ebb55c8cbe9fa055b04cee1"
+      },
+      "pixelate": {
+        "label": "Pixelate",
+        "file": "effects/pixelate.png",
+        "sha256": "a2eb8d22fd44046d2f1b416bc2fa20be078df6b58a9b4792bb6fc17e67ad105d"
+      },
+      "posterize": {
+        "label": "Posterize",
+        "file": "effects/posterize.png",
+        "sha256": "6958c89ff5852ed5d2f42f104f4adca93500a1694f28551651efe843ad27c0e4"
+      },
+      "rectangles": {
+        "label": "Rectangles",
+        "file": "effects/rectangles.png",
+        "sha256": "37d49ed300f492bf606e6cacab21f98e23665eee41faaf2fd0e51adeb452b1a4"
+      },
+      "retro_crt_like": {
+        "label": "Retro CRT",
+        "file": "effects/retro_crt_like.png",
+        "sha256": "03a118bd5418cbf1ed94774289bd08eae2bac9f189f7bec390573ad07d7ab99e"
+      },
+      "rgb_shift": {
+        "label": "RGB Shift",
+        "file": "effects/rgb_shift.png",
+        "sha256": "b623f4a4ada613061d84148b7bd7b5bbc9207c83d7ef4ee3f1c1c65c9dc9c608"
+      },
+      "saturation": {
+        "label": "Saturation",
+        "file": "effects/saturation.png",
+        "sha256": "7e2e61a392052e4abbb9d5caa660ed352db462a05fcadba09f3f277bb9cc2376"
+      },
+      "scale": {
+        "label": "Scale",
+        "file": "effects/scale.png",
+        "sha256": "be726b3207b28830a2fea32e27f200cc63fa60b2652825356b712ac48acdcb11"
+      },
+      "scan_corrupt_like": {
+        "label": "Scan Corrupt",
+        "file": "effects/scan_corrupt_like.png",
+        "sha256": "970398ce33c638ce8df5fb72a2952a8cfc1f2e05463ff10f9dd69cdff3495ed7"
+      },
+      "scanline_corrupt": {
+        "label": "Scanline Corrupt",
+        "file": "effects/scanline_corrupt.png",
+        "sha256": "e95df55f1930596610fda83a957672f49404a4f654d0e3d7aa5a1d47d722d5b9"
+      },
+      "scanline_desync_like": {
+        "label": "Scanline Desync",
+        "file": "effects/scanline_desync_like.png",
+        "sha256": "9eb9fcdf7f81ee2a0bf9b41466d4bd3fdc0e6e3729f5bcf073ee261c909323da"
+      },
+      "scanlines": {
+        "label": "Scanlines",
+        "file": "effects/scanlines.png",
+        "sha256": "4cfa4564adc5792904b196bc668f53f49815e0b1624082f0c8cad70ac758c541"
+      },
+      "signal_bleed_like": {
+        "label": "Signal Bleed",
+        "file": "effects/signal_bleed_like.png",
+        "sha256": "ca510a291de52c0c0bc33ac1f7fa92fafdc5a0b03f3a6fac7792b06608fe7a15"
+      },
+      "slice_shift_x": {
+        "label": "Vertical Slice Shift",
+        "file": "effects/slice_shift_x.png",
+        "sha256": "52992a1fc9f2324b9742e476ea9b41f74d44995e251f2c9a97386d2dbd819b54"
+      },
+      "slice_shift_y": {
+        "label": "Horizontal Slice Shift",
+        "file": "effects/slice_shift_y.png",
+        "sha256": "210aeb922740d5c0b0979ca62f998d493de4cd0820fe5a0ad4b9424c84c081af"
+      },
+      "slitscan": {
+        "label": "Slitscan (Glitzle)",
+        "file": "effects/slitscan.png",
+        "sha256": "8306dbf79c6ea278ac5aa5702bde2d06f776a00aefa5cfb96071aaa97019a9fe"
+      },
+      "stutter_tear_like": {
+        "label": "Stutter Tear",
+        "file": "effects/stutter_tear_like.png",
+        "sha256": "fe98dc6d2c4b5a9d16bf11f263dd8cc0b3026e89e183b52a3a1dc3f00a788abb"
+      },
+      "tear": {
+        "label": "Tear",
+        "file": "effects/tear.png",
+        "sha256": "6b422e98cb7e290578aad5a722103fa78fd5ddee5ed311f987eddb4a35275c96"
+      },
+      "tetrys": {
+        "label": "Tetrys",
+        "file": "effects/tetrys.png",
+        "sha256": "44df7d551d1bea83386c9876e4c9dbcabdebe2d37321f9c1f833419c5be3cb69"
+      },
+      "total_entropy_like": {
+        "label": "Total Entropy",
+        "file": "effects/total_entropy_like.png",
+        "sha256": "b8b3e5ae1ee7cc40aabb94336821b777d2234ca446bb5128bd4fbce3afeb7ad2"
+      },
+      "tube_tv_soft_like": {
+        "label": "Tube TV Soft",
+        "file": "effects/tube_tv_soft_like.png",
+        "sha256": "7893a8fb26a5c740d85c0b0666b29e1562b5c2f6a16479693701dc30fc08c2ee"
+      },
+      "vhs": {
+        "label": "VHS",
+        "file": "effects/vhs.png",
+        "sha256": "f72a825015150130c59d42d379d81d33af7152bac9b72aaedcfa36e4c0c4f318"
+      },
+      "vhs_soft_bleed_like": {
+        "label": "VHS Soft Bleed",
+        "file": "effects/vhs_soft_bleed_like.png",
+        "sha256": "172a15e050d6737f3f81fe91a3ab321a227510fb1e49a0d3ca8de8ed773aa310"
+      },
+      "vignette": {
+        "label": "Vignette",
+        "file": "effects/vignette.png",
+        "sha256": "25de2d6953296f8da587588ace557ba4b9199a338bd9c424d83cc7188f804d50"
+      },
+      "violent_impact_like": {
+        "label": "Violent Impact",
+        "file": "effects/violent_impact_like.png",
+        "sha256": "1cdc0bf6003bb82532ad5329a535994685ea0fbc9e6cb2709058ee3575c12ba2"
+      },
+      "violent_like": {
+        "label": "Violent",
+        "file": "effects/violent_like.png",
+        "sha256": "cb281b0b3492dd87a6fba19cd4679648ec3793d6bdd97798b31eef19c21415f4"
+      },
+      "xor": {
+        "label": "XOR Interference",
+        "file": "effects/xor.png",
+        "sha256": "38d65739a3c56510a4c4fb9c889d0e5576acf54cc9b6600f7120353c90eacf1c"
+      },
+      "ziti": {
+        "label": "Ziti",
+        "file": "effects/ziti.png",
+        "sha256": "5e569361dbf3c2184bcfea3e46e710fe0ed9b83370e14a74ae61f245d00b7e76"
+      },
+      "zoom_shake": {
+        "label": "Zoom Shake",
+        "file": "effects/zoom_shake.png",
+        "sha256": "bc5b31c3bf87c53d2bb2521e6451d2c419c093347259089263fcb4e6c6819d11"
+      }
+    }
+  }
+}
