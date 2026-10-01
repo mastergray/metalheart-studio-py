@@ -92,6 +92,11 @@ def testRenderCliOutputModesAreExclusive() -> None:
     clipArgs = parser.parse_args(["render", "project.json", "--scene-clips", "clips"])
     assert clipArgs.output is None
     assert clipArgs.scene_clips == "clips"
+    assert not clipArgs.progress
+    progressArgs = parser.parse_args(
+        ["render", "project.json", "-o", "movie.mp4", "--progress"]
+    )
+    assert progressArgs.progress
     with pytest.raises(SystemExit):
         parser.parse_args(["render", "project.json"])
     with pytest.raises(SystemExit):

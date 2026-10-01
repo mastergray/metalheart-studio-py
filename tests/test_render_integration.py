@@ -14,6 +14,7 @@ import pytest  # Mark media integration coverage
 from metalheart.analysis import AudioAnalysisCache  # Precompute the same full-track cache emitted by analyze
 from metalheart.config import ConfigResolver  # Resolve and validate the temporary config
 from metalheart.preview import PreviewService  # Render bounded native-UI still frames
+from metalheart.progress import parseProgressLine  # Verify published render progress
 from metalheart.reference_backend import ReferenceBackend  # Share the pinned backend across analysis and render
 from metalheart.render import RenderPipeline  # Execute the complete render pipeline
 
@@ -122,10 +123,10 @@ def _config(audioPath: Path, configPath: Path) -> Dict[str, Any]:
     }
 
 
-# :: PATH -> NONE
+# :: PATH, ANY -> NONE
 # Verifies a JSON config produces exact video frames plus an audio stream
 @pytest.mark.integration
-def testRendersSynchronizedVideoAndAudio(tmp_path: Path) -> None:
+def testRendersSynchronizedVideoAndAudio(tmp_path: Path, capsys: Any) -> None:
     if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
         pytest.skip("ffmpeg and ffprobe are required")
     audioPath = tmp_path / "fixture.wav"
@@ -142,7 +143,32 @@ def testRendersSynchronizedVideoAndAudio(tmp_path: Path) -> None:
     report = resolver.validate(resolved)
     assert report.isValid, report.errors
     assert len(resolved["scenes"]) == 2
-    result = RenderPipeline.init(backend=backend).render(resolved, str(outputPath))
+    result = RenderPipeline.init(backend=backend, progress=True).render(
+        resolved, str(outputPath)
+    )
+    progressEvents = [
+        event
+        for event in (
+            parseProgressLine(line)
+            for line in capsys.readouterr().err.splitlines()
+        )
+        if event is not None
+    ]
+    assert [event["phase"] for event in progressEvents[:2]] == [
+        "preflight",
+        "analysis",
+    ]
+    frameEvents = [
+        event
+        for event in progressEvents
+        if event["phase"] == "rendering" and event["unit"] == "frames"
+    ]
+    assert frameEvents
+    assert all(event["total"] == 8 for event in frameEvents)
+    assert frameEvents[-1]["completed"] == 8
+    assert any("remaining_sec" in event for event in frameEvents[:-1])
+    assert any(event.get("context", {}).get("scene") for event in frameEvents)
+    assert progressEvents[-1]["phase"] == "complete"
     assert result.frameCount == 8
     assert result.cacheHit
     assert result.chunkCount == 4

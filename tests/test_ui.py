@@ -18,6 +18,8 @@ from metalheart.ui.effect_stack_widget import EffectStackWidget  # Verify author
 from metalheart.ui.main_window import MainWindow  # Exercise the native shell  # noqa: E402
 from metalheart.ui.numeric_parameter_widget import NumericParameterWidget  # Verify slider-number controls  # noqa: E402
 from metalheart.ui.waveform_widget import WaveformTimelineWidget  # Verify audio-led navigation  # noqa: E402
+from metalheart.progress import PROGRESS_PREFIX  # Build child-process progress lines  # noqa: E402
+from metalheart.progress import buildProgressEvent  # Build deterministic UI progress  # noqa: E402
 
 
 # :: VOID -> NONE
@@ -31,6 +33,40 @@ def testMainWindowBuildsLightweightEmptyShell() -> None:
     assert not window.dirty
     assert "Create a project from audio" in window.preview.text()
     assert window.findChild(WaveformTimelineWidget, "sceneTimeline") is not None
+    window.close()
+    window.deleteLater()
+    application.processEvents()
+
+
+# :: VOID -> NONE
+# Verifies fragmented child output becomes determinate frame, timing, and ETA status
+def testMainWindowDisplaysStructuredProgress() -> None:
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow.init()
+    event = buildProgressEvent(
+        "render",
+        "rendering",
+        48,
+        120,
+        "frames",
+        10.0,
+        "Completed chunk 2/5 · scene impact",
+        18.0,
+        {"chunk": 2, "chunks": 5, "scene": "impact"},
+        22.0,
+    )
+    line = PROGRESS_PREFIX + json.dumps(event) + "\n"
+    remainder = window._consumeProcessOutput("", line[:31])
+    assert not window._progress.isVisible()
+    remainder = window._consumeProcessOutput(remainder, line[31:])
+    application.processEvents()
+    assert remainder == ""
+    assert window._progress.minimum() == 0
+    assert window._progress.maximum() == 120
+    assert window._progress.value() == 48
+    assert "48/120 frames" in window._progressText.text()
+    assert "00:12 elapsed" in window._progressText.text()
+    assert "~00:18 left" in window._progressText.text()
     window.close()
     window.deleteLater()
     application.processEvents()

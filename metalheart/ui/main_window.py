@@ -38,6 +38,8 @@ from PySide6.QtWidgets import QWidget  # Build native panel containers
 
 from metalheart.config import ConfigResolver  # Resolve and validate canonical projects
 from metalheart.preview import PreviewResult  # Display completed renderer-backed stills
+from metalheart.progress import formatDuration  # Format elapsed and remaining task time
+from metalheart.progress import parseProgressLine  # Consume machine-readable CLI progress
 from metalheart.ui.project_command import ProjectEditCommand  # Snapshot reversible edits
 from metalheart.ui.preview_widget import PreviewWidget  # Present copied RGB preview frames
 from metalheart.ui.preview_worker import PreviewWorker  # Render bounded stills off-thread
@@ -73,6 +75,8 @@ class MainWindow(QMainWindow):
         self._renderProcess: Optional[QProcess] = None
         self._analysisProcess: Optional[QProcess] = None
         self._analysisProjectPath: Optional[Path] = None
+        self._analysisOutputBuffer = ""
+        self._renderOutputBuffer = ""
         self.resize(1440, 850)
         self.setMinimumSize(1020, 650)
         self._buildUi()
@@ -172,7 +176,13 @@ class MainWindow(QMainWindow):
         self._progress.setRange(0, 0)
         self._progress.setMaximumWidth(180)
         self._progress.setVisible(False)
+        self._progressText = QLabel()
+        self._progressText.setObjectName("progressText")
+        self._progressText.setMinimumWidth(260)
+        self._progressText.setMaximumWidth(560)
+        self._progressText.setVisible(False)
         statusRow.addWidget(self._diagnostics, 1)
+        statusRow.addWidget(self._progressText)
         statusRow.addWidget(self._progress)
         rootLayout.addLayout(statusRow)
         self.setCentralWidget(root)
@@ -385,7 +395,7 @@ class MainWindow(QMainWindow):
         studioPath = Path(__file__).resolve().parents[2] / "studio.py"
         arguments = [
             str(studioPath), "analyze", str(audioPath.resolve()), "-o",
-            str(projectPath.resolve()), "--quality", "final",
+            str(projectPath.resolve()), "--quality", "final", "--progress",
         ]
         if os.name == "posix":
             process.start("setsid", [sys.executable] + arguments)
@@ -393,9 +403,10 @@ class MainWindow(QMainWindow):
             process.start(sys.executable, arguments)
         self._analysisProcess = process
         self._analysisProjectPath = projectPath.resolve()
+        self._analysisOutputBuffer = ""
         self._newAction.setEnabled(False)
         self._cancelAnalysisAction.setEnabled(True)
-        self._progress.setVisible(True)
+        self._showBusyProgress("Starting audio analysis…")
         self._diagnostics.setText("Analyzing audio and creating phrase-aligned scenes…")
         self.statusBar().showMessage("Analyzing {0}…".format(audioPath.name))
 
@@ -407,14 +418,18 @@ class MainWindow(QMainWindow):
         output = bytes(self._analysisProcess.readAllStandardOutput()).decode(
             "utf-8", errors="replace"
         )
-        lines = [line.strip() for line in output.splitlines() if line.strip()]
-        if lines:
-            self.statusBar().showMessage(lines[-1])
+        self._analysisOutputBuffer = self._consumeProcessOutput(
+            self._analysisOutputBuffer, output
+        )
 
     # :: INT, ANY -> NONE
     # Opens the newly analyzed project after successful scene planning
     def _analysisFinished(self, exitCode: int, exitStatus: Any) -> None:
         del exitStatus
+        self._readAnalysisOutput()
+        if self._analysisOutputBuffer.strip():
+            self._handleProcessLine(self._analysisOutputBuffer.strip())
+        self._analysisOutputBuffer = ""
         projectPath = self._analysisProjectPath
         self._finishAnalysisUi()
         if exitCode == 0 and projectPath is not None and projectPath.is_file():
@@ -455,7 +470,7 @@ class MainWindow(QMainWindow):
         self._newAction.setEnabled(True)
         self._cancelAnalysisAction.setEnabled(False)
         if self._previewThread is None and self._renderProcess is None:
-            self._progress.setVisible(False)
+            self._hideProgress()
 
     # :: VOID -> NONE
     # Selects and opens an existing project after protecting edits
@@ -829,7 +844,7 @@ class MainWindow(QMainWindow):
         if sceneIndex < 0:
             return
         self._preview.setMessage("Rendering still preview…")
-        self._progress.setVisible(True)
+        self._showBusyProgress("Rendering still preview…")
         self._previewButton.setEnabled(False)
         self._cancelPreviewButton.setEnabled(True)
         thread = QThread(self)
@@ -886,7 +901,7 @@ class MainWindow(QMainWindow):
         self._previewThread = None
         self._previewWorker = None
         if self._analysisProcess is None and self._renderProcess is None:
-            self._progress.setVisible(False)
+            self._hideProgress()
         self._previewButton.setEnabled(True)
         self._cancelPreviewButton.setEnabled(False)
         pending = self._pendingPreview
@@ -919,15 +934,23 @@ class MainWindow(QMainWindow):
         process.finished.connect(self._renderFinished)
         process.errorOccurred.connect(self._renderFailed)
         studioPath = Path(__file__).resolve().parents[2] / "studio.py"
-        arguments = [str(studioPath), "render", str(self._projectPath), "-o", str(outputPath)]
+        arguments = [
+            str(studioPath),
+            "render",
+            str(self._projectPath),
+            "-o",
+            str(outputPath),
+            "--progress",
+        ]
         if os.name == "posix":
             process.start("setsid", [sys.executable] + arguments)
         else:
             process.start(sys.executable, arguments)
         self._renderProcess = process
+        self._renderOutputBuffer = ""
         self._renderAction.setEnabled(False)
         self._cancelRenderAction.setEnabled(True)
-        self._progress.setVisible(True)
+        self._showBusyProgress("Starting video render…")
         self.statusBar().showMessage("Rendering {0}…".format(outputPath.name))
 
     # :: VOID -> NONE
@@ -938,14 +961,18 @@ class MainWindow(QMainWindow):
         output = bytes(self._renderProcess.readAllStandardOutput()).decode(
             "utf-8", errors="replace"
         )
-        lines = [line.strip() for line in output.splitlines() if line.strip()]
-        if lines:
-            self.statusBar().showMessage(lines[-1])
+        self._renderOutputBuffer = self._consumeProcessOutput(
+            self._renderOutputBuffer, output
+        )
 
     # :: INT, ANY -> NONE
     # Reports export completion and restores actions
     def _renderFinished(self, exitCode: int, exitStatus: Any) -> None:
         del exitStatus
+        self._readRenderOutput()
+        if self._renderOutputBuffer.strip():
+            self._handleProcessLine(self._renderOutputBuffer.strip())
+        self._renderOutputBuffer = ""
         message = (
             "Video render complete"
             if exitCode == 0
@@ -983,7 +1010,70 @@ class MainWindow(QMainWindow):
         self._renderAction.setEnabled(True)
         self._cancelRenderAction.setEnabled(False)
         if self._previewThread is None and self._analysisProcess is None:
-            self._progress.setVisible(False)
+            self._hideProgress()
+
+    # :: STRING, STRING -> STRING
+    # Consumes complete child-process lines while preserving a fragmented tail
+    def _consumeProcessOutput(self, buffered: str, output: str) -> str:
+        lines = (buffered + output).split("\n")
+        remainder = lines.pop()
+        for line in lines:
+            cleaned = line.strip()
+            if cleaned:
+                self._handleProcessLine(cleaned)
+        return remainder
+
+    # :: STRING -> NONE
+    # Routes structured progress records and preserves ordinary diagnostic output
+    def _handleProcessLine(self, line: str) -> None:
+        event = parseProgressLine(line)
+        if event is None:
+            self.statusBar().showMessage(line)
+            return
+        self._applyProgressEvent(event)
+
+    # :: ARRAY<STRING, ANY> -> NONE
+    # Displays determinate stage or frame progress with elapsed time and ETA
+    def _applyProgressEvent(self, event: Dict[str, Any]) -> None:
+        completed = max(0, int(event["completed"]))
+        total = max(0, int(event["total"]))
+        if total:
+            self._progress.setRange(0, total)
+            self._progress.setValue(min(completed, total))
+            self._progress.setFormat("%p%")
+        else:
+            self._progress.setRange(0, 0)
+        values = [str(event["message"])]
+        if total:
+            values.append(
+                "{0}/{1} {2}".format(completed, total, event["unit"])
+            )
+        values.append("{0} elapsed".format(formatDuration(float(event["elapsed_sec"]))))
+        if "remaining_sec" in event:
+            values.append(
+                "~{0} left".format(formatDuration(float(event["remaining_sec"])))
+            )
+        message = " • ".join(values)
+        self._progressText.setText(message)
+        self._progressText.setToolTip(message)
+        self._progressText.setVisible(True)
+        self._progress.setVisible(True)
+        self.statusBar().showMessage(message)
+
+    # :: STRING -> NONE
+    # Shows an indeterminate task before its first structured progress record
+    def _showBusyProgress(self, message: str) -> None:
+        self._progress.setRange(0, 0)
+        self._progress.setVisible(True)
+        self._progressText.setText(message)
+        self._progressText.setToolTip(message)
+        self._progressText.setVisible(True)
+
+    # :: VOID -> NONE
+    # Hides shared task status after analysis, preview, and render work is idle
+    def _hideProgress(self) -> None:
+        self._progress.setVisible(False)
+        self._progressText.setVisible(False)
 
     # :: qProcess?, INT -> NONE
     # Signals one application-owned process or POSIX process group

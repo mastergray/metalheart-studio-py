@@ -22,6 +22,7 @@ from metalheart.analysis import AudioAnalysisCache  # Analyze source audio once 
 from metalheart.chunks import renderChunk  # Execute isolated chunk encodes
 from metalheart.config import ConfigError  # Report render preflight failures
 from metalheart.config import ConfigResolver  # Write resolved profiles
+from metalheart.progress import reportProgress  # Publish determinate CLI and native-UI status
 from metalheart.reference_backend import ReferenceBackend  # Render frames through the reference adapter
 from metalheart.reference_backend import ReferenceRendererSession  # Type per-scene renderer sessions
 
@@ -123,13 +124,21 @@ class RenderResult:
 # Executes a validated Metalheart config as one synchronized video render
 class RenderPipeline:
 
-    # CONSTRUCTOR :: STRING, STRING, referenceBackend? -> renderPipeline
+    # CONSTRUCTOR :: STRING, STRING, referenceBackend?, BOOL -> renderPipeline
     # Creates a render pipeline with explicit FFmpeg tools
-    def __init__(self, ffmpeg: str = "ffmpeg", ffprobe: str = "ffprobe", backend: Optional[ReferenceBackend] = None) -> None:
+    def __init__(self, ffmpeg: str = "ffmpeg", ffprobe: str = "ffprobe", backend: Optional[ReferenceBackend] = None, progress: bool = False) -> None:
         self._ffmpeg = ffmpeg
         self._ffprobe = ffprobe
         self._backend = backend or ReferenceBackend.init()
         self._resolver = ConfigResolver.init()
+        self._progressEnabled = progress
+        self._progressStartedSec = 0.0
+        self._progressRenderStartedSec: Optional[float] = None
+        self._progressTotalFrames = 0
+        self._progressCompletedFrames = 0
+        self._progressNewFrames = 0
+        self._progressTotalChunks = 0
+        self._progressCompletedChunks = 0
 
     #
     # Instance Methods
@@ -152,9 +161,24 @@ class RenderPipeline:
         ranges = self._sceneRanges(resolved["scenes"], fps)
         firstFrame = ranges[0][0]
         lastFrame = ranges[-1][1]
+        frameCount = lastFrame - firstFrame
+        chunkCount = len(
+            self._chunkRanges(firstFrame, lastFrame, fps, float(settings["chunk_sec"]))
+        )
+        self._startProgress(frameCount, chunkCount)
+        self._publishProgress("preflight", 1, 2, "stages", "Render preflight complete")
+        self._publishProgress("analysis", 1, 2, "stages", "Analyzing audio features")
         analysisResult = self._analyzeTimeline(resolved, firstFrame, lastFrame)
+        self._publishProgress(
+            "analysis",
+            2,
+            2,
+            "stages",
+            "Audio analysis cache ready",
+            context={"cache_hit": analysisResult.cacheHit},
+        )
         renderFingerprint = self._renderFingerprint(resolved, analysisResult.cachePath)
-        return self._renderRange(
+        result = self._renderRange(
             resolved,
             resolved,
             analysisResult,
@@ -165,6 +189,14 @@ class RenderPipeline:
             output,
             renderFingerprint,
         )
+        self._publishProgress(
+            "complete",
+            self._progressTotalFrames,
+            self._progressTotalFrames,
+            "frames",
+            "Video render complete",
+        )
+        return result
 
     # :: ARRAY<STRING, ANY>, STRING -> [renderResult]
     # Renders every scene as an independently playable audio-synchronized clip
@@ -181,7 +213,24 @@ class RenderPipeline:
         fps = int(resolved["settings"]["fps"])
         ranges = self._sceneRanges(resolved["scenes"], fps)
         analysisFirstFrame = ranges[0][0]
+        totalFrames = ranges[-1][1] - analysisFirstFrame
+        chunkSec = float(resolved["settings"]["chunk_sec"])
+        totalChunks = sum(
+            len(self._chunkRanges(firstFrame, lastFrame, fps, chunkSec))
+            for firstFrame, lastFrame, scene in ranges
+        )
+        self._startProgress(totalFrames, totalChunks)
+        self._publishProgress("preflight", 1, 2, "stages", "Scene-clip preflight complete")
+        self._publishProgress("analysis", 1, 2, "stages", "Analyzing audio features")
         analysisResult = self._analyzeTimeline(resolved, analysisFirstFrame, ranges[-1][1])
+        self._publishProgress(
+            "analysis",
+            2,
+            2,
+            "stages",
+            "Audio analysis cache ready",
+            context={"cache_hit": analysisResult.cacheHit},
+        )
         renderFingerprint = self._renderFingerprint(resolved, analysisResult.cachePath)
         results = []
         sceneCount = len(resolved["scenes"])
@@ -207,6 +256,14 @@ class RenderPipeline:
                     renderFingerprint,
                 )
             )
+        self._publishProgress(
+            "complete",
+            self._progressTotalFrames,
+            self._progressTotalFrames,
+            "frames",
+            "Scene-clip render complete",
+            context={"scenes": sceneCount},
+        )
         return results
 
     #
@@ -296,9 +353,34 @@ class RenderPipeline:
                 workers,
                 bool(settings["resume"]),
             )
+            finalContext = {"output": output.name}
+            self._publishProgress(
+                "assembly",
+                0,
+                3,
+                "stages",
+                "Assembling rendered chunks",
+                context=finalContext,
+            )
             self._concatChunks(chunkPaths, workPath, silentPath)
+            self._publishProgress(
+                "muxing",
+                1,
+                3,
+                "stages",
+                "Muxing source audio",
+                context=finalContext,
+            )
             self._muxAudio(silentPath, frameConfig["audio"], startSec, durationSec, partialPath)
             os.replace(str(partialPath), str(output))
+            self._publishProgress(
+                "finalizing",
+                2,
+                3,
+                "stages",
+                "Writing render profile and manifest",
+                context=finalContext,
+            )
             elapsedSec = time.monotonic() - started
             profilePath = output.with_suffix(output.suffix + ".profile.json")
             manifestPath = output.with_suffix(output.suffix + ".manifest.json")
@@ -316,6 +398,14 @@ class RenderPipeline:
                 reusedChunks,
                 workers,
                 str(workPath),
+            )
+            self._publishProgress(
+                "finalizing",
+                3,
+                3,
+                "stages",
+                "Render artifacts complete",
+                context=finalContext,
             )
             return RenderResult(
                 str(output),
@@ -434,17 +524,109 @@ class RenderPipeline:
             return max(1, min(2, available, chunkCount))
         return max(1, min(int(configured), chunkCount))
 
+    # :: INT, INT -> NONE
+    # Resets one invocation's frame, chunk, elapsed, and ETA accounting
+    def _startProgress(self, totalFrames: int, totalChunks: int) -> None:
+        self._progressStartedSec = time.monotonic()
+        self._progressRenderStartedSec = None
+        self._progressTotalFrames = totalFrames
+        self._progressCompletedFrames = 0
+        self._progressNewFrames = 0
+        self._progressTotalChunks = totalChunks
+        self._progressCompletedChunks = 0
+
+    # :: STRING, INT, INT, STRING, STRING, FLOAT?, ARRAY<STRING, ANY>? -> NONE
+    # Publishes one optional progress record using the invocation clock
+    def _publishProgress(
+        self,
+        phase: str,
+        completed: int,
+        total: int,
+        unit: str,
+        message: str,
+        remainingSec: Optional[float] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        reportProgress(
+            self._progressEnabled,
+            "render",
+            phase,
+            completed,
+            total,
+            unit,
+            self._progressStartedSec,
+            message,
+            remainingSec,
+            context,
+        )
+
+    # :: [(INT, INT, ARRAY<STRING, ANY>)], INT -> ARRAY<STRING, ANY>
+    # Describes the chunk and scene associated with one frame boundary
+    def _chunkProgressContext(
+        self,
+        sceneRanges: List[Tuple[int, int, Dict[str, Any]]],
+        firstFrame: int,
+    ) -> Dict[str, Any]:
+        scene = sceneRanges[self._sceneIndex(sceneRanges, firstFrame)][2]
+        return {
+            "chunk": self._progressCompletedChunks + 1,
+            "chunks": self._progressTotalChunks,
+            "scene": scene["id"],
+        }
+
+    # :: ARRAY<STRING, ANY>, ARRAY<STRING, ANY>, [(INT, INT, ARRAY<STRING, ANY>)] -> NONE
+    # Records one completed chunk and publishes measured frame progress
+    def _completeRenderChunk(
+        self,
+        result: Dict[str, Any],
+        task: Dict[str, Any],
+        sceneRanges: List[Tuple[int, int, Dict[str, Any]]],
+    ) -> None:
+        frames = int(result["frames"])
+        self._progressCompletedFrames += frames
+        self._progressNewFrames += frames
+        self._progressCompletedChunks += 1
+        context = self._chunkProgressContext(sceneRanges, int(task["first_frame"]))
+        context["chunk"] = self._progressCompletedChunks
+        remainingSec = self._estimatedRemainingSec()
+        self._publishProgress(
+            "rendering",
+            self._progressCompletedFrames,
+            self._progressTotalFrames,
+            "frames",
+            "Completed chunk {0}/{1} · scene {2}".format(
+                self._progressCompletedChunks,
+                self._progressTotalChunks,
+                context["scene"],
+            ),
+            remainingSec,
+            context,
+        )
+
+    # :: VOID -> FLOAT?
+    # Estimates remaining render time only after measured new frames exist
+    def _estimatedRemainingSec(self) -> Optional[float]:
+        if self._progressRenderStartedSec is None or self._progressNewFrames <= 0:
+            return None
+        elapsed = time.monotonic() - self._progressRenderStartedSec
+        if elapsed <= 0.0:
+            return None
+        remainingFrames = self._progressTotalFrames - self._progressCompletedFrames
+        return max(0.0, remainingFrames * elapsed / float(self._progressNewFrames))
+
     # :: ARRAY<STRING, ANY>, analysisResult, [(INT, INT, ARRAY<STRING, ANY>)], INT, [(INT, INT)], PATH, STRING, INT, BOOL -> ([PATH], INT)
     # Reuses valid chunks and renders missing chunks sequentially or in parallel
     def _renderChunks(self, config: Dict[str, Any], analysisResult: AnalysisResult, sceneRanges: List[Tuple[int, int, Dict[str, Any]]], analysisFirstFrame: int, chunkRanges: List[Tuple[int, int]], workPath: Path, fingerprint: str, workers: int, resume: bool) -> Tuple[List[Path], int]:
         chunkPaths: List[Path] = []
         pending: List[Dict[str, Any]] = []
         reused = 0
+        reusedFrames = 0
         for index, (firstFrame, lastFrame) in enumerate(chunkRanges):
             chunkPath = workPath / "chunk-{0:05d}-{1}-{2}.mp4".format(index, firstFrame, lastFrame)
             chunkPaths.append(chunkPath)
             if resume and self._chunkIsReusable(chunkPath, fingerprint, firstFrame, lastFrame):
                 reused += 1
+                reusedFrames += lastFrame - firstFrame
                 continue
             pending.append(
                 {
@@ -460,11 +642,42 @@ class RenderPipeline:
                     "ffmpeg": self._ffmpeg,
                 }
             )
+        self._progressCompletedFrames += reusedFrames
+        self._progressCompletedChunks += reused
+        if pending and self._progressRenderStartedSec is None:
+            self._progressRenderStartedSec = time.monotonic()
+        initialContext: Dict[str, Any] = {
+            "chunks": self._progressTotalChunks,
+            "workers": workers,
+        }
+        self._publishProgress(
+            "rendering",
+            self._progressCompletedFrames,
+            self._progressTotalFrames,
+            "frames",
+            "Rendering {0} chunks with {1} workers · {2} reused".format(
+                len(chunkRanges), workers, reused
+            ),
+            context=initialContext,
+        )
         print("[render] {0} chunks, {1} workers, {2} reused".format(len(chunkRanges), workers, reused), file=sys.stderr, flush=True)
         if workers == 1:
             for done, task in enumerate(pending, 1):
+                context = self._chunkProgressContext(sceneRanges, int(task["first_frame"]))
+                self._publishProgress(
+                    "rendering",
+                    self._progressCompletedFrames,
+                    self._progressTotalFrames,
+                    "frames",
+                    "Rendering chunk {0}/{1} · scene {2}".format(
+                        context["chunk"], context["chunks"], context["scene"]
+                    ),
+                    self._estimatedRemainingSec(),
+                    context,
+                )
                 result = renderChunk(task)
                 self._writeChunkMarker(Path(result["output"]), fingerprint, result)
+                self._completeRenderChunk(result, task, sceneRanges)
                 print("[render] chunk {0}/{1} complete".format(done + reused, len(chunkRanges)), file=sys.stderr, flush=True)
         elif pending:
             with ProcessPoolExecutor(max_workers=workers) as executor:
@@ -474,6 +687,7 @@ class RenderPipeline:
                     result = future.result()
                     self._writeChunkMarker(Path(result["output"]), fingerprint, result)
                     completed += 1
+                    self._completeRenderChunk(result, futures[future], sceneRanges)
                     print("[render] chunk {0}/{1} complete".format(completed, len(chunkRanges)), file=sys.stderr, flush=True)
         return chunkPaths, reused
 
@@ -725,8 +939,8 @@ class RenderPipeline:
     # Class Methods
     #
 
-    # Class Factory Method :: STRING, STRING, referenceBackend? -> renderPipeline
+    # Class Factory Method :: STRING, STRING, referenceBackend?, BOOL -> renderPipeline
     # Creates a render pipeline with explicit tools and optional backend
     @classmethod
-    def init(cls, ffmpeg: str = "ffmpeg", ffprobe: str = "ffprobe", backend: Optional[ReferenceBackend] = None) -> RenderPipeline:
-        return cls(ffmpeg, ffprobe, backend)
+    def init(cls, ffmpeg: str = "ffmpeg", ffprobe: str = "ffprobe", backend: Optional[ReferenceBackend] = None, progress: bool = False) -> RenderPipeline:
+        return cls(ffmpeg, ffprobe, backend, progress)

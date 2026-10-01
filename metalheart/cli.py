@@ -6,6 +6,7 @@ import argparse  # Define the headless command-line interface
 import json  # Emit machine-readable command output
 import subprocess  # Classify child-process failures for concise CLI errors
 import sys  # Return command status and write errors
+import time  # Timestamp determinate analysis progress
 from pathlib import Path  # Derive default resolved-config paths
 from typing import Any, Dict, List, Optional, Tuple  # Python 3.8-compatible type annotations
 
@@ -21,6 +22,7 @@ from metalheart.config import ConfigResolver  # Load, resolve, validate, and wri
 from metalheart.effect_catalog import effectIds  # List stable owned effect identifiers
 from metalheart.effect_catalog import publicEffectCatalog  # Expose typed effect metadata for the desktop UI
 from metalheart.planner import ScenePlanner  # Convert audio analysis into scene-based configs
+from metalheart.progress import reportProgress  # Publish native-UI progress records
 from metalheart.reference_backend import ReferenceBackend  # Analyze audio through the pinned backend
 from metalheart.render import RenderPipeline  # Execute resolved render configs
 
@@ -98,6 +100,7 @@ def buildParser() -> argparse.ArgumentParser:
     analyzeParser.add_argument("--bars-per-scene", type=int, default=8)
     analyzeParser.add_argument("--max-scene-sec", type=float)
     analyzeParser.add_argument("--template", choices=sorted(TEMPLATES), default="builtins/mercury-intro", help="explicit default for every generated scene skeleton")
+    analyzeParser.add_argument("--progress", action="store_true", help="emit machine-readable progress records to stderr")
     _addJsonFlag(analyzeParser)
 
     validateParser = commands.add_parser("validate", help="resolve and validate a JSON config")
@@ -118,6 +121,7 @@ def buildParser() -> argparse.ArgumentParser:
     renderParser.add_argument("--workers", type=_parseWorkers)
     renderParser.add_argument("--chunk-sec", type=float)
     renderParser.add_argument("--no-resume", action="store_true")
+    renderParser.add_argument("--progress", action="store_true", help="emit machine-readable progress records to stderr")
     _addJsonFlag(renderParser)
 
     listParser = commands.add_parser("list", help="list stable catalog identifiers")
@@ -144,6 +148,17 @@ def _validateCommand(args: argparse.Namespace, resolver: ConfigResolver) -> int:
 # :: argumentNamespace, configResolver -> INT
 # Analyzes a complete audio source and writes a renderable multi-scene config
 def _analyzeCommand(args: argparse.Namespace, resolver: ConfigResolver) -> int:
+    started = time.monotonic()
+    reportProgress(
+        args.progress,
+        "analysis",
+        "audio",
+        0,
+        4,
+        "stages",
+        started,
+        "Decoding and analyzing audio",
+    )
     audioPath = Path(args.audio).resolve()
     if not audioPath.is_file():
         raise ConfigError("audio file not found: {0}".format(audioPath))
@@ -159,6 +174,16 @@ def _analyzeCommand(args: argparse.Namespace, resolver: ConfigResolver) -> int:
     cache = AudioAnalysisCache.init(backend, outputPath.parent / ".metalheart-cache")
     print("[analyze] decoding and analyzing {0}".format(audioPath), file=sys.stderr, flush=True)
     analysisResult = cache.get(str(audioPath), float(fps), 0.0, None, args.bpm)
+    reportProgress(
+        args.progress,
+        "analysis",
+        "planning",
+        1,
+        4,
+        "stages",
+        started,
+        "Planning phrase-aligned scenes",
+    )
     planner = ScenePlanner.init(
         width=width,
         height=height,
@@ -170,10 +195,30 @@ def _analyzeCommand(args: argparse.Namespace, resolver: ConfigResolver) -> int:
         maxSceneSec=args.max_scene_sec,
     )
     authored = planner.plan(analysisResult.analysis, str(audioPath), str(outputPath), args.bars_per_scene, analysisResult.cachePath)
+    reportProgress(
+        args.progress,
+        "analysis",
+        "validation",
+        2,
+        4,
+        "stages",
+        started,
+        "Validating generated project",
+    )
     resolved = resolver.resolve(authored, str(outputPath))
     report = resolver.validate(resolved)
     if not report.isValid:
         raise ConfigError("generated config is invalid:\n- " + "\n- ".join(report.errors))
+    reportProgress(
+        args.progress,
+        "analysis",
+        "writing",
+        3,
+        4,
+        "stages",
+        started,
+        "Writing project and analysis cache",
+    )
     resolver.write(authored, str(outputPath))
     summary = {
         "output": str(outputPath),
@@ -185,6 +230,17 @@ def _analyzeCommand(args: argparse.Namespace, resolver: ConfigResolver) -> int:
         "analysis_cache": analysisResult.cachePath,
         "analysis_cache_hit": analysisResult.cacheHit,
     }
+    reportProgress(
+        args.progress,
+        "analysis",
+        "complete",
+        4,
+        4,
+        "stages",
+        started,
+        "Audio analysis complete",
+        context={"scenes": len(authored["scenes"])},
+    )
     if args.json:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:
@@ -220,7 +276,7 @@ def _renderCommand(args: argparse.Namespace, resolver: ConfigResolver) -> int:
     if not report.isValid:
         _printReport(report, args.json)
         return 2
-    pipeline = RenderPipeline.init(args.ffmpeg, args.ffprobe)
+    pipeline = RenderPipeline.init(args.ffmpeg, args.ffprobe, progress=args.progress)
     if args.scene_clips:
         results = pipeline.renderScenes(resolved, args.scene_clips)
         clips = []
