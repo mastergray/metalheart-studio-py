@@ -47,7 +47,7 @@ The current reference renderer is deterministic for a given time, seed, renderer
 
 The current selectable visual vocabulary is:
 
-- palettes: native `steel`, `acid`, and `ember`, plus Dazzle-derived `rainbow`, `ice`, `electric`, `neon`, and `grayscale`;
+- palettes: native `steel`, `acid`, `ember`, and `jungle`, plus Dazzle-derived `rainbow`, `ice`, `electric`, `neon`, and `grayscale`;
 - cores: `3d`, `2d`;
 - forms (called `looks` by the reference backend): `mercury`, `wring`, `ferro`, `drip`, `split`, `fold`, `morph`, `gyro`, `chaos`, plus the production-owned abstract `resonance` and `radial` geometries;
 - cameras: `orbit`, `crane`, `dolly`, `low`, `top`, `macro`, `dutch`, `drift`;
@@ -67,6 +67,8 @@ The authoring concepts map to Glitzle/Dazzle as follows:
 The public authoring vocabulary uses **form** and **palette**. Legacy `look`, `looks`, `look_len_sec`, and `preset` inputs are accepted as migration aliases, but resolved profiles contain only the public names. Cameras remain independent because changing the viewpoint is not the same operation as changing the generated form.
 
 Dazzle's eight indexed color ramps were audited for adaptation into Metalheart's environment-lighting vocabulary. `rainbow`, `ice`, `electric`, `neon`, and `grayscale` sample their source ramp identities into stable sky, ground, key, rim, accent, HUD, and background roles. They are owned static palettes rather than indexed or cycling palettes. `fire` and `lava` are excluded because the existing `ember` palette already covers their warm progression, while `ocean` is redundant with `steel` and `ice`. This keeps palette selection visually meaningful and avoids a runtime dependency on Dazzle.
+
+The owned `jungle` palette fills the remaining green/yellow range with deep foliage backgrounds, yellow-green environment reflections, and warm gold accents. It is intentionally less fluorescent and more two-toned than `acid` or `neon`.
 
 The renderer already uses the audio-oriented parameters in meaningful places, including core size and deformation, spike response, surface ripple, ribbon motion, beat shake, HUD flicker/readouts, and spectrum bars. The clip CLI currently feeds synthetic signals; replacing those signals with analyzed audio is the central integration task.
 

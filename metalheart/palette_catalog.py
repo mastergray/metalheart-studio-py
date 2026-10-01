@@ -1,4 +1,4 @@
-# Stable owned palette adaptations for the Metalheart lighting model
+# Stable owned palette definitions for the Metalheart lighting model
 
 from __future__ import annotations  # Preserve forward-compatible annotations on Python 3.8
 
@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple  # Python 3.8-compatible palette annotation
 Color = Tuple[float, float, float]
 Palette = Dict[str, Color]
 
-NATIVE_PALETTE_IDS: List[str] = ["steel", "acid", "ember"]
+NATIVE_PALETTE_IDS: List[str] = ["steel", "acid", "ember", "jungle"]
 DAZZLE_PALETTE_IDS: List[str] = [
     "rainbow",
     "ice",
@@ -17,6 +17,21 @@ DAZZLE_PALETTE_IDS: List[str] = [
     "grayscale",
 ]
 PALETTE_IDS: List[str] = NATIVE_PALETTE_IDS + DAZZLE_PALETTE_IDS
+
+METALHEART_PALETTES: Dict[str, Palette] = {
+    "jungle": {
+        "sky_top": (0.04, 0.28, 0.07),
+        "sky_hor": (0.78, 1.00, 0.24),
+        "ground_hor": (0.018, 0.040, 0.010),
+        "ground_low": (0.18, 0.27, 0.045),
+        "key": (1.00, 1.00, 0.64),
+        "rim": (0.64, 1.00, 0.08),
+        "accent": (1.00, 0.76, 0.02),
+        "hud": (0.82, 1.00, 0.46),
+        "bg_center": (0.028, 0.095, 0.020),
+        "bg_edge": (0.000, 0.006, 0.000),
+    },
+}
 
 # Dazzle's indexed ramps are sampled and luminance-compressed into Metalheart's
 # static environment, rim, accent, HUD, and background lighting roles. Fire,
@@ -87,9 +102,12 @@ DAZZLE_PALETTES: Dict[str, Palette] = {
 
 
 # :: VOID -> ARRAY<STRING, ARRAY<STRING, (FLOAT, FLOAT, FLOAT)>>
-# Returns isolated adapted palettes for installation into a renderer module
-def adaptedDazzlePalettes() -> Dict[str, Palette]:
+# Returns isolated owned palettes for installation into a renderer module
+def additionalPalettes() -> Dict[str, Palette]:
     return {
         paletteId: dict(values)
-        for paletteId, values in DAZZLE_PALETTES.items()
+        for paletteId, values in {
+            **METALHEART_PALETTES,
+            **DAZZLE_PALETTES,
+        }.items()
     }

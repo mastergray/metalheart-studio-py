@@ -15,7 +15,7 @@ from metalheart.catalog import DEFAULT_FINISH  # Supply owned finishing defaults
 from metalheart.catalog import REACTIVITY_PRESETS  # Exercise resolved audio mappings
 from metalheart.decor import resolveDecorConfig  # Build first-class decor fixtures
 from metalheart.frame_effects import FrameEffects  # Exercise visible post-render modulation
-from metalheart.palette_catalog import DAZZLE_PALETTE_IDS  # Exercise every adapted Dazzle palette
+from metalheart.palette_catalog import PALETTE_IDS  # Exercise every stable renderer palette
 from metalheart.reference_backend import ReferenceBackend  # Adapt immutable renderer reference code
 from metalheart.surface_skin import SurfaceSkin  # Exercise resolution-independent image sampling
 
@@ -67,13 +67,13 @@ def testFixedSeedFrameIsDeterministic() -> None:
 
 
 # :: VOID -> NONE
-# Verifies every adapted Dazzle palette renders repeatably and remains distinct
-def testAdaptedDazzlePalettesRenderDeterministically() -> None:
+# Verifies every stable palette renders repeatably and remains distinct
+def testCatalogPalettesRenderDeterministically() -> None:
     backend = ReferenceBackend.init()
     settings = {"width": 48, "height": 40, "seed": 5}
     analysis = _analysis()
     rendered = set()
-    for paletteId in DAZZLE_PALETTE_IDS:
+    for paletteId in PALETTE_IDS:
         scene = _scene()
         scene["renderer"].update(
             {
@@ -91,7 +91,7 @@ def testAdaptedDazzlePalettesRenderDeterministically() -> None:
         assert np.array_equal(first, second)
         assert int(first.max()) > 0
         rendered.add(first.tobytes())
-    assert len(rendered) == len(DAZZLE_PALETTE_IDS)
+    assert len(rendered) == len(PALETTE_IDS)
 
 
 # :: VOID -> NONE
@@ -532,14 +532,14 @@ def testIndependentBackgroundAndRibbonPalettesRender() -> None:
     assert not np.array_equal(iceBackground, baseline)
 
     ribbonScene = copy.deepcopy(scene)
-    ribbonScene["renderer"]["decor"]["ribbons"]["palette"] = "neon"
+    ribbonScene["renderer"]["decor"]["ribbons"]["palette"] = "jungle"
     ribbonSession = backend.createRenderer(settings, ribbonScene)
-    neonRibbons = ribbonSession.render(0.5, params, {})
+    jungleRibbons = ribbonSession.render(0.5, params, {})
     assert not np.array_equal(
         ribbonSession._background._foreground[0],
         baselineForeground,
     )
-    assert not np.array_equal(neonRibbons, baseline)
+    assert not np.array_equal(jungleRibbons, baseline)
 
 
 # :: PATH -> NONE
