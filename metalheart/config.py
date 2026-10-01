@@ -524,6 +524,7 @@ class ConfigResolver:
                 )
             )
         ranges = {
+            "intensity": (0.0, 4.0),
             "scale": (0.1, 10.0),
             "rotation_deg": (-3600.0, 3600.0),
             "opacity": (0.0, 1.0),

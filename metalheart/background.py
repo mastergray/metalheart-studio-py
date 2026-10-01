@@ -48,8 +48,10 @@ class BackgroundPass:
         default = copy.deepcopy(DEFAULT_BACKGROUND)
         comparison["palette"] = None
         default["palette"] = None
-        self._custom = comparison != default or self._paletteValues != getattr(
-            renderer, "pal", self._paletteValues
+        self._custom = (
+            config["source"] == "palette"
+            or comparison != default
+            or self._paletteValues != getattr(renderer, "pal", self._paletteValues)
         )
         self._texture: Optional[np.ndarray] = None
         imagePath = config.get("image")
@@ -181,15 +183,30 @@ class BackgroundPass:
         radius = np.sqrt(horizontal * horizontal + (vertical * 1.3) ** 2)
         gradient = _smoothstep(0.0, 0.95, radius)[..., None]
         palette = self._paletteValues
-        center = np.asarray(palette["bg_center"], np.float32)
-        edge = np.asarray(palette["bg_edge"], np.float32)
+        sky = np.asarray(palette["sky_top"], np.float32)
+        accent = np.asarray(palette["accent"], np.float32)
+        center = (
+            np.asarray(palette["bg_center"], np.float32) * 1.8
+            + sky * 0.08
+            + accent * 0.04
+        )
+        edge = (
+            np.asarray(palette["bg_edge"], np.float32) * 1.5
+            + sky * 0.05
+            + accent * 0.02
+        )
         background = center * (1.0 - gradient) + edge * gradient
         nebula = self._renderer.noise.sample(
             0,
             horizontal * 180.0 + timeSec * 4.0,
             vertical * 180.0 - timeSec * 2.0,
         )
-        return background * (0.75 + 0.3 * np.clip(nebula, -1.0, 2.0)[..., None])
+        intensity = float(self._config.get("intensity", 1.0))
+        return (
+            background
+            * (0.75 + 0.3 * np.clip(nebula, -1.0, 2.0)[..., None])
+            * intensity
+        )
 
     # :: ANY, ANY -> (ANY, ANY)
     # Samples the configured image with cover, contain, or repeating tile behavior

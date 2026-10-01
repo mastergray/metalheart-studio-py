@@ -112,6 +112,7 @@ def _config(audioPath: Path, configPath: Path) -> Dict[str, Any]:
                 },
                 "background": {
                     "palette": "steel",
+                    "intensity": 1.4,
                     "post": [{"id": "scanlines", "parameters": {"strength": 0.2}}],
                 },
                 "finish": {"scanlines": False},
@@ -180,6 +181,7 @@ def testRendersSynchronizedVideoAndAudio(tmp_path: Path, capsys: Any) -> None:
     assert result.reusedChunks == 0
     assert resolved["scenes"][1]["renderer"]["palette"] == "ember"
     assert resolved["scenes"][1]["background"]["palette"] == "steel"
+    assert resolved["scenes"][1]["background"]["intensity"] == 1.4
     assert resolved["scenes"][1]["renderer"]["decor"]["ribbons"]["palette"] == "acid"
     assert outputPath.is_file()
     assert Path(result.profilePath).is_file()

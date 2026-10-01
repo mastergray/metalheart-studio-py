@@ -204,7 +204,14 @@ def testLayerPaletteControlsAreIndependentAndUndoable() -> None:
         assert [selector.itemText(index) for index in range(selector.count())] == PALETTES
     assert inspector._palette.currentText() == "steel"
     assert inspector._backgroundPalette.currentText() == "steel"
+    assert inspector._backgroundIntensity.value() == 1.0
     assert inspector._ribbonPalette.currentText() == "steel"
+    inspector._backgroundIntensity.setValue(2.25)
+    application.processEvents()
+    assert window._authored["scenes"][0]["background"]["intensity"] == 2.25
+    window.undoStack.undo()
+    application.processEvents()
+    assert inspector._backgroundIntensity.value() == 1.0
     inspector._backgroundPalette.setCurrentText("ember")
     application.processEvents()
     scene = window._authored["scenes"][0]

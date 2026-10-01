@@ -140,6 +140,7 @@ DEFAULT_OVERLAY: Dict[str, Any] = {
 DEFAULT_BACKGROUND: Dict[str, Any] = {
     "source": "palette",
     "palette": None,
+    "intensity": 1.0,
     "image": None,
     "fit": "cover",
     "scale": 1.0,
@@ -557,6 +558,7 @@ CONFIG_SCHEMA: Dict[str, Any] = {
             "properties": {
                 "source": {"enum": ["palette", "image"]},
                 "palette": {"enum": PALETTES},
+                "intensity": {"type": "number", "minimum": 0.0, "maximum": 4.0},
                 "image": {"type": ["string", "null"]},
                 "fit": {"enum": ["cover", "contain", "tile"]},
                 "scale": {"type": "number", "minimum": 0.1, "maximum": 10.0},

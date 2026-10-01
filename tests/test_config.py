@@ -143,11 +143,13 @@ def testResolvesIndependentLayerPalettes(tmp_path: Path) -> None:
     assert scene["background"]["palette"] == "ice"
     assert scene["renderer"]["decor"]["ribbons"]["palette"] == "electric"
     authored["scenes"][0]["background"]["palette"] = "unknown"
+    authored["scenes"][0]["background"]["intensity"] = 4.1
     authored["scenes"][0]["renderer"]["decor"]["ribbons"]["palette"] = "invalid"
     invalid = resolver.validate(
         resolver.resolve(authored, str(tmp_path / "project.json"))
     )
     assert any("background.palette" in error for error in invalid.errors)
+    assert any("background.intensity" in error for error in invalid.errors)
     assert any("ribbons.palette" in error for error in invalid.errors)
 
 
@@ -283,6 +285,11 @@ def testSchemaPublishesFormsFinishAndOverlay() -> None:
     ]
     background = schema["$defs"]["background"]["properties"]
     assert background["palette"]["enum"] == PALETTES
+    assert background["intensity"] == {
+        "type": "number",
+        "minimum": 0.0,
+        "maximum": 4.0,
+    }
     assert background["post"] == {"type": "array", "items": {"$ref": "#/$defs/effect"}}
     ribbon = schema["$defs"]["ribbonElement"]["allOf"][1]["properties"]
     assert ribbon["palette"]["enum"] == PALETTES

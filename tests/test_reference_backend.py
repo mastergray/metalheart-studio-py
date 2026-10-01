@@ -542,6 +542,62 @@ def testIndependentBackgroundAndRibbonPalettesRender() -> None:
     assert not np.array_equal(jungleRibbons, baseline)
 
 
+# :: VOID -> NONE
+# Verifies palette intensity brightens only exposed procedural background pixels
+def testPaletteBackgroundIntensityPreservesOpaqueForeground() -> None:
+    backend = ReferenceBackend.init()
+    settings = {"width": 80, "height": 64, "seed": 5}
+    scene = _scene()
+    scene["renderer"] = copy.deepcopy(DEFAULT_RENDERER)
+    scene["renderer"].update(
+        {
+            "core": "3d",
+            "forms": ["mercury"],
+            "cameras": ["orbit"],
+            "core_scale": 0.25,
+            "anti_alias": False,
+            "decor": False,
+        }
+    )
+    scene["background"] = dict(
+        DEFAULT_BACKGROUND,
+        palette="jungle",
+        intensity=0.5,
+        dots=False,
+        ghosts=False,
+        shadow=False,
+    )
+    scene["finish"].update(
+        {
+            "bloom": 0.0,
+            "wide_bloom": 0.0,
+            "streaks": 0.0,
+            "onset_streaks": 0.0,
+            "flash": 0.0,
+            "chroma": 0.0,
+            "chroma_onset": 0.0,
+            "vignette": 0.0,
+            "grain": 0.0,
+            "grain_high": 0.0,
+        }
+    )
+    params = backend.createParams(_analysis(), 1, 0.5, scene["reactivity"])
+    lowSession = backend.createRenderer(settings, scene)
+    low = lowSession.render(0.5, params, {})
+    assert lowSession._background is not None
+    assert lowSession._background._foreground is not None
+    alpha = lowSession._background._foreground[1]
+    opaque = alpha >= 0.999
+    exposed = alpha <= 0.001
+    highScene = copy.deepcopy(scene)
+    highScene["background"]["intensity"] = 2.0
+    high = backend.createRenderer(settings, highScene).render(0.5, params, {})
+    assert np.any(opaque)
+    assert np.any(exposed)
+    assert np.array_equal(low[opaque], high[opaque])
+    assert float(np.mean(high[exposed])) > float(np.mean(low[exposed])) * 2.0
+
+
 # :: PATH -> NONE
 # Verifies background pulse changes only pixels outside the opaque 3D foreground
 def testImageBackgroundPulseLeavesOpaqueForegroundStable(tmp_path: Path) -> None:
@@ -593,6 +649,14 @@ def testImageBackgroundPulseLeavesOpaqueForegroundStable(tmp_path: Path) -> None
     assert np.any(exposed)
     assert np.array_equal(quiet[opaque], loud[opaque])
     assert not np.array_equal(quiet[exposed], loud[exposed])
+    intenseScene = copy.deepcopy(scene)
+    intenseScene["background"]["intensity"] = 4.0
+    intense = backend.createRenderer(settings, intenseScene).render(
+        0.5,
+        params,
+        {"background_pulse": 0.0},
+    )
+    assert np.array_equal(quiet, intense)
 
 
 # :: VOID -> NONE

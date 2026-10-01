@@ -26,7 +26,7 @@ from metalheart.text_overlay import TextOverlay  # Draw configurable author text
 
 
 REFERENCE_DIR = Path(__file__).resolve().parents[1] / "ref" / "audioReactive"
-REFERENCE_VERSION = "audioReactive-2026-10-01-jungle-palette-v14"
+REFERENCE_VERSION = "audioReactive-2026-10-01-visible-backgrounds-v15"
 _REFERENCE_MODULES: Optional[Tuple[ModuleType, ModuleType, ModuleType]] = None
 
 
