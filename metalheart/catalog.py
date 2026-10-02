@@ -180,6 +180,12 @@ DEFAULT_FINISH: Dict[str, Any] = {
     "scanlines": False,
     "grain": 0.006,
     "grain_high": 0.006,
+    "psx": {
+        "render_scale": 1.0,
+        "color_levels": 0,
+        "dither": "none",
+        "dither_strength": 1.0,
+    },
 }
 
 REACTIVITY_PRESETS: Dict[str, Dict[str, Any]] = {
@@ -528,6 +534,21 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                 "scanlines": {"type": "boolean"},
                 "grain": {"type": "number", "minimum": 0.0, "maximum": 0.2},
                 "grain_high": {"type": "number", "minimum": 0.0, "maximum": 0.2},
+                "psx": {
+                    "type": "object",
+                    "properties": {
+                        "render_scale": {"type": "number", "minimum": 0.125, "maximum": 1.0},
+                        "color_levels": {
+                            "anyOf": [
+                                {"const": 0},
+                                {"type": "integer", "minimum": 2, "maximum": 256},
+                            ],
+                        },
+                        "dither": {"enum": ["none", "bayer2", "bayer4", "bayer8"]},
+                        "dither_strength": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                    },
+                    "additionalProperties": True,
+                },
             },
             "additionalProperties": True,
         },

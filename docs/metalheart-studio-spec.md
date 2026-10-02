@@ -451,7 +451,13 @@ The typed destinations `ribbon_width`, `ribbon_twist`, `ribbon_wave`, and `ribbo
         "vignette": 0.5,
         "scanlines": false,
         "grain": 0.006,
-        "grain_high": 0.006
+        "grain_high": 0.006,
+        "psx": {
+          "render_scale": 1.0,
+          "color_levels": 0,
+          "dither": "none",
+          "dither_strength": 1.0
+        }
       },
       "post": [
         {
@@ -636,7 +642,7 @@ The implemented first slice owns Glitzle's NumPy-style frame operations rather t
 
 Resolution-safe operations execute on BGR frames inside render workers. Randomized operations derive their state from the render seed and the appropriate scene-local or global frame index so chunk count, worker scheduling, resume, and scene-clip export do not change their pixels. Finite-history effects declare their maximum lookback; workers render and discard that preroll before encoding an assigned chunk. Resolution-hardcoded FFmpeg recipes, external glitch-maker processes, unbounded-history effects, and arbitrary source-to-effect-property bindings remain outside this slice pending separate audits and integration contracts.
 
-Three-dimensional scenes may place the same ordered effect entries at `background.post`, `renderer.surface.post`, and `renderer.decor.ribbons.post`. The renderer captures the visible frontmost form and ribbon materials from the immutable ray marcher, expands those classifications to output resolution, and processes each as a transparent layer. Spatial primitives carry their alpha matte, so effects such as Tear, Block Jitter, mirrors, Tetrys, Ziti, Slitscan, RGB Shift, Chromatic, VHS tracking, and Arcade curvature can move layer pixels instead of being clipped to the original silhouette. Background effects run after background ripple, ghosts, and shadow but before foreground composition. Form and ribbon effects then composite independently, followed by finishing, scene post, global post, and finally text overlay. Scoped chains require the 3D core; plate-scoped chains are not part of version 1.
+Three-dimensional scenes may place the same ordered effect entries at `background.post`, `renderer.surface.post`, and `renderer.decor.ribbons.post`. The renderer captures the visible frontmost form and ribbon materials from the immutable ray marcher, expands those classifications to output resolution, and processes each as a transparent layer. Spatial primitives carry their alpha matte, so effects such as Tear, Block Jitter, mirrors, Tetrys, Ziti, Slitscan, RGB Shift, Chromatic, VHS tracking, and Arcade curvature can move layer pixels instead of being clipped to the original silhouette. Background effects run after background ripple, ghosts, and shadow but before foreground composition. Form and ribbon effects then composite independently, followed by the legacy light/film finish, scene post, global post, optional PSX color reduction and ordered dithering, and finally text overlay. An authored PSX render scale lowers the actual renderer, background, scoped-layer, and audio-reactive frame-transform dimensions before nearest-neighbor enlargement to the output dimensions; scene and global post effects continue at output resolution. Scoped chains require the 3D core; plate-scoped chains are not part of version 1.
 
 ```json
 {

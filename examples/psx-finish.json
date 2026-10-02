@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "audio": "../ref/audioReactive/metalheart_audio_test_small.mp4",
+  "settings": {
+    "width": 480,
+    "height": 270,
+    "fps": 12,
+    "quality": "preview",
+    "seed": 17,
+    "time_mode": "scene"
+  },
+  "scenes": [
+    {
+      "id": "psx-whole-frame",
+      "name": "Reduced-resolution PSX finish",
+      "start_sec": 0.0,
+      "end_sec": 4.0,
+      "renderer": {
+        "core": "3d",
+        "palette": "jungle",
+        "forms": ["radial"],
+        "cameras": ["orbit"],
+        "camera_speed": 0.8,
+        "core_scale": 0.35,
+        "anti_alias": false,
+        "decor": {
+          "enabled": true,
+          "ribbons": {
+            "enabled": true,
+            "count": 3,
+            "palette": "electric"
+          },
+          "plates": {
+            "enabled": false,
+            "count": 0
+          }
+        }
+      },
+      "background": {
+        "palette": "steel",
+        "intensity": 1.5,
+        "dots": true,
+        "ghosts": true,
+        "shadow": true
+      },
+      "reactivity": {
+        "preset": "spectral-radial-jagged"
+      },
+      "finish": {
+        "psx": {
+          "render_scale": 0.5,
+          "color_levels": 16,
+          "dither": "bayer4",
+          "dither_strength": 0.75
+        }
+      },
+      "overlay": {
+        "enabled": false
+      }
+    }
+  ],
+  "post": []
+}

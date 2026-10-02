@@ -8,6 +8,7 @@ from pathlib import Path  # Locate reference modules relative to the repository
 from types import ModuleType  # Annotate dynamically loaded reference modules
 from typing import Any, Dict, List, Optional, Tuple  # Python 3.8-compatible type annotations
 
+import cv2  # Enlarge deliberately low-resolution PSX renders without smoothing
 import numpy as np  # Build renderer parameters and blank HUD buffers
 
 from metalheart.audio_form_core import AudioFormCore  # Install production-owned audio-composed geometry
@@ -28,6 +29,13 @@ from metalheart.text_overlay import TextOverlay  # Draw configurable author text
 REFERENCE_DIR = Path(__file__).resolve().parents[1] / "ref" / "audioReactive"
 REFERENCE_VERSION = "audioReactive-2026-10-01-visible-backgrounds-v15"
 _REFERENCE_MODULES: Optional[Tuple[ModuleType, ModuleType, ModuleType]] = None
+
+
+# :: INT, FLOAT -> INT
+# Produces an even internal render dimension within the reference renderer limits
+def _scaledDimension(value: int, scale: float) -> int:
+    scaled = max(2, int(round(value * scale)))
+    return scaled if scaled % 2 == 0 else max(2, scaled - 1)
 
 
 # :: STRING, PATH -> moduleType
@@ -66,6 +74,11 @@ class ReferenceRendererSession:
         self._settings = settings
         self._scene = scene
         self._frameEffects = FrameEffects.init()
+        psxConfig = scene["finish"]["psx"]
+        self._outputWidth = int(settings["width"])
+        self._outputHeight = int(settings["height"])
+        self._renderWidth = _scaledDimension(self._outputWidth, float(psxConfig["render_scale"]))
+        self._renderHeight = _scaledDimension(self._outputHeight, float(psxConfig["render_scale"]))
         sceneSeed = int(scene.get("seed", settings["seed"]))
         globalSeed = int(settings["seed"]) + 1000003
         self._sceneEffects = EffectChain.init(scene.get("post", []), int(settings["width"]), int(settings["height"]), int(settings.get("fps", 30)), sceneSeed)
@@ -91,8 +104,8 @@ class ReferenceRendererSession:
             )
         )
         self._renderer = rendererModule.MetalheartRenderer(
-            width=settings["width"],
-            height=settings["height"],
+            width=self._renderWidth,
+            height=self._renderHeight,
             seed=scene.get("seed", settings["seed"]),
             preset=rendererConfig["palette"],
             scanlines=False,
@@ -140,15 +153,15 @@ class ReferenceRendererSession:
             ribbonPost = decorConfig.get("ribbons", {}).get("post", [])
             formEffects = EffectChain.init(
                 surfacePost,
-                int(settings["width"]),
-                int(settings["height"]),
+                self._renderWidth,
+                self._renderHeight,
                 int(settings.get("fps", 30)),
                 sceneSeed + 2000003,
             ) if surfacePost else None
             ribbonEffects = EffectChain.init(
                 ribbonPost,
-                int(settings["width"]),
-                int(settings["height"]),
+                self._renderWidth,
+                self._renderHeight,
                 int(settings.get("fps", 30)),
                 sceneSeed + 3000017,
             ) if ribbonPost else None
@@ -164,8 +177,8 @@ class ReferenceRendererSession:
         backgroundPost = backgroundConfig.get("post", [])
         backgroundEffects = EffectChain.init(
             backgroundPost,
-            int(settings["width"]),
-            int(settings["height"]),
+            self._renderWidth,
+            self._renderHeight,
             int(settings.get("fps", 30)),
             sceneSeed + 4000037,
         ) if backgroundPost else None
@@ -231,8 +244,15 @@ class ReferenceRendererSession:
             self._background.setEffectContext(localFrame, sceneEffectSignals)
         frame = self._renderer.render(timeSec, params)
         frame = self._frameEffects.apply(frame, timeSec, modulators)
+        if frame.shape[1] != self._outputWidth or frame.shape[0] != self._outputHeight:
+            frame = cv2.resize(
+                frame,
+                (self._outputWidth, self._outputHeight),
+                interpolation=cv2.INTER_NEAREST,
+            )
         frame = self._sceneEffects.apply(frame, timeSec, localFrame, sceneEffectSignals)
         frame = self._globalEffects.apply(frame, timeSec, frameIndex, globalEffectSignals)
+        frame = self._finishing.applyPsx(frame)
         return self._overlay.apply(frame)
 
     #
@@ -250,8 +270,8 @@ class ReferenceRendererSession:
     # Returns transparent HUD buffers when HUD rendering is disabled
     def _blankHud(self, timeSec: float, params: Any, focus: Any) -> Tuple[Any, Any]:
         del timeSec, params, focus
-        height = self._settings["height"]
-        width = self._settings["width"]
+        height = self._renderHeight
+        width = self._renderWidth
         return (
             np.zeros((height, width, 3), np.float32),
             np.zeros((height, width, 1), np.float32),

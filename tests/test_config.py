@@ -52,6 +52,12 @@ def testResolvesTemplateAndPreset(tmp_path: Path) -> None:
     assert not resolved["scenes"][0]["renderer"]["decor"]["plates"]["enabled"]
     assert resolved["scenes"][0]["overlay"] == {"enabled": False, "reference_hud": False, "items": []}
     assert resolved["settings"]["crf"] == 23
+    assert resolved["scenes"][0]["finish"]["psx"] == {
+        "render_scale": 1.0,
+        "color_levels": 0,
+        "dither": "none",
+        "dither_strength": 1.0,
+    }
 
 
 # :: PATH -> NONE
@@ -164,6 +170,39 @@ def testRejectsInvalidFinishControls(tmp_path: Path) -> None:
     assert not report.isValid
     assert any("finish.grain" in error for error in report.errors)
     assert any("finish.slice_glitch" in error for error in report.errors)
+
+
+# :: PATH -> NONE
+# Verifies PSX finish controls reject unsafe scales, levels, and dither combinations
+def testRejectsInvalidPsxFinishControls(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["finish"] = {
+        "psx": {
+            "render_scale": 0.1,
+            "color_levels": 0,
+            "dither": "bayer3",
+            "dither_strength": 1.2,
+        }
+    }
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert not report.isValid
+    assert any("finish.psx.render_scale" in error for error in report.errors)
+    assert any("finish.psx.dither" in error for error in report.errors)
+    assert any("finish.psx.dither_strength" in error for error in report.errors)
+
+
+# :: PATH -> NONE
+# Verifies ordered dithering requires an explicit reduced-color target
+def testRejectsDitherWithoutColorReduction(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["finish"] = {"psx": {"dither": "bayer4"}}
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert not report.isValid
+    assert any("finish.psx.color_levels" in error for error in report.errors)
 
 
 # :: PATH -> NONE

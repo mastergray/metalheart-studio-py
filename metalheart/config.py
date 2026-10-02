@@ -846,6 +846,30 @@ class ConfigResolver:
             value = finish.get(key)
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not limits[0] <= value <= limits[1]:
                 report.addError("{0}.{1}: expected {2} through {3}".format(finishPath, key, limits[0], limits[1]))
+        psx = finish.get("psx")
+        psxPath = finishPath + ".psx"
+        if not isinstance(psx, dict):
+            report.addError("{0}: expected an object".format(psxPath))
+            return
+        renderScale = psx.get("render_scale")
+        if isinstance(renderScale, bool) or not isinstance(renderScale, (int, float)) or not 0.125 <= renderScale <= 1.0:
+            report.addError("{0}.render_scale: expected 0.125 through 1.0".format(psxPath))
+        colorLevels = psx.get("color_levels")
+        if isinstance(colorLevels, bool) or not isinstance(colorLevels, int) or (
+            colorLevels != 0 and not 2 <= colorLevels <= 256
+        ):
+            report.addError("{0}.color_levels: expected 0 or an integer from 2 through 256".format(psxPath))
+        self._validateEnum(
+            psx.get("dither"),
+            ["none", "bayer2", "bayer4", "bayer8"],
+            psxPath + ".dither",
+            report,
+        )
+        ditherStrength = psx.get("dither_strength")
+        if isinstance(ditherStrength, bool) or not isinstance(ditherStrength, (int, float)) or not 0.0 <= ditherStrength <= 1.0:
+            report.addError("{0}.dither_strength: expected 0.0 through 1.0".format(psxPath))
+        if psx.get("dither") != "none" and colorLevels == 0:
+            report.addError("{0}.color_levels: must be enabled when ordered dithering is selected".format(psxPath))
 
     # :: ARRAY<STRING, ANY>, STRING, validationReport -> NONE
     # Validates a reactivity preset and its expanded binding map

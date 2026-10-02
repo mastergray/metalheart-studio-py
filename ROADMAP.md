@@ -27,7 +27,7 @@ The following rules apply across the roadmap:
 | Forms | Reference forms plus the audio-driven `resonance` and `radial` forms are supported. Radial has opt-in faceting, object-space jaggedness, and continuous geometric steps. | Form styling currently targets Radial; it is not yet shared by reference forms or Resonance. |
 | Background | A public per-scene block selects the procedural palette or a fitted image, controls dots/ghosts/shadow, and exposes isolated pulse and spectrum-directed ripple systems. Image backgrounds can behave as flat, matte, or metallic 2.5D sheets. | The first slice is 3D-only and does not yet include drift, color reduction, dithering, or general background warp/offset destinations. |
 | Ribbons and plates | The 3D decor block independently controls ribbon and plate enablement, counts, seed, materials, local-coordinate skins, and six typed audio destinations. Legacy booleans retain the reference behavior. | The first-class object is 3D-only; topology beyond count and additional plate/ribbon shape controls are not yet public. |
-| Retro finishing | Grain, scanlines, chroma offsets, slice glitches, bloom, streaks, flash, and vignette are configurable. | There is no coherent PSX-style preset, nearest-neighbor upscale, color quantization, or ordered dithering. |
+| Retro finishing | Grain, scanlines, chroma offsets, slice glitches, bloom, streaks, flash, vignette, true reduced-resolution rendering with nearest-neighbor upscale, per-channel color reduction, and ordered Bayer dithering are configurable. | There is no named PSX preset or optional frame-rate stepping yet. |
 
 ## Milestone 1: PSX-inspired texture and finish language (in progress)
 
@@ -39,17 +39,21 @@ Implemented surface controls:
 - quantized texture coordinates, stable enough to avoid random shimmer;
 - stepped rather than continuous lighting.
 
+Implemented whole-frame finishing controls:
+
+- actual lower-resolution scene rendering followed by nearest-neighbor upscale;
+- deterministic per-channel RGB level reduction;
+- stable 2×2, 4×4, and 8×8 ordered Bayer dithering with authored strength;
+- post-chain placement before overlays, so the selected color language covers scene and global effects without degrading author text.
+
 Remaining candidate surface controls:
 
 - faceted normal shading independent of silhouette changes;
 - configurable texture resolution or texel density;
 - optional texture color-depth reduction.
 
-Candidate whole-frame finishing controls:
+Remaining whole-frame finishing candidate:
 
-- render at a lower internal resolution and upscale with nearest-neighbor sampling;
-- RGB level reduction;
-- ordered dithering, beginning with a stable Bayer pattern;
 - optional frame-rate stepping that repeats rendered frames without changing audio synchronization.
 
 The surface treatment and whole-frame finish should be separable. A scene may use a PSX-like image on a clean background, or apply a retro finish to the complete composition. A named preset may expand to ordinary resolved values, but every constituent control must remain directly authorable.

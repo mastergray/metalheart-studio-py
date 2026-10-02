@@ -15,6 +15,7 @@ from metalheart.catalog import DEFAULT_FINISH  # Supply owned finishing defaults
 from metalheart.catalog import REACTIVITY_PRESETS  # Exercise resolved audio mappings
 from metalheart.decor import resolveDecorConfig  # Build first-class decor fixtures
 from metalheart.frame_effects import FrameEffects  # Exercise visible post-render modulation
+from metalheart.finishing import FinishingPass  # Verify whole-frame PSX finishing controls
 from metalheart.palette_catalog import PALETTE_IDS  # Exercise every stable renderer palette
 from metalheart.reference_backend import ReferenceBackend  # Adapt immutable renderer reference code
 from metalheart.surface_skin import SurfaceSkin  # Exercise resolution-independent image sampling
@@ -47,7 +48,7 @@ def _scene() -> Dict[str, Any]:
         "renderer": renderer,
         "reactivity": REACTIVITY_PRESETS["balanced"],
         "overlay": {"enabled": False, "reference_hud": False, "items": []},
-        "finish": dict(DEFAULT_FINISH),
+        "finish": copy.deepcopy(DEFAULT_FINISH),
     }
 
 
@@ -64,6 +65,46 @@ def testFixedSeedFrameIsDeterministic() -> None:
     assert first.shape == (64, 64, 3)
     assert first.dtype == np.uint8
     assert np.array_equal(first, second)
+
+
+# :: VOID -> NONE
+# Verifies disabled PSX finishing preserves byte-identical output
+def testDisabledPsxFinishPreservesFrame() -> None:
+    frame = np.arange(8 * 6 * 3, dtype=np.uint8).reshape(6, 8, 3)
+    finishing = FinishingPass.init(None, copy.deepcopy(DEFAULT_FINISH))
+    assert np.array_equal(finishing.applyPsx(frame), frame)
+
+
+# :: VOID -> NONE
+# Verifies color reduction and ordered dithering remain deterministic and bounded
+def testPsxColorReductionAndDitherAreDeterministic() -> None:
+    frame = np.tile(np.arange(64, dtype=np.uint8).reshape(8, 8, 1) * 4, (1, 1, 3))
+    finish = copy.deepcopy(DEFAULT_FINISH)
+    finish["psx"].update(
+        {"color_levels": 4, "dither": "bayer4", "dither_strength": 1.0}
+    )
+    finishing = FinishingPass.init(None, finish)
+    first = finishing.applyPsx(frame)
+    second = finishing.applyPsx(frame)
+    assert np.array_equal(first, second)
+    assert not np.array_equal(first, frame)
+    assert set(np.unique(first)).issubset({0, 85, 170, 255})
+
+
+# :: VOID -> NONE
+# Verifies render scaling lowers actual geometry resolution and restores output size
+def testPsxRenderScaleUsesNearestOutputUpscale() -> None:
+    backend = ReferenceBackend.init()
+    settings = {"width": 64, "height": 48, "seed": 5}
+    scene = _scene()
+    scene["finish"]["psx"]["render_scale"] = 0.5
+    params = backend.createParams(_analysis(), 0, 0.0, scene["reactivity"])
+    session = backend.createRenderer(settings, scene)
+    frame = session.render(0.0, params, {})
+    assert session._renderer.W == 32
+    assert session._renderer.H == 24
+    assert frame.shape == (48, 64, 3)
+    assert np.array_equal(frame[0::2, 0::2], frame[1::2, 1::2])
 
 
 # :: VOID -> NONE

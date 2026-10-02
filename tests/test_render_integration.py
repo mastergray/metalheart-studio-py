@@ -115,7 +115,15 @@ def _config(audioPath: Path, configPath: Path) -> Dict[str, Any]:
                     "intensity": 1.4,
                     "post": [{"id": "scanlines", "parameters": {"strength": 0.2}}],
                 },
-                "finish": {"scanlines": False},
+                "finish": {
+                    "scanlines": False,
+                    "psx": {
+                        "render_scale": 0.5,
+                        "color_levels": 8,
+                        "dither": "bayer4",
+                        "dither_strength": 0.75,
+                    },
+                },
                 "post": [
                     {"id": "rectangles", "parameters": {"n_rects": 2, "seed": 3}},
                     {"id": "tetrys", "parameters": {"block_size": 8, "direction": "left"}},
@@ -183,6 +191,8 @@ def testRendersSynchronizedVideoAndAudio(tmp_path: Path, capsys: Any) -> None:
     assert resolved["scenes"][1]["background"]["palette"] == "steel"
     assert resolved["scenes"][1]["background"]["intensity"] == 1.4
     assert resolved["scenes"][1]["renderer"]["decor"]["ribbons"]["palette"] == "acid"
+    assert resolved["scenes"][1]["finish"]["psx"]["render_scale"] == 0.5
+    assert resolved["scenes"][1]["finish"]["psx"]["dither"] == "bayer4"
     assert outputPath.is_file()
     assert Path(result.profilePath).is_file()
     assert Path(result.manifestPath).is_file()
