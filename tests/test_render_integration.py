@@ -300,3 +300,32 @@ def testRendersBoundedStillPreview(tmp_path: Path) -> None:
     assert result.frame.dtype.name == "uint8"
     assert result.sceneId == "calm"
     assert abs(result.timeSec - 0.5) < 0.1
+
+
+# :: PATH -> NONE
+# Verifies selected-range preview preserves exact frame timing and progress
+@pytest.mark.integration
+def testRendersBoundedRangePreview(tmp_path: Path) -> None:
+    audioPath = tmp_path / "range-preview.wav"
+    configPath = tmp_path / "range-preview.json"
+    _writeAudio(audioPath, 1.0)
+    authored = _config(audioPath, configPath)
+    authored["settings"].update({"width": 64, "height": 64, "fps": 4})
+    authored["scenes"] = [authored["scenes"][0]]
+    authored["scenes"][0]["end_sec"] = 1.0
+    progress = []
+    result = PreviewService.init().renderRange(
+        authored,
+        str(configPath),
+        0,
+        0.25,
+        0.75,
+        progress=lambda completed, total: progress.append((completed, total)),
+    )
+    assert len(result.frames) == 2
+    assert all(frame.shape == (64, 64, 3) for frame in result.frames)
+    assert result.fps == 4
+    assert result.sceneId == "calm"
+    assert result.startSec == 0.25
+    assert result.endSec == 0.75
+    assert progress[-1][0] == progress[-1][1]

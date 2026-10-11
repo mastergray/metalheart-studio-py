@@ -2,12 +2,14 @@
 
 from __future__ import annotations  # Preserve forward-compatible annotations on Python 3.8
 
+import math  # Divide oversized musical sections into balanced bounded scenes
 import os  # Express generated audio and cache paths relative to the config
 from pathlib import Path  # Resolve source and destination paths
 from typing import Any, Dict, List, Optional  # Python 3.8-compatible type annotations
 
 
 SCENE_MODES = ("phrases", "single")
+AUTO_SCENE_MAX_SEC = 5.0
 
 
 # Converts analyzed tempo into contiguous phrase-aligned scene skeletons
@@ -73,13 +75,15 @@ class ScenePlanner:
     def _boundaries(self, analysis: Any, barsPerScene: int) -> List[int]:
         bars = max(1, int(barsPerScene))
         barSec = 4.0 * 60.0 / max(float(analysis.bpm), 1e-6)
-        if self._maxSceneSec is not None and self._maxSceneSec > 0:
-            bars = min(bars, max(1, int(self._maxSceneSec // barSec)))
         phraseFrames = max(1, int(round(bars * barSec * self._fps)))
         firstDownbeat = float(analysis.downbeat_times[0]) if getattr(analysis.downbeat_times, "size", 0) else 0.0
         firstDownbeatFrame = max(0, int(round(firstDownbeat * self._fps)))
         boundaries = [0]
-        if firstDownbeatFrame >= self._fps and firstDownbeatFrame < analysis.n_frames:
+        maximumFrames = self._maximumSceneFrames()
+        minimumOpeningFrames = max(self._fps, phraseFrames // 2)
+        if maximumFrames is not None:
+            minimumOpeningFrames = min(minimumOpeningFrames, maximumFrames)
+        if minimumOpeningFrames <= firstDownbeatFrame < analysis.n_frames:
             boundaries.append(firstDownbeatFrame)
             nextBoundary = firstDownbeatFrame + phraseFrames
         else:
@@ -93,7 +97,35 @@ class ScenePlanner:
             boundaries.pop()
         if boundaries[-1] != analysis.n_frames:
             boundaries.append(int(analysis.n_frames))
-        return boundaries
+        return (
+            self._capBoundaries(boundaries, maximumFrames)
+            if maximumFrames is not None
+            else boundaries
+        )
+
+    # :: VOID -> INT?
+    # Converts the authored maximum duration into a hard frame-precision bound
+    def _maximumSceneFrames(self) -> Optional[int]:
+        if self._maxSceneSec is None or self._maxSceneSec <= 0.0:
+            return None
+        return max(1, int(math.floor(self._maxSceneSec * self._fps + 1e-9)))
+
+    # :: [INT], INT -> [INT]
+    # Evenly subdivides oversized musical sections while preserving their boundaries
+    def _capBoundaries(self, boundaries: List[int], maximumFrames: int) -> List[int]:
+        capped = [boundaries[0]]
+        for startFrame, endFrame in zip(boundaries, boundaries[1:]):
+            durationFrames = endFrame - startFrame
+            partCount = max(1, int(math.ceil(durationFrames / float(maximumFrames))))
+            for partIndex in range(1, partCount + 1):
+                boundary = (
+                    endFrame
+                    if partIndex == partCount
+                    else startFrame + int(round(durationFrames * partIndex / float(partCount)))
+                )
+                if boundary > capped[-1]:
+                    capped.append(boundary)
+        return capped
 
     # :: ANY, INT, INT, INT, STRING? -> ARRAY<STRING, ANY>
     # Creates one neutral scene skeleton with objective analysis metadata

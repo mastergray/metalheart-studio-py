@@ -82,7 +82,8 @@ class BackgroundPass:
     # :: ANY, FLOAT, ANY -> ANY
     # Replaces only the background while retaining captured foreground and HUD layers
     def apply(self, referenceImage: Any, timeSec: float, params: Any) -> Any:
-        pulse = min(max(float(self._signals.get("background_pulse", 0.0)), 0.0), 1.0)
+        bass = min(max(float(getattr(params, "bass", 0.0)), 0.0), 1.0)
+        pulse = min(max(float(self._signals.get("background_pulse", 0.05 * bass)), 0.0), 1.0)
         if (
             not self._custom
             and pulse <= 0.0
@@ -252,9 +253,23 @@ class BackgroundPass:
         material = self._config["material"]
         if not ripple["enabled"] and material == "flat":
             return None
-        amountSignal = min(max(float(self._signals.get("background_ripple", 0.0)), 0.0), 1.0)
-        impactSignal = min(max(float(self._signals.get("background_ripple_impact", 0.0)), 0.0), 1.0)
-        scaleSignal = min(max(float(self._signals.get("background_ripple_scale", 0.5)), 0.0), 1.0)
+        bass = min(max(float(getattr(params, "bass", 0.0)), 0.0), 1.0)
+        mid = min(max(float(getattr(params, "mid", 0.0)), 0.0), 1.0)
+        high = min(max(float(getattr(params, "high", 0.0)), 0.0), 1.0)
+        onset = min(max(float(getattr(params, "onset", 0.0)), 0.0), 1.0)
+        amplitude = (bass + mid + high) / 3.0
+        amountSignal = min(
+            max(float(self._signals.get("background_ripple", 0.7 * amplitude)), 0.0),
+            1.0,
+        )
+        impactSignal = min(
+            max(float(self._signals.get("background_ripple_impact", 0.35 * onset)), 0.0),
+            1.0,
+        )
+        scaleSignal = min(
+            max(float(self._signals.get("background_ripple_scale", 0.25 + 0.6 * high)), 0.0),
+            1.0,
+        )
         horizontal = self._renderer.u
         vertical = self._renderer.v
         height = np.zeros_like(horizontal, np.float32)
@@ -276,7 +291,6 @@ class BackgroundPass:
                 )
                 height += np.sin(phase).astype(np.float32) * float(energy)
             height *= amount * amountSignal / normalization
-            bass = min(max(float(getattr(params, "bass", 0.0)), 0.0), 1.0)
             height += (
                 np.sin(
                     (horizontal * 0.8 + vertical * 0.35) * math.tau * scale * 0.45

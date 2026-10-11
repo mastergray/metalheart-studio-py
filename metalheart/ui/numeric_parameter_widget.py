@@ -6,14 +6,80 @@ from typing import Any, Optional  # Type numeric values and optional native pare
 
 from PySide6.QtCore import Qt  # Configure the horizontal native slider
 from PySide6.QtCore import Signal  # Publish one committed authored value
+from PySide6.QtGui import QMouseEvent  # Type direct-position slider pointer events
 from PySide6.QtWidgets import QDoubleSpinBox  # Preserve precise decimal keyboard entry
 from PySide6.QtWidgets import QHBoxLayout  # Pair the slider with its number field
 from PySide6.QtWidgets import QSlider  # Provide fast bounded parameter adjustment
 from PySide6.QtWidgets import QSpinBox  # Preserve exact integer keyboard entry
+from PySide6.QtWidgets import QStyle  # Map full-track pointer positions to slider values
 from PySide6.QtWidgets import QWidget  # Host the reusable compound control
 
 
 MAX_SLIDER_POSITIONS = 10000
+
+
+# Makes the full slider track directly clickable and draggable
+class DirectPositionSlider(QSlider):
+
+    # CONSTRUCTOR :: widget? -> directPositionSlider
+    # Creates a horizontal slider with a larger direct-manipulation target
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        super().__init__(Qt.Orientation.Horizontal, parent)
+        self.setMinimumHeight(24)
+
+    #
+    # Instance Methods
+    #
+
+    # :: qMouseEvent -> NONE
+    # Begins a drag from any horizontal point on the slider track
+    # NOTE: The name is fixed by the Qt override contract
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() != Qt.MouseButton.LeftButton:
+            super().mousePressEvent(event)
+            return
+        self.setSliderDown(True)
+        self._setValueAtX(float(event.position().x()))
+        event.accept()
+
+    # :: qMouseEvent -> NONE
+    # Continues direct track dragging while the primary pointer is held
+    # NOTE: The name is fixed by the Qt override contract
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        if self.isSliderDown() and event.buttons() & Qt.MouseButton.LeftButton:
+            self._setValueAtX(float(event.position().x()))
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    # :: qMouseEvent -> NONE
+    # Commits one direct track drag at its final pointer position
+    # NOTE: The name is fixed by the Qt override contract
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if event.button() != Qt.MouseButton.LeftButton or not self.isSliderDown():
+            super().mouseReleaseEvent(event)
+            return
+        self._setValueAtX(float(event.position().x()))
+        self.setSliderDown(False)
+        self.sliderReleased.emit()
+        event.accept()
+
+    #
+    # Protected Methods
+    #
+
+    # :: FLOAT -> NONE
+    # Maps an entire track location onto the slider's authored position range
+    def _setValueAtX(self, x: float) -> None:
+        position = min(max(int(round(x)), 0), max(self.width() - 1, 0))
+        value = QStyle.sliderValueFromPosition(
+            self.minimum(),
+            self.maximum(),
+            position,
+            max(self.width() - 1, 1),
+            self.invertedAppearance(),
+        )
+        self.setValue(value)
 
 
 # Couples fast slider adjustment with precise directly editable numeric input
@@ -92,7 +158,7 @@ class NumericParameterWidget(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(7)
-        self._slider = QSlider(Qt.Orientation.Horizontal)
+        self._slider = DirectPositionSlider()
         self._slider.setObjectName("numericSlider")
         self._slider.setRange(0, self._positions)
         self._slider.setPageStep(max(1, self._positions // 10))

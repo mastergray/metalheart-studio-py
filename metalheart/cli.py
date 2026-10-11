@@ -21,6 +21,7 @@ from metalheart.config import ConfigError  # Report authored config failures
 from metalheart.config import ConfigResolver  # Load, resolve, validate, and write configs
 from metalheart.effect_catalog import effectIds  # List stable owned effect identifiers
 from metalheart.effect_catalog import publicEffectCatalog  # Expose typed effect metadata for the desktop UI
+from metalheart.planner import AUTO_SCENE_MAX_SEC  # Default balanced automatic scene duration
 from metalheart.planner import SCENE_MODES  # Constrain audio project organization modes
 from metalheart.planner import ScenePlanner  # Convert audio analysis into scene-based configs
 from metalheart.progress import reportProgress  # Publish native-UI progress records
@@ -102,7 +103,12 @@ def buildParser() -> argparse.ArgumentParser:
     analyzeParser.add_argument("--bpm", type=float)
     analyzeParser.add_argument("--scene-mode", choices=SCENE_MODES, default="phrases", help="create one full-track scene or phrase-aligned scenes")
     analyzeParser.add_argument("--bars-per-scene", type=int, default=8)
-    analyzeParser.add_argument("--max-scene-sec", type=float)
+    analyzeParser.add_argument(
+        "--max-scene-sec",
+        type=float,
+        default=AUTO_SCENE_MAX_SEC,
+        help="hard maximum automatic scene length in seconds; use 0 to disable",
+    )
     analyzeParser.add_argument("--template", choices=sorted(TEMPLATES), default="builtins/mercury-intro", help="explicit default for every generated scene skeleton")
     analyzeParser.add_argument("--progress", action="store_true", help="emit machine-readable progress records to stderr")
     _addJsonFlag(analyzeParser)

@@ -4,6 +4,7 @@ from __future__ import annotations  # Preserve forward-compatible annotations on
 
 import copy  # Snapshot canonical projects before background preview work
 import json  # Preserve an optional advanced canonical JSON view
+import math  # Convert bounded preview durations into normalized slider spans
 import os  # Create and terminate task-specific process groups on POSIX
 import signal  # Cancel analysis and rendering process groups safely
 import sys  # Launch project services with the active Python environment
@@ -22,6 +23,7 @@ from PySide6.QtGui import QUndoStack  # Maintain canonical authored-project hist
 from PySide6.QtWidgets import QDockWidget  # Hide JSON behind an advanced view
 from PySide6.QtWidgets import QFileDialog  # Select audio, projects, and outputs
 from PySide6.QtWidgets import QHBoxLayout  # Arrange compact horizontal controls
+from PySide6.QtWidgets import QInputDialog  # Choose automatic scene duration bounds
 from PySide6.QtWidgets import QLabel  # Display project, timing, and validation state
 from PySide6.QtWidgets import QListWidget  # Select analyzed scenes directly
 from PySide6.QtWidgets import QMainWindow  # Host the complete native application
@@ -37,7 +39,12 @@ from PySide6.QtWidgets import QVBoxLayout  # Stack application sections vertical
 from PySide6.QtWidgets import QWidget  # Build native panel containers
 
 from metalheart.config import ConfigResolver  # Resolve and validate canonical projects
+from metalheart.preview import PREVIEW_DEFAULT_RANGE_SEC  # Choose a useful initial motion study
+from metalheart.preview import PREVIEW_MAX_FPS  # Match selected-range frame boundaries
+from metalheart.preview import PREVIEW_MAX_RANGE_SEC  # Bound memory and render cost on older machines
+from metalheart.preview import PreviewClipResult  # Display completed renderer-backed ranges
 from metalheart.preview import PreviewResult  # Display completed renderer-backed stills
+from metalheart.planner import AUTO_SCENE_MAX_SEC  # Share the CLI automatic-scene default
 from metalheart.progress import formatDuration  # Format elapsed and remaining task time
 from metalheart.progress import parseProgressLine  # Consume machine-readable CLI progress
 from metalheart.ui.project_command import ProjectEditCommand  # Snapshot reversible edits
@@ -69,9 +76,17 @@ class MainWindow(QMainWindow):
         self._advancedDirty = False
         self._loadingUi = False
         self._selectedScene = 0
+        self._projectRevision = 0
         self._previewThread: Optional[QThread] = None
         self._previewWorker: Optional[PreviewWorker] = None
-        self._pendingPreview: Optional[Tuple[Dict[str, Any], str, int, float]] = None
+        self._pendingPreview: Optional[
+            Tuple[Dict[str, Any], str, int, float, Optional[float], int]
+        ] = None
+        self._activePreviewRevision = 0
+        self._activePreviewRange: Optional[Tuple[float, float]] = None
+        self._previewKind: Optional[str] = None
+        self._previewSceneIndex = -1
+        self._previewDetails = "Explicit preview • max 480×270 • AA off"
         self._renderProcess: Optional[QProcess] = None
         self._analysisProcess: Optional[QProcess] = None
         self._analysisProjectPath: Optional[Path] = None
@@ -127,6 +142,7 @@ class MainWindow(QMainWindow):
         if not self._confirmUnsavedChanges():
             event.ignore()
             return
+        self._preview.pause()
         self._pendingPreview = None
         if self._previewWorker is not None:
             self._previewWorker.requestCancel()
@@ -229,21 +245,56 @@ class MainWindow(QMainWindow):
         self._timeLabel = QLabel("50.0%")
         timeControls.addWidget(self._timeLabel)
         layout.addLayout(timeControls)
+        rangeControls = QHBoxLayout()
+        rangeControls.addWidget(QLabel("Range in"))
+        self._rangeStartSlider = QSlider(Qt.Orientation.Horizontal)
+        self._rangeStartSlider.setRange(0, 999)
+        self._rangeStartSlider.setValue(0)
+        self._rangeStartSlider.valueChanged.connect(self._previewRangeStartChanged)
+        rangeControls.addWidget(self._rangeStartSlider, 1)
+        self._rangeStartLabel = QLabel("0.00s")
+        rangeControls.addWidget(self._rangeStartLabel)
+        rangeControls.addWidget(QLabel("Out"))
+        self._rangeEndSlider = QSlider(Qt.Orientation.Horizontal)
+        self._rangeEndSlider.setRange(1, 1000)
+        self._rangeEndSlider.setValue(1000)
+        self._rangeEndSlider.valueChanged.connect(self._previewRangeEndChanged)
+        rangeControls.addWidget(self._rangeEndSlider, 1)
+        self._rangeEndLabel = QLabel("0.00s")
+        rangeControls.addWidget(self._rangeEndLabel)
+        layout.addLayout(rangeControls)
         actions = QHBoxLayout()
         self._previewButton = QPushButton("Render Still")
         self._previewButton.setObjectName("primaryButton")
         self._previewButton.clicked.connect(self._requestPreview)
-        self._cancelPreviewButton = QPushButton("Cancel")
-        self._cancelPreviewButton.setEnabled(False)
-        self._cancelPreviewButton.clicked.connect(self._cancelPreview)
+        self._rangePreviewButton = QPushButton("Render Range")
+        self._rangePreviewButton.setObjectName("primaryButton")
+        self._rangePreviewButton.clicked.connect(self._requestRangePreview)
+        self._playPreviewButton = QPushButton("Play")
+        self._playPreviewButton.setEnabled(False)
+        self._playPreviewButton.clicked.connect(self._preview.play)
+        self._preview.playbackChanged.connect(self._previewPlaybackChanged)
+        self._stopPreviewButton = QPushButton("Stop")
+        self._stopPreviewButton.setEnabled(False)
+        self._stopPreviewButton.clicked.connect(self._stopPreview)
+        self._mutePreviewButton = QPushButton("Mute")
+        self._mutePreviewButton.setCheckable(True)
+        self._mutePreviewButton.setEnabled(False)
+        self._mutePreviewButton.toggled.connect(self._previewMutedChanged)
         actions.addWidget(self._previewButton)
-        actions.addWidget(self._cancelPreviewButton)
+        actions.addWidget(self._rangePreviewButton)
+        actions.addWidget(self._playPreviewButton)
+        actions.addWidget(self._stopPreviewButton)
+        actions.addWidget(self._mutePreviewButton)
         actions.addStretch(1)
-        self._previewInfo = QLabel("Explicit preview • max 480×270 • AA off")
-        actions.addWidget(self._previewInfo)
+        self._restorePreviewButton = QPushButton("Restore Preview")
+        self._restorePreviewButton.setEnabled(False)
+        self._restorePreviewButton.clicked.connect(self._restorePreview)
+        actions.addWidget(self._restorePreviewButton)
         layout.addLayout(actions)
         self._timeline = WaveformTimelineWidget()
         self._timeline.sceneSelected.connect(self._timelineSelected)
+        self._timeline.rangeChanged.connect(self._timelineRangeChanged)
         layout.addWidget(self._timeline)
         return panel
 
@@ -305,6 +356,9 @@ class MainWindow(QMainWindow):
         self._previewAction = QAction("Render &Still", self)
         self._previewAction.setShortcut("Ctrl+R")
         self._previewAction.triggered.connect(self._requestPreview)
+        self._rangePreviewAction = QAction("Render Selected &Range", self)
+        self._rangePreviewAction.setShortcut("Ctrl+Alt+R")
+        self._rangePreviewAction.triggered.connect(self._requestRangePreview)
         self._renderAction = QAction("Render &Video…", self)
         self._renderAction.setShortcut("Ctrl+Shift+R")
         self._renderAction.triggered.connect(self._chooseRenderPath)
@@ -325,7 +379,8 @@ class MainWindow(QMainWindow):
         fileMenu.addAction(quitAction)
         editMenu = self.menuBar().addMenu("&Edit")
         editMenu.addActions((self._undoAction, self._redoAction))
-        self.menuBar().addMenu("&Preview").addAction(self._previewAction)
+        previewMenu = self.menuBar().addMenu("&Preview")
+        previewMenu.addActions((self._previewAction, self._rangePreviewAction))
         renderMenu = self.menuBar().addMenu("&Render")
         renderMenu.addActions((self._renderAction, self._cancelRenderAction))
         self.menuBar().addMenu("&View").addAction(self._advancedDock.toggleViewAction())
@@ -340,6 +395,7 @@ class MainWindow(QMainWindow):
         toolbar.addActions((self._undoAction, self._redoAction))
         toolbar.addSeparator()
         toolbar.addAction(self._previewAction)
+        toolbar.addAction(self._rangePreviewAction)
         toolbar.addAction(self._renderAction)
         self.addToolBar(toolbar)
 
@@ -355,6 +411,7 @@ class MainWindow(QMainWindow):
             "QPushButton { background: #1d2425; border: 1px solid #344043; "
             "border-radius: 4px; padding: 6px 10px; }"
             "QPushButton:hover { border-color: #4ccbd1; } QPushButton:disabled { color: #586365; }"
+            "QPushButton:checked { background: #744b16; border-color: #d89b3c; color: #fff0c2; }"
             "#primaryButton { background: #245b60; color: #e7ffff; }"
             "QTabWidget::pane { border: 1px solid #293638; }"
             "QTabBar::tab { background: #171d1f; padding: 7px 10px; }"
@@ -377,19 +434,25 @@ class MainWindow(QMainWindow):
         )
         if not audioPath:
             return
-        sceneMode = self._chooseSceneMode()
-        if sceneMode is None:
+        sceneChoice = self._chooseSceneMode()
+        if sceneChoice is None:
             return
+        sceneMode, maxSceneSec = sceneChoice
         suggested = Path(audioPath).with_suffix(".metalheart.json")
         projectPath, _ = QFileDialog.getSaveFileName(
             self, "Save New Metalheart Project", str(suggested), PROJECT_FILTER
         )
         if projectPath:
-            self._startAnalysis(Path(audioPath), Path(projectPath), sceneMode)
+            self._startAnalysis(
+                Path(audioPath),
+                Path(projectPath),
+                sceneMode,
+                maxSceneSec,
+            )
 
-    # :: VOID -> STRING?
+    # :: VOID -> (STRING, FLOAT?)?
     # Asks whether a new audio project should remain whole or gain phrase scenes
-    def _chooseSceneMode(self) -> Optional[str]:
+    def _chooseSceneMode(self) -> Optional[Tuple[str, Optional[float]]]:
         dialog = QMessageBox(self)
         dialog.setWindowTitle("New Audio Project")
         dialog.setText("How should Metalheart organize this audio?")
@@ -403,14 +466,29 @@ class MainWindow(QMainWindow):
         dialog.setDefaultButton(fullTrackButton)
         dialog.exec()
         if dialog.clickedButton() is fullTrackButton:
-            return "single"
+            return "single", None
         if dialog.clickedButton() is autoScenesButton:
-            return "phrases"
+            maximum, accepted = QInputDialog.getDouble(
+                self,
+                "Auto Scene Length",
+                "Maximum scene length in seconds:",
+                AUTO_SCENE_MAX_SEC,
+                1.0,
+                60.0,
+                1,
+            )
+            return ("phrases", maximum) if accepted else None
         return None
 
-    # :: PATH, PATH, STRING -> NONE
+    # :: PATH, PATH, STRING, FLOAT? -> NONE
     # Runs the established analyzer and scene planner outside the GUI thread
-    def _startAnalysis(self, audioPath: Path, projectPath: Path, sceneMode: str) -> None:
+    def _startAnalysis(
+        self,
+        audioPath: Path,
+        projectPath: Path,
+        sceneMode: str,
+        maxSceneSec: Optional[float] = None,
+    ) -> None:
         if self._analysisProcess is not None:
             return
         process = QProcess(self)
@@ -418,7 +496,12 @@ class MainWindow(QMainWindow):
         process.readyReadStandardOutput.connect(self._readAnalysisOutput)
         process.finished.connect(self._analysisFinished)
         process.errorOccurred.connect(self._analysisFailed)
-        arguments = self._analysisArguments(audioPath, projectPath, sceneMode)
+        arguments = self._analysisArguments(
+            audioPath,
+            projectPath,
+            sceneMode,
+            maxSceneSec,
+        )
         if os.name == "posix":
             process.start("setsid", [sys.executable] + arguments)
         else:
@@ -435,11 +518,17 @@ class MainWindow(QMainWindow):
             self._diagnostics.setText("Analyzing audio and creating phrase-aligned scenes…")
         self.statusBar().showMessage("Analyzing {0}…".format(audioPath.name))
 
-    # :: PATH, PATH, STRING -> [STRING]
+    # :: PATH, PATH, STRING, FLOAT? -> [STRING]
     # Builds the shared CLI invocation for one audio-led project creation mode
-    def _analysisArguments(self, audioPath: Path, projectPath: Path, sceneMode: str) -> List[str]:
+    def _analysisArguments(
+        self,
+        audioPath: Path,
+        projectPath: Path,
+        sceneMode: str,
+        maxSceneSec: Optional[float] = None,
+    ) -> List[str]:
         studioPath = Path(__file__).resolve().parents[2] / "studio.py"
-        return [
+        arguments = [
             str(studioPath),
             "analyze",
             str(audioPath.resolve()),
@@ -451,6 +540,10 @@ class MainWindow(QMainWindow):
             sceneMode,
             "--progress",
         ]
+        if sceneMode == "phrases":
+            maximum = AUTO_SCENE_MAX_SEC if maxSceneSec is None else maxSceneSec
+            arguments.extend(["--max-scene-sec", "{0:g}".format(maximum)])
+        return arguments
 
     # :: VOID -> NONE
     # Shows the newest analyzer message without blocking the event loop
@@ -545,6 +638,16 @@ class MainWindow(QMainWindow):
         self._authored = authored
         self._resolved = resolved
         self._selectedScene = 0
+        self._projectRevision += 1
+        self._previewKind = None
+        self._previewSceneIndex = -1
+        self._previewDetails = "Explicit preview • max 480×270 • AA off"
+        self._preview.setMessage("Scene selected — render a still or range when ready")
+        self._setPreviewDetails(self._previewDetails, False)
+        self._playPreviewButton.setEnabled(False)
+        self._stopPreviewButton.setEnabled(False)
+        self._mutePreviewButton.setChecked(False)
+        self._mutePreviewButton.setEnabled(False)
         self._undoStack.clear()
         self._syncAdvancedEditor()
         self._setDirty(False)
@@ -627,7 +730,12 @@ class MainWindow(QMainWindow):
             self._projectPath.parent if self._projectPath else Path.cwd(),
         )
         self._updateTimeLabel()
-        self._preview.setMessage("Scene selected — render a still when ready")
+        self._resetPreviewRange()
+        if self._preview.hasPreview:
+            if self._previewSceneIndex != index:
+                self._markPreviewStale()
+        else:
+            self._preview.setMessage("Scene selected — render a still or range when ready")
 
     # :: INT, FLOAT -> NONE
     # Selects a scene and relative time from the waveform
@@ -646,6 +754,8 @@ class MainWindow(QMainWindow):
     def _timeChanged(self, value: int) -> None:
         self._timeline.selectScene(self._sceneList.currentRow(), value / 1000.0)
         self._updateTimeLabel()
+        if self._previewKind == "still":
+            self._markPreviewStale()
 
     # :: VOID -> NONE
     # Updates the selected absolute audio time
@@ -659,6 +769,197 @@ class MainWindow(QMainWindow):
             float(scene["end_sec"]) - float(scene["start_sec"])
         ) * position
         self._timeLabel.setText("{0:.2f}s".format(timeSec))
+
+    # :: VOID -> NONE
+    # Places an inexpensive default range around the current scene playhead
+    def _resetPreviewRange(self) -> None:
+        if self._resolved is None or self._sceneList.currentRow() < 0:
+            return
+        scene = self._resolved["scenes"][self._sceneList.currentRow()]
+        durationSec = max(
+            float(scene["end_sec"]) - float(scene["start_sec"]),
+            1e-9,
+        )
+        minimumSpan, maximumSpan = self._previewRangeSpans()
+        defaultSpan = min(
+            maximumSpan,
+            max(
+                minimumSpan,
+                int(round(PREVIEW_DEFAULT_RANGE_SEC / durationSec * 1000.0)),
+            ),
+        )
+        center = self._timeSlider.value()
+        start = min(max(center - defaultSpan // 2, 0), 1000 - defaultSpan)
+        end = start + defaultSpan
+        self._rangeStartSlider.blockSignals(True)
+        self._rangeEndSlider.blockSignals(True)
+        self._rangeStartSlider.setValue(start)
+        self._rangeEndSlider.setValue(end)
+        self._rangeStartSlider.blockSignals(False)
+        self._rangeEndSlider.blockSignals(False)
+        self._updatePreviewRangeLabels()
+        self._syncTimelineRange()
+
+    # :: INT -> NONE
+    # Keeps the range start before the end and within the bounded memory budget
+    def _previewRangeStartChanged(self, value: int) -> None:
+        minimumSpan, maximumSpan = self._previewRangeSpans()
+        start = min(max(value, 0), 1000 - minimumSpan)
+        end = self._rangeEndSlider.value()
+        end = max(end, start + minimumSpan)
+        end = min(end, start + maximumSpan, 1000)
+        self._rangeStartSlider.blockSignals(True)
+        self._rangeEndSlider.blockSignals(True)
+        self._rangeStartSlider.setValue(start)
+        self._rangeEndSlider.setValue(end)
+        self._rangeStartSlider.blockSignals(False)
+        self._rangeEndSlider.blockSignals(False)
+        self._updatePreviewRangeLabels()
+        self._syncTimelineRange()
+        if self._previewKind == "range":
+            self._markPreviewStale()
+
+    # :: INT -> NONE
+    # Keeps the range end after the start and within the bounded memory budget
+    def _previewRangeEndChanged(self, value: int) -> None:
+        minimumSpan, maximumSpan = self._previewRangeSpans()
+        end = min(max(value, minimumSpan), 1000)
+        start = self._rangeStartSlider.value()
+        start = min(start, end - minimumSpan)
+        start = max(start, end - maximumSpan, 0)
+        self._rangeStartSlider.blockSignals(True)
+        self._rangeEndSlider.blockSignals(True)
+        self._rangeStartSlider.setValue(start)
+        self._rangeEndSlider.setValue(end)
+        self._rangeStartSlider.blockSignals(False)
+        self._rangeEndSlider.blockSignals(False)
+        self._updatePreviewRangeLabels()
+        self._syncTimelineRange()
+        if self._previewKind == "range":
+            self._markPreviewStale()
+
+    # :: FLOAT, FLOAT, STRING -> NONE
+    # Synchronizes a waveform handle drag through the bounded slider controls
+    def _timelineRangeChanged(self, start: float, end: float, target: str) -> None:
+        startValue = min(max(int(round(start * 1000.0)), 0), 999)
+        endValue = min(max(int(round(end * 1000.0)), 1), 1000)
+        if target == "start":
+            self._rangeStartSlider.blockSignals(True)
+            self._rangeStartSlider.setValue(startValue)
+            self._rangeStartSlider.blockSignals(False)
+            self._previewRangeStartChanged(startValue)
+        else:
+            self._rangeEndSlider.blockSignals(True)
+            self._rangeEndSlider.setValue(endValue)
+            self._rangeEndSlider.blockSignals(False)
+            self._previewRangeEndChanged(endValue)
+
+    # :: VOID -> NONE
+    # Copies the canonical slider interval onto the waveform selection
+    def _syncTimelineRange(self) -> None:
+        start, end = self._previewRangePositions()
+        self._timeline.setPreviewRange(start, end)
+
+    # :: VOID -> (INT, INT)
+    # Returns normalized minimum-frame and maximum-duration slider spans
+    def _previewRangeSpans(self) -> Tuple[int, int]:
+        if self._resolved is None or self._sceneList.currentRow() < 0:
+            return 1, 1000
+        scene = self._resolved["scenes"][self._sceneList.currentRow()]
+        durationSec = max(
+            float(scene["end_sec"]) - float(scene["start_sec"]),
+            1e-9,
+        )
+        fps = min(int(self._resolved["settings"]["fps"]), PREVIEW_MAX_FPS)
+        minimumSpan = min(
+            1000,
+            max(1, int(math.ceil(1000.0 / (durationSec * max(fps, 1))))),
+        )
+        maximumSpan = min(
+            1000,
+            max(
+                minimumSpan,
+                int(math.floor(PREVIEW_MAX_RANGE_SEC / durationSec * 1000.0)),
+            ),
+        )
+        return minimumSpan, maximumSpan
+
+    # :: VOID -> (FLOAT, FLOAT)
+    # Returns the selected normalized in and out points
+    def _previewRangePositions(self) -> Tuple[float, float]:
+        return (
+            self._rangeStartSlider.value() / 1000.0,
+            self._rangeEndSlider.value() / 1000.0,
+        )
+
+    # :: VOID -> NONE
+    # Displays exact global source times for both selected range handles
+    def _updatePreviewRangeLabels(self) -> None:
+        if self._resolved is None or self._sceneList.currentRow() < 0:
+            return
+        scene = self._resolved["scenes"][self._sceneList.currentRow()]
+        sceneStart = float(scene["start_sec"])
+        durationSec = float(scene["end_sec"]) - sceneStart
+        startPosition, endPosition = self._previewRangePositions()
+        self._rangeStartLabel.setText(
+            "{0:.2f}s".format(sceneStart + durationSec * startPosition)
+        )
+        self._rangeEndLabel.setText(
+            "{0:.2f}s".format(sceneStart + durationSec * endPosition)
+        )
+
+    # :: STRING, BOOL -> NONE
+    # Stores internal preview metadata and controls the stale-result restore action
+    def _setPreviewDetails(self, details: str, stale: bool) -> None:
+        self._previewDetails = details
+        self._restorePreviewButton.setEnabled(
+            stale
+            and self._preview.hasPreview
+            and self._previewThread is None
+        )
+
+    # :: VOID -> NONE
+    # Retains the last successful result while marking it older than current state
+    def _markPreviewStale(self) -> None:
+        if not self._preview.hasPreview:
+            return
+        self._preview.setStale(True)
+        self._setPreviewDetails(self._previewDetails, True)
+
+    # :: VOID -> NONE
+    # Regenerates the retained preview type from the current authored state
+    def _restorePreview(self) -> None:
+        if not self._preview.isStale or self._previewThread is not None:
+            return
+        if self._previewKind == "range":
+            self._requestRangePreview()
+        else:
+            self._requestPreview()
+
+    # :: BOOL -> NONE
+    # Enables explicit playback controls from native range playback state
+    def _previewPlaybackChanged(self, playing: bool) -> None:
+        self._playPreviewButton.setEnabled(
+            self._preview.isClip
+            and not playing
+            and self._previewThread is None
+        )
+        self._stopPreviewButton.setEnabled(
+            self._preview.isClip or self._previewThread is not None
+        )
+
+    # :: BOOL -> NONE
+    # Applies an explicit audio-only mute without pausing visual playback
+    def _previewMutedChanged(self, muted: bool) -> None:
+        self._preview.setMuted(muted)
+        self._mutePreviewButton.setText("Unmute" if muted else "Mute")
+
+    # :: VOID -> NONE
+    # Stops range playback and cancels an active preview render when necessary
+    def _stopPreview(self) -> None:
+        self._preview.stop()
+        if self._previewWorker is not None:
+            self._cancelPreview()
 
     # :: ARRAY<STRING, ANY> -> NONE
     # Adds a structured scene edit to the canonical project history
@@ -692,6 +993,7 @@ class MainWindow(QMainWindow):
         report = self._resolver.validate(resolved)
         self._authored = copy.deepcopy(authored)
         self._resolved = resolved
+        self._projectRevision += 1
         self._selectedScene = min(
             max(selectedScene, 0),
             max(len(resolved.get("scenes", [])) - 1, 0),
@@ -710,7 +1012,7 @@ class MainWindow(QMainWindow):
                 self._selectedScene,
                 self._timeSlider.value() / 1000.0,
             )
-        self._preview.setMessage("Project changed — render a still to refresh")
+        self._markPreviewStale()
         if report.isValid:
             self._showValidation(report.warnings)
         else:
@@ -871,6 +1173,8 @@ class MainWindow(QMainWindow):
             str(self._projectPath),
             self._sceneList.currentRow(),
             self._timeSlider.value() / 1000.0,
+            None,
+            self._projectRevision,
         )
         if self._previewThread is not None:
             self._pendingPreview = request
@@ -879,23 +1183,83 @@ class MainWindow(QMainWindow):
             return
         self._startPreview(request)
 
-    # :: (ARRAY<STRING, ANY>, STRING, INT, FLOAT) -> NONE
-    # Starts one bounded preview worker and connects cleanup
-    def _startPreview(self, request: Tuple[Dict[str, Any], str, int, float]) -> None:
-        authored, configPath, sceneIndex, position = request
+    # :: VOID -> NONE
+    # Queues the selected bounded scene range from current valid controls
+    def _requestRangePreview(self) -> None:
+        if self._projectPath is None or self._authored is None:
+            self._showError(
+                "No Project",
+                "Create or open a project before rendering a selected range.",
+            )
+            return
+        if self._advancedDirty and not self._applyAdvancedEditor():
+            return
+        resolved = self._resolver.resolve(self._authored, str(self._projectPath))
+        report = self._resolver.validate(resolved)
+        if not report.isValid:
+            self._showValidationErrors(report.errors)
+            return
+        startPosition, endPosition = self._previewRangePositions()
+        request = (
+            copy.deepcopy(self._authored),
+            str(self._projectPath),
+            self._sceneList.currentRow(),
+            startPosition,
+            endPosition,
+            self._projectRevision,
+        )
+        if self._previewThread is not None:
+            self._pendingPreview = request
+            if self._previewWorker is not None:
+                self._previewWorker.requestCancel()
+            return
+        self._startPreview(request)
+
+    # :: (ARRAY<STRING, ANY>, STRING, INT, FLOAT, FLOAT?, INT) -> NONE
+    # Starts one bounded still or range worker and connects cleanup
+    def _startPreview(
+        self,
+        request: Tuple[
+            Dict[str, Any],
+            str,
+            int,
+            float,
+            Optional[float],
+            int,
+        ],
+    ) -> None:
+        authored, configPath, sceneIndex, startPosition, endPosition, revision = request
         if sceneIndex < 0:
             return
-        self._preview.setMessage("Rendering still preview…")
-        self._showBusyProgress("Rendering still preview…")
+        rangePreview = endPosition is not None
+        message = (
+            "Rendering selected range preview…"
+            if rangePreview
+            else "Rendering still preview…"
+        )
+        if not self._preview.hasPreview:
+            self._preview.setMessage(message)
+        self._showBusyProgress(message)
         self._previewButton.setEnabled(False)
-        self._cancelPreviewButton.setEnabled(True)
+        self._rangePreviewButton.setEnabled(False)
+        self._restorePreviewButton.setEnabled(False)
+        self._playPreviewButton.setEnabled(False)
+        self._mutePreviewButton.setEnabled(False)
+        self._stopPreviewButton.setEnabled(True)
         thread = QThread(self)
-        worker = PreviewWorker(authored, configPath, sceneIndex, position)
+        worker = PreviewWorker(
+            authored,
+            configPath,
+            sceneIndex,
+            startPosition,
+            endPosition,
+        )
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
         worker.completed.connect(self._previewCompleted)
         worker.failed.connect(self._previewFailed)
         worker.cancelled.connect(self._previewCancelled)
+        worker.progress.connect(self._previewProgress)
         worker.completed.connect(thread.quit)
         worker.failed.connect(thread.quit)
         worker.cancelled.connect(thread.quit)
@@ -904,6 +1268,12 @@ class MainWindow(QMainWindow):
         thread.finished.connect(thread.deleteLater)
         self._previewThread = thread
         self._previewWorker = worker
+        self._activePreviewRevision = revision
+        self._activePreviewRange = (
+            (startPosition, endPosition)
+            if endPosition is not None
+            else (startPosition, startPosition)
+        )
         thread.start()
 
     # :: VOID -> NONE
@@ -914,22 +1284,89 @@ class MainWindow(QMainWindow):
             self._previewWorker.requestCancel()
             self.statusBar().showMessage("Cancelling preview…")
 
-    # :: previewResult -> NONE
-    # Displays a completed frame when it belongs to the active scene
-    def _previewCompleted(self, result: PreviewResult) -> None:
-        if result.sceneIndex == self._sceneList.currentRow():
+    # :: previewResult|previewClipResult -> NONE
+    # Displays the newest successful result and marks mismatched context as stale
+    def _previewCompleted(self, result: Any) -> None:
+        if isinstance(result, PreviewClipResult):
+            self._preview.setClip(
+                result.frames,
+                result.fps,
+                result.audioPath,
+                result.startSec,
+                result.endSec,
+            )
+            self._previewKind = "range"
+            self._previewSceneIndex = result.sceneIndex
+            details = "{0}×{1} • {2} • {3:.2f}s–{4:.2f}s • {5} frames".format(
+                result.width,
+                result.height,
+                result.sceneId,
+                result.startSec,
+                result.endSec,
+                len(result.frames),
+            )
+        elif isinstance(result, PreviewResult):
             self._preview.setFrame(result.frame)
-            self._previewInfo.setText(
-                "{0}×{1} • {2} • {3:.2f}s".format(
-                    result.width, result.height, result.sceneId, result.timeSec
+            self._previewKind = "still"
+            self._previewSceneIndex = result.sceneIndex
+            self._playPreviewButton.setEnabled(False)
+            self._stopPreviewButton.setEnabled(False)
+            self._mutePreviewButton.setEnabled(False)
+            details = "{0}×{1} • {2} • {3:.2f}s".format(
+                result.width,
+                result.height,
+                result.sceneId,
+                result.timeSec,
+            )
+        else:
+            self._previewFailed("preview worker returned an unsupported result")
+            return
+        self._previewDetails = details
+        stale = (
+            self._activePreviewRevision != self._projectRevision
+            or result.sceneIndex != self._sceneList.currentRow()
+        )
+        if isinstance(result, PreviewClipResult) and self._activePreviewRange is not None:
+            stale = stale or any(
+                abs(current - rendered) > 0.0005
+                for current, rendered in zip(
+                    self._previewRangePositions(),
+                    self._activePreviewRange,
                 )
             )
-            self.statusBar().showMessage("Preview ready", 3000)
+            self._playPreviewButton.setEnabled(not self._preview.isPlaying)
+            self._stopPreviewButton.setEnabled(True)
+            self._mutePreviewButton.setEnabled(True)
+        elif isinstance(result, PreviewResult) and self._activePreviewRange is not None:
+            stale = stale or abs(
+                self._timeSlider.value() / 1000.0 - self._activePreviewRange[0]
+            ) > 0.0005
+        self._preview.setStale(stale)
+        self._setPreviewDetails(details, stale)
+        self.statusBar().showMessage(
+            "Preview ready" if not stale else "Preview ready but stale",
+            3000,
+        )
+
+    # :: INT, INT -> NONE
+    # Shows determinate selected-range frame progress
+    def _previewProgress(self, completed: int, total: int) -> None:
+        self._progress.setRange(0, max(total, 1))
+        self._progress.setValue(min(max(completed, 0), max(total, 1)))
+        self._progress.setFormat("%p%")
+        message = "Rendering preview frames • {0}/{1}".format(completed, total)
+        self._progressText.setText(message)
+        self._progressText.setToolTip(message)
+        self._progressText.setVisible(True)
+        self._progress.setVisible(True)
 
     # :: STRING -> NONE
     # Reports preview failure without discarding scene edits
     def _previewFailed(self, message: str) -> None:
-        self._preview.setMessage("Preview failed")
+        if self._preview.hasPreview:
+            self._markPreviewStale()
+        else:
+            self._preview.setMessage("Preview failed")
         self._showValidationErrors([message])
 
     # :: VOID -> NONE
@@ -945,11 +1382,18 @@ class MainWindow(QMainWindow):
         if self._analysisProcess is None and self._renderProcess is None:
             self._hideProgress()
         self._previewButton.setEnabled(True)
-        self._cancelPreviewButton.setEnabled(False)
+        self._rangePreviewButton.setEnabled(True)
         pending = self._pendingPreview
         self._pendingPreview = None
         if pending is not None:
             self._startPreview(pending)
+        else:
+            self._restorePreviewButton.setEnabled(self._preview.isStale)
+            self._playPreviewButton.setEnabled(
+                self._preview.isClip and not self._preview.isPlaying
+            )
+            self._stopPreviewButton.setEnabled(self._preview.isClip)
+            self._mutePreviewButton.setEnabled(self._preview.isClip)
 
     # :: VOID -> NONE
     # Chooses an MP4 destination and starts the tested render pipeline

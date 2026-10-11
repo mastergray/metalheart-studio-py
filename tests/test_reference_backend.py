@@ -207,10 +207,13 @@ def testEffectSignalsPreserveChromaticHistory() -> None:
 def testBalancedModulatorsMapAnalysisValues() -> None:
     backend = ReferenceBackend.init()
     modulators = backend.createModulators(_analysis(), 0, 0.0, REACTIVITY_PRESETS["balanced"])
-    assert 0.0 < modulators["pulse"] <= 0.08
-    assert modulators["shake"] == 0.012
-    assert modulators["flash"] == 0.16
-    assert 0.0 < modulators["chroma"] <= 0.004
+    assert 0.0 < modulators["pulse"] <= 0.025
+    assert modulators["shake"] == 0.006
+    assert modulators["flash"] == 0.035
+    assert 0.0 < modulators["chroma"] <= 0.002
+    assert modulators["flash"] < 0.05
+    assert DEFAULT_FINISH["flash"] < 0.02
+    assert DEFAULT_FINISH["onset_streaks"] < 0.5
 
 
 # :: VOID -> NONE
@@ -339,6 +342,40 @@ def testRadialFrameIsDeterministic() -> None:
 
 
 # :: VOID -> NONE
+# Verifies ordinary mapped bands animate owned forms without requiring a spectral preset
+def testOwnedFormsUseMappedAudioFallbacks() -> None:
+    backend = ReferenceBackend.init()
+    settings = {"width": 64, "height": 64, "seed": 5}
+    scene = _scene()
+    scene["renderer"].update(
+        {"core": "3d", "forms": ["resonance"], "cameras": ["orbit"], "core_scale": 0.25}
+    )
+    session = backend.createRenderer(settings, scene)
+    assert session._audioFormCore is not None
+    activeParams = backend.createParams(_analysis(), 0, 0.0, REACTIVITY_PRESETS["balanced"])
+    manualParams = backend.createParams(_analysis(), 0, 0.0, REACTIVITY_PRESETS["manual"])
+    session._audioFormCore.setSignals({})
+    activeFrame = session._audioFormCore.frame(0.5, {"resonance": 1.0}, activeParams)
+    manualFrame = session._audioFormCore.frame(0.5, {"resonance": 1.0}, manualParams)
+    assert activeFrame["scale"] > manualFrame["scale"]
+    assert activeFrame["density"] > manualFrame["density"]
+    assert activeFrame["ripple"] > manualFrame["ripple"]
+    session._audioFormCore.setSignals(
+        {
+            "form_scale": 0.0,
+            "form_deformation": 0.0,
+            "form_ripple": 0.0,
+            "form_extent": 0.0,
+            "form_rotation": 0.0,
+        }
+    )
+    overriddenFrame = session._audioFormCore.frame(0.5, {"resonance": 1.0}, activeParams)
+    assert overriddenFrame["scale"] == manualFrame["scale"]
+    assert overriddenFrame["density"] == manualFrame["density"]
+    assert overriddenFrame["ripple"] == 0.0
+
+
+# :: VOID -> NONE
 # Verifies opt-in faceting, jaggedness, and stepping visibly change Radial
 def testJaggedRadialFrameIsDistinctAndDeterministic() -> None:
     backend = ReferenceBackend.init()
@@ -462,9 +499,23 @@ def testFirstClassDecorControlsAndRibbonSkin(tmp_path: Path) -> None:
         referenceFrame["ribbons"][0]["R"],
         compatibleFrame["ribbons"][0]["R"],
     )
-    assert referenceFrame["ribbons"][0]["t1"] == compatibleFrame["ribbons"][0]["t1"]
-    assert referenceFrame["ribbons"][0]["t2"] == compatibleFrame["ribbons"][0]["t2"]
-    assert referenceFrame["ribbons"][0]["w_now"] == compatibleFrame["ribbons"][0]["w_now"]
+    assert referenceFrame["ribbons"][0]["t1"] != compatibleFrame["ribbons"][0]["t1"]
+    assert referenceFrame["ribbons"][0]["t2"] != compatibleFrame["ribbons"][0]["t2"]
+    assert referenceFrame["ribbons"][0]["w_now"] != compatibleFrame["ribbons"][0]["w_now"]
+    assert referenceFrame["ribbons"][0]["A"] != compatibleFrame["ribbons"][0]["A"]
+    controller.setSignals(
+        {
+            "ribbon_width": 0.0,
+            "ribbon_twist": 0.0,
+            "ribbon_wave": 0.0,
+            "ribbon_speed": 0.0,
+        }
+    )
+    overriddenFrame = controller.frame(0.5, params)
+    assert referenceFrame["ribbons"][0]["t1"] == overriddenFrame["ribbons"][0]["t1"]
+    assert referenceFrame["ribbons"][0]["t2"] != overriddenFrame["ribbons"][0]["t2"]
+    assert referenceFrame["ribbons"][0]["w_now"] != overriddenFrame["ribbons"][0]["w_now"]
+    assert controller._decor.ribbons[0]["A"] == overriddenFrame["ribbons"][0]["A"]
     controller.setSignals(
         {
             "ribbon_width": 0.5,
@@ -884,6 +935,17 @@ def testImageBackgroundRippleUsesSpectrumWithoutMovingForeground(tmp_path: Path)
     lowFrame = session.render(0.5, lowParams, signals)
     highFrame = session.render(0.5, highParams, signals)
     repeated = backend.createRenderer(settings, scene).render(0.5, lowParams, signals)
+    fallbackFrame = backend.createRenderer(settings, scene).render(0.5, lowParams, {})
+    disabledFrame = backend.createRenderer(settings, scene).render(
+        0.5,
+        lowParams,
+        {
+            "background_pulse": 0.0,
+            "background_ripple": 0.0,
+            "background_ripple_scale": 0.0,
+            "background_ripple_impact": 0.0,
+        },
+    )
     assert session._background is not None
     assert session._background._foreground is not None
     alpha = session._background._foreground[1]
@@ -894,6 +956,8 @@ def testImageBackgroundRippleUsesSpectrumWithoutMovingForeground(tmp_path: Path)
     assert np.array_equal(lowFrame, repeated)
     assert np.array_equal(lowFrame[opaque], highFrame[opaque])
     assert not np.array_equal(lowFrame[exposed], highFrame[exposed])
+    assert np.array_equal(fallbackFrame[opaque], disabledFrame[opaque])
+    assert not np.array_equal(fallbackFrame[exposed], disabledFrame[exposed])
 
 
 # :: PATH -> NONE

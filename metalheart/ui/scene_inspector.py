@@ -9,14 +9,12 @@ from typing import Any, Dict, Optional  # Python 3.8-compatible collection annot
 from PySide6.QtCore import Signal  # Publish complete authored scene changes
 from PySide6.QtWidgets import QCheckBox  # Toggle ribbon and ripple systems
 from PySide6.QtWidgets import QComboBox  # Select renderer catalog identifiers
-from PySide6.QtWidgets import QDoubleSpinBox  # Edit bounded visual properties
 from PySide6.QtWidgets import QFileDialog  # Select per-layer image skins
 from PySide6.QtWidgets import QFormLayout  # Align scene properties
 from PySide6.QtWidgets import QHBoxLayout  # Pair file fields with browse actions
 from PySide6.QtWidgets import QLabel  # Display immutable scene timing
 from PySide6.QtWidgets import QLineEdit  # Edit scene names and image paths
 from PySide6.QtWidgets import QPushButton  # Open native image selectors
-from PySide6.QtWidgets import QSpinBox  # Edit ribbon counts and geometry steps
 from PySide6.QtWidgets import QTabWidget  # Separate layer-specific controls
 from PySide6.QtWidgets import QVBoxLayout  # Stack inspector sections
 from PySide6.QtWidgets import QWidget  # Host native inspector controls
@@ -24,9 +22,11 @@ from PySide6.QtWidgets import QWidget  # Host native inspector controls
 from metalheart.catalog import CAMERAS  # Populate supported camera modes
 from metalheart.catalog import FORMS  # Populate supported form geometries
 from metalheart.catalog import PALETTES  # Populate supported form palettes
+from metalheart.catalog import PSX_FINISH_PRESETS  # Apply stable scene finishing recipes
 from metalheart.catalog import REACTIVITY_PRESETS  # Populate explicit audio mappings
 from metalheart.ui.animated_thumbnail_widget import AnimatedThumbnailWidget  # Play camera studies without rendering
 from metalheart.ui.effect_stack_widget import EffectStackWidget  # Edit scoped post chains
+from metalheart.ui.numeric_parameter_widget import NumericParameterWidget  # Pair bounded scene sliders with exact values
 from metalheart.ui.thumbnail_icons import applyComboThumbnails  # Decorate catalog selectors from packaged assets
 
 
@@ -39,7 +39,7 @@ class SceneInspector(QWidget):
     sceneEdited = Signal(object)
 
     # CONSTRUCTOR :: widget? -> sceneInspector
-    # Creates empty structured controls for the three authored visual layers
+    # Creates empty structured controls for the authored visual layers and finish
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self._authoredScene: Dict[str, Any] = {}
@@ -85,6 +85,7 @@ class SceneInspector(QWidget):
         decor = renderer["decor"]
         ribbons = decor["ribbons"]
         ribbonSurface = ribbons["surface"]
+        psx = resolvedScene["finish"]["psx"]
         self._decorEnabled = bool(decor.get("enabled", True))
 
         self._name.setText(str(resolvedScene.get("name", resolvedScene["id"])))
@@ -126,6 +127,11 @@ class SceneInspector(QWidget):
         self._ribbonSampling.setCurrentText(str(ribbonSurface["sampling"]))
         self._ribbonImage.setText(str(ribbonSurface.get("image") or ""))
         self._ribbonEffects.setEffects(ribbons.get("post", []))
+
+        presetIndex = self._psxPreset.findData(str(psx.get("preset", "custom")))
+        self._psxPreset.setCurrentIndex(max(0, presetIndex))
+        self._setPsxValues(psx)
+        self._updatePsxControlState()
         self._loading = False
         self.setEnabled(True)
 
@@ -141,7 +147,7 @@ class SceneInspector(QWidget):
     #
 
     # :: VOID -> NONE
-    # Builds scene identity and the three layer-specific editor tabs
+    # Builds scene identity, layer-specific editors, and scene finishing controls
     def _buildUi(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 0, 0, 0)
@@ -163,6 +169,7 @@ class SceneInspector(QWidget):
         self._tabs.addTab(self._buildFormTab(), "Form")
         self._tabs.addTab(self._buildBackgroundTab(), "Background")
         self._tabs.addTab(self._buildRibbonTab(), "Ribbons")
+        self._tabs.addTab(self._buildFinishTab(), "Finish")
         layout.addWidget(self._tabs, 1)
 
     # :: VOID -> widget
@@ -194,10 +201,9 @@ class SceneInspector(QWidget):
         form.addRow("Jaggedness", self._jaggedness)
         self._jaggedScale = self._number(1.0, 16.0, 0.25)
         form.addRow("Jagged scale", self._jaggedScale)
-        self._geometrySteps = QSpinBox()
-        self._geometrySteps.setRange(0, 32)
-        self._geometrySteps.setSingleStep(2)
-        self._geometrySteps.valueChanged.connect(self._geometryStepsChanged)
+        self._geometrySteps = self._number(0.0, 32.0, 2.0, True)
+        self._geometrySteps.valueCommitted.disconnect(self._publishScene)
+        self._geometrySteps.valueCommitted.connect(self._geometryStepsChanged)
         form.addRow("Geometry steps", self._geometrySteps)
         self._formSelected(self._form.currentText())
         layout.addLayout(form)
@@ -229,7 +235,7 @@ class SceneInspector(QWidget):
         self._rippleEnabled = QCheckBox("Audio-reactive surface")
         self._rippleEnabled.toggled.connect(self._publishScene)
         form.addRow("Ripple", self._rippleEnabled)
-        self._rippleAmount = self._number(0.0, 0.5, 0.005, 3)
+        self._rippleAmount = self._number(0.0, 0.5, 0.005)
         form.addRow("Ripple amount", self._rippleAmount)
         self._rippleScale = self._number(0.25, 24.0, 0.25)
         form.addRow("Ripple scale", self._rippleScale)
@@ -252,9 +258,7 @@ class SceneInspector(QWidget):
         self._ribbonEnabled = QCheckBox("Render ribbons")
         self._ribbonEnabled.toggled.connect(self._publishScene)
         form.addRow("Enabled", self._ribbonEnabled)
-        self._ribbonCount = QSpinBox()
-        self._ribbonCount.setRange(0, 8)
-        self._ribbonCount.valueChanged.connect(self._publishScene)
+        self._ribbonCount = self._number(0.0, 8.0, 1.0, True)
         form.addRow("Count", self._ribbonCount)
         self._ribbonPalette = self._combo(PALETTES, "palettes")
         form.addRow("Palette", self._ribbonPalette)
@@ -269,6 +273,52 @@ class SceneInspector(QWidget):
         self._ribbonEffects = EffectStackWidget()
         self._ribbonEffects.changed.connect(self._publishScene)
         layout.addWidget(self._ribbonEffects)
+        layout.addStretch(1)
+        return tab
+
+    # :: VOID -> widget
+    # Builds per-scene PSX resolution, color, and ordered-dither controls
+    def _buildFinishTab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        form = QFormLayout()
+        self._psxPreset = QComboBox()
+        self._psxPreset.addItem("Custom", "custom")
+        self._psxPreset.addItem("PSX Combined", "combined")
+        self._psxPreset.currentIndexChanged.connect(self._psxPresetSelected)
+        form.addRow("Preset", self._psxPreset)
+        self._psxRenderScale = self._number(0.125, 1.0, 0.125)
+        self._psxRenderScale.valueCommitted.disconnect(self._publishScene)
+        self._psxRenderScale.valueCommitted.connect(self._psxControlChanged)
+        form.addRow("Render scale", self._psxRenderScale)
+        self._psxColorEnabled = QCheckBox("Reduce channel colors")
+        self._psxColorEnabled.toggled.connect(self._psxColorToggled)
+        form.addRow("Color reduction", self._psxColorEnabled)
+        self._psxColorLevels = self._number(2.0, 256.0, 1.0, True)
+        self._psxColorLevels.valueCommitted.disconnect(self._publishScene)
+        self._psxColorLevels.valueCommitted.connect(self._psxControlChanged)
+        form.addRow("Levels per channel", self._psxColorLevels)
+        self._psxDither = QComboBox()
+        for label, value in (
+            ("None", "none"),
+            ("Bayer 2×2", "bayer2"),
+            ("Bayer 4×4", "bayer4"),
+            ("Bayer 8×8", "bayer8"),
+        ):
+            self._psxDither.addItem(label, value)
+        self._psxDither.currentIndexChanged.connect(self._psxDitherChanged)
+        form.addRow("Ordered dither", self._psxDither)
+        self._psxDitherStrength = self._number(0.0, 1.0, 0.05)
+        self._psxDitherStrength.valueCommitted.disconnect(self._publishScene)
+        self._psxDitherStrength.valueCommitted.connect(self._psxControlChanged)
+        form.addRow("Dither strength", self._psxDitherStrength)
+        layout.addLayout(form)
+        note = QLabel(
+            "Render scale changes the actual scene workload. Color reduction and "
+            "dithering run after post effects and before overlays."
+        )
+        note.setWordWrap(True)
+        layout.addWidget(note)
         layout.addStretch(1)
         return tab
 
@@ -303,26 +353,116 @@ class SceneInspector(QWidget):
 
     # :: INT -> NONE
     # Skips the one invalid geometry-step value before publishing a scene edit
-    def _geometryStepsChanged(self, value: int) -> None:
+    def _geometryStepsChanged(self, value: Any) -> None:
         if value == 1:
             self._geometrySteps.setValue(2)
             return
         self._publishScene()
 
-    # :: FLOAT, FLOAT, FLOAT, INT -> qDoubleSpinBox
-    # Creates a bounded floating-point scene property control
+    # :: INT -> NONE
+    # Applies a named PSX recipe once while retaining ordinary resolved values
+    def _psxPresetSelected(self, index: int) -> None:
+        del index
+        if self._loading:
+            return
+        presetId = str(self._psxPreset.currentData())
+        preset = PSX_FINISH_PRESETS.get(presetId)
+        if preset is not None:
+            self._loading = True
+            self._setPsxValues(preset)
+            self._loading = False
+        self._updatePsxControlState()
+        self._publishScene()
+
+    # :: VOID -> NONE
+    # Detaches a named PSX recipe after one constituent value is edited
+    def _psxControlChanged(self, value: Any = None) -> None:
+        del value
+        if self._loading:
+            return
+        self._selectCustomPsxPreset()
+        self._updatePsxControlState()
+        self._publishScene()
+
+    # :: BOOL -> NONE
+    # Keeps disabled color reduction compatible with the dither contract
+    def _psxColorToggled(self, enabled: bool) -> None:
+        if self._loading:
+            return
+        self._loading = True
+        if not enabled:
+            self._psxDither.setCurrentIndex(self._psxDither.findData("none"))
+        self._selectCustomPsxPreset()
+        self._loading = False
+        self._updatePsxControlState()
+        self._publishScene()
+
+    # :: INT -> NONE
+    # Enables color reduction whenever an ordered dither is selected
+    def _psxDitherChanged(self, index: int) -> None:
+        del index
+        if self._loading:
+            return
+        self._loading = True
+        if self._psxDither.currentData() != "none":
+            self._psxColorEnabled.setChecked(True)
+        self._selectCustomPsxPreset()
+        self._loading = False
+        self._updatePsxControlState()
+        self._publishScene()
+
+    # :: ARRAY<STRING, ANY> -> NONE
+    # Loads resolved PSX values into the independent native controls
+    def _setPsxValues(self, psx: Dict[str, Any]) -> None:
+        self._psxRenderScale.setValue(float(psx.get("render_scale", 1.0)))
+        colorLevels = int(psx.get("color_levels", 0))
+        self._psxColorEnabled.setChecked(colorLevels > 0)
+        self._psxColorLevels.setValue(colorLevels if colorLevels > 0 else 16)
+        ditherIndex = self._psxDither.findData(str(psx.get("dither", "none")))
+        self._psxDither.setCurrentIndex(max(0, ditherIndex))
+        self._psxDitherStrength.setValue(float(psx.get("dither_strength", 1.0)))
+
+    # :: VOID -> NONE
+    # Marks current finish controls as detached from a named recipe
+    def _selectCustomPsxPreset(self) -> None:
+        customIndex = self._psxPreset.findData("custom")
+        if customIndex >= 0:
+            self._psxPreset.setCurrentIndex(customIndex)
+
+    # :: VOID -> NONE
+    # Enables only PSX fields meaningful for the current color and dither state
+    def _updatePsxControlState(self) -> None:
+        colorEnabled = self._psxColorEnabled.isChecked()
+        ditherEnabled = colorEnabled and self._psxDither.currentData() != "none"
+        self._psxColorLevels.setEnabled(colorEnabled)
+        self._psxDither.setEnabled(colorEnabled)
+        self._psxDitherStrength.setEnabled(ditherEnabled)
+        self._psxColorLevels.setToolTip(
+            "" if colorEnabled else "Enable color reduction to edit channel levels"
+        )
+        self._psxDitherStrength.setToolTip(
+            ""
+            if ditherEnabled
+            else "Enable color reduction and choose an ordered dither pattern"
+        )
+
+    # :: FLOAT, FLOAT, FLOAT, BOOL -> numericParameterWidget
+    # Creates a bounded scene slider with an exact editable value
     def _number(
         self,
         minimum: float,
         maximum: float,
         step: float,
-        decimals: int = 2,
-    ) -> QDoubleSpinBox:
-        control = QDoubleSpinBox()
-        control.setRange(minimum, maximum)
-        control.setSingleStep(step)
-        control.setDecimals(decimals)
-        control.valueChanged.connect(self._publishScene)
+        isInteger: bool = False,
+    ) -> NumericParameterWidget:
+        control = NumericParameterWidget.init(
+            minimum,
+            maximum,
+            step,
+            minimum,
+            isInteger,
+        )
+        control.valueCommitted.connect(self._publishScene)
         return control
 
     # :: qLineEdit, STRING -> widget
@@ -378,32 +518,32 @@ class SceneInspector(QWidget):
         surface["post"] = self._formEffects.effects
         if self._form.currentText() == "radial":
             style = renderer.setdefault("form_style", {})
-            style["faceting"] = self._faceting.value()
-            style["jaggedness"] = self._jaggedness.value()
-            style["jagged_scale"] = self._jaggedScale.value()
-            style["geometry_steps"] = self._geometrySteps.value()
+            style["faceting"] = self._faceting.value
+            style["jaggedness"] = self._jaggedness.value
+            style["jagged_scale"] = self._jaggedScale.value
+            style["geometry_steps"] = self._geometrySteps.value
         else:
             renderer.pop("form_style", None)
 
         background = scene.setdefault("background", {})
         background["source"] = self._backgroundSource.currentText()
         background["palette"] = self._backgroundPalette.currentText()
-        background["intensity"] = self._backgroundIntensity.value()
+        background["intensity"] = self._backgroundIntensity.value
         background["material"] = self._backgroundMaterial.currentText()
         background["fit"] = self._backgroundFit.currentText()
         background["image"] = self._optionalPath(self._backgroundImage.text())
         background["post"] = self._backgroundEffects.effects
         ripple = background.setdefault("ripple", {})
         ripple["enabled"] = self._rippleEnabled.isChecked()
-        ripple["amount"] = self._rippleAmount.value()
-        ripple["scale"] = self._rippleScale.value()
-        ripple["travel_speed"] = self._rippleSpeed.value()
+        ripple["amount"] = self._rippleAmount.value
+        ripple["scale"] = self._rippleScale.value
+        ripple["travel_speed"] = self._rippleSpeed.value
 
         decor = renderer.setdefault("decor", {})
         decor["enabled"] = self._decorEnabled or self._ribbonEnabled.isChecked()
         ribbons = decor.setdefault("ribbons", {})
         ribbons["enabled"] = self._ribbonEnabled.isChecked()
-        ribbons["count"] = self._ribbonCount.value()
+        ribbons["count"] = self._ribbonCount.value
         ribbons["palette"] = self._ribbonPalette.currentText()
         ribbons["material"] = self._ribbonMaterial.currentText()
         ribbons["post"] = self._ribbonEffects.effects
@@ -411,6 +551,19 @@ class SceneInspector(QWidget):
         ribbonSurface["mapping"] = "ribbon"
         ribbonSurface["sampling"] = self._ribbonSampling.currentText()
         ribbonSurface["image"] = self._optionalPath(self._ribbonImage.text())
+
+        finish = scene.setdefault("finish", {})
+        if self._psxPreset.currentData() == "combined":
+            finish["psx"] = {"preset": "combined"}
+        else:
+            finish["psx"] = {
+                "render_scale": self._psxRenderScale.value,
+                "color_levels": self._psxColorLevels.value
+                if self._psxColorEnabled.isChecked()
+                else 0,
+                "dither": str(self._psxDither.currentData()),
+                "dither_strength": self._psxDitherStrength.value,
+            }
         return scene
 
     # :: STRING -> STRING?

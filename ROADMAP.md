@@ -1,6 +1,6 @@
 # Metalheart Studio Roadmap
 
-Status: active implementation roadmap, 2026-09-28
+Status: active implementation roadmap, 2026-10-11
 
 This roadmap covers the visual system, ordered effects, and native authoring application. JSON remains canonical and the renderer remains headless-capable, but the product includes a PySide6/Qt desktop UI for previewing and producing visuals. Each visual milestone begins with a small study and an agreed configuration contract.
 
@@ -23,11 +23,19 @@ The following rules apply across the roadmap:
 
 | Area | Current behavior | Important limitation |
 | --- | --- | --- |
-| Form skins | A config-relative image replaces the 3D core color through object-space triplanar projection. `metallic` and `matte` lighting plus optional nearest sampling, texture-coordinate steps, and lighting steps are supported. | The PSX treatment is surface-only. Skins do not apply to ribbons or plates, and faceted normals and color-depth reduction are not yet supported. |
+| Form skins | A config-relative image replaces the 3D core color through object-space triplanar projection. Ribbons use local length/width coordinates and plates use planar local coordinates. `metallic` and `matte` lighting plus optional nearest sampling, texture-coordinate steps, and lighting steps are supported independently from the whole-frame PSX finish. | Faceted normals and surface-local color-depth reduction are not yet supported. |
 | Forms | Reference forms plus the audio-driven `resonance` and `radial` forms are supported. Radial has opt-in faceting, object-space jaggedness, and continuous geometric steps. | Form styling currently targets Radial; it is not yet shared by reference forms or Resonance. |
 | Background | A public per-scene block selects the procedural palette or a fitted image, controls dots/ghosts/shadow, and exposes isolated pulse and spectrum-directed ripple systems. Image backgrounds can behave as flat, matte, or metallic 2.5D sheets. | The first slice is 3D-only and does not yet include drift, color reduction, dithering, or general background warp/offset destinations. |
-| Ribbons and plates | The 3D decor block independently controls ribbon and plate enablement, counts, seed, materials, local-coordinate skins, and six typed audio destinations. Legacy booleans retain the reference behavior. | The first-class object is 3D-only; topology beyond count and additional plate/ribbon shape controls are not yet public. |
-| Retro finishing | Grain, scanlines, chroma offsets, slice glitches, bloom, streaks, flash, vignette, true reduced-resolution rendering with nearest-neighbor upscale, per-channel color reduction, and ordered Bayer dithering are configurable. | There is no named PSX preset or optional frame-rate stepping yet. |
+| Ribbons and plates | The 3D decor block independently controls ribbon and plate enablement, counts, seed, materials, local-coordinate skins, and six typed audio destinations. Mapped bands provide conservative motion defaults across width, wave, twist, speed, orbit, and displacement; explicit destinations override them. | The first-class object is 3D-only; topology beyond count and additional plate/ribbon shape controls are not yet public. |
+| Retro finishing | Grain, scanlines, chroma offsets, slice glitches, bloom, streaks, flash, vignette, true reduced-resolution rendering with nearest-neighbor upscale, per-channel color reduction, and ordered Bayer dithering are configurable. The reviewed combined treatment is available as a named preset and through per-scene native controls. | Optional frame-rate stepping remains separate timing work. |
+
+The core version 1 vertical slice is now operational. A project can be created from
+audio as either one full-track scene or balanced phrase-aligned scenes with a hard
+maximum duration; authored through native Form, Background, Ribbons, Finish, and
+ordered effect controls; previewed as a still or an audio-synchronized selected
+range; saved as canonical JSON; and rendered to a final video without involving a
+browser. The remaining version 1 work is authoring depth, incremental performance,
+and release hardening rather than proof of the rendering architecture.
 
 ## Milestone 1: PSX-inspired texture and finish language (in progress)
 
@@ -179,7 +187,7 @@ Provisional direction:
 
 This shape is part of the version 1 schema. Ribbon images use ribbon-local coordinates along length and twisted width rather than reusing core triplanar projection, so an image bends and twists with the ribbon instead of appearing projected through it. Plates use planar local coordinates. Both share the established `metallic`, `matte`, nearest-sampling, texel-step, and lighting-step vocabulary.
 
-The previous hard-wired audio response is preserved when no explicit decor destinations are present. Authors can override it through `ribbon_width`, `ribbon_twist`, `ribbon_wave`, `ribbon_speed`, `plate_orbit`, and `plate_displacement`. Counts remain scene configuration rather than per-frame audio destinations, avoiding geometry that pops in and out.
+When no explicit decor destinations are present, mapped bass, mid, and high values conservatively drive ribbon width, twist, path amplitude, wave speed, plate orbit, and displacement. Authors can override any response—including setting it to zero—through `ribbon_width`, `ribbon_twist`, `ribbon_wave`, `ribbon_speed`, `plate_orbit`, and `plate_displacement`. Counts remain scene configuration rather than per-frame audio destinations, avoiding geometry that pops in and out.
 
 Acceptance criteria:
 
@@ -191,7 +199,7 @@ Acceptance criteria:
 - disabling all decor avoids its raymarching and shading cost;
 - legacy boolean `decor` configs remain valid.
 
-## Milestone 5: Presets and multi-scene integration
+## Milestone 5: Presets and multi-scene integration (in progress)
 
 After the individual systems are proven, add a small preset vocabulary composed only from public controls. Candidate presets may include a restrained textured PSX surface, a harsher dithered treatment, a jagged spectrum-driven form, a pulsing skinned background, and textured reactive ribbons. Presets should not silently change cameras, forms, palettes, or scene boundaries.
 
@@ -230,15 +238,14 @@ Acceptance criteria:
 
 Build a native desktop application over the existing JSON contract and application services. It must not contain a webview or require an HTTP server.
 
-The implemented authoring slice begins with audio selection and background analysis into either one uninterrupted full-track composition or phrase-aligned automatic scenes. Both project modes retain the same analyzed feature cache and canonical scene contract. The primary workspace combines a cached-energy waveform/hard-cut timeline, scene navigation, an explicit production-backed still preview, and structured per-scene Form, Background, and Ribbons inspectors. Each layer has an independent ordered effect stack with catalog-generated controls for bypass, mix, order, and typed parameters. Canonical JSON is an optional advanced dock rather than the primary workflow.
+The implemented authoring slice begins with audio selection and background analysis into either one uninterrupted full-track composition or phrase-aligned automatic scenes. Both project modes retain the same analyzed feature cache and canonical scene contract. The primary workspace combines a cached-energy waveform/hard-cut timeline, scene navigation, an explicit production-backed still preview, and structured per-scene Form, Background, Ribbons, and Finish inspectors. The first three layers have independent ordered effect stacks with catalog-generated controls for bypass, mix, order, and typed parameters. Finish exposes the reviewed PSX preset plus independent render-scale, color-level, Bayer-pattern, and dither-strength controls. Canonical JSON is an optional advanced dock rather than the primary workflow.
 
-Analysis, preview, and full export run outside the GUI thread and support cancellation. Preview work is explicit and capped at 480×270, 12 fps, 0.2 core scale, and no antialiasing for older hardware. PySide6 6.4 through 6.6 retains the Python 3.8 runtime target and is a normal application dependency.
+Analysis, preview, and full export run outside the GUI thread and support cancellation. Still and selected-range preview work is explicit and capped at 480×270, 12 fps, 0.2 core scale, and no antialiasing for older hardware. Selected ranges default to four seconds and are bounded to eight seconds, retain temporal-effect preroll, loop with the matching source-audio interval, and publish determinate frame progress. The uncluttered transport row provides Play, Stop, and audio-only Mute controls; Stop also cancels preview generation while it is active. Edits and selection changes retain the last successful still or range rather than replacing it with an empty state; a single amber `STALE PREVIEW` badge remains visible during playback until a current preview completes, and a right-aligned `Restore Preview` action regenerates the same preview type from the current configuration. PySide6 6.4 through 6.6 retains the Python 3.8 runtime target and is a normal application dependency.
 
 The remaining vertical-slice work includes:
 
 - timeline boundary editing;
 - structured controls for plates, overlay items, and custom reactivity bindings;
-- a cancellable selected-range video preview;
 - explicit preview/final quality selection and per-scene export actions with detailed progress.
 
 The UI must call the same resolver, validator, analyzer, effect registry, and render pipeline as the CLI. Widget state is never an alternative project format. Long analysis, preview, and render operations run outside the Qt UI thread and support cancellation. Full-resolution real-time ray-marched playback is not required.
@@ -258,13 +265,14 @@ Acceptance criteria:
 This milestone incorporates the first hands-on feedback from the audio-led desktop workflow. Work proceeds in dependency order so later controls inherit consistent editing behavior rather than introducing separate state systems.
 
 1. **Implemented:** project-level Undo and Redo for authored content changes. Scene controls, image choices, effect add/remove/reorder/bypass, effect parameters, and applied Advanced JSON share one canonical snapshot history. Opening, saving, analysis, preview, and rendering remain lifecycle operations rather than undoable content edits. Saving establishes the clean history point.
-2. **Implemented:** numeric effect parameters and Mix use a combined slider and directly editable number field generated from catalog minimum, maximum, step, and type metadata. Slider drags update the number continuously but commit once on release so project history remains useful; direct entry preserves precise values.
+2. **Implemented:** bounded scene properties, numeric effect parameters, and Mix use a combined slider and directly editable number field generated from owned minimum, maximum, step, and type metadata. Slider drags update the number continuously but commit once on release so project history remains useful; direct entry preserves precise values.
 3. **Implemented:** each effect-stack row has a visible native enable checkbox. Bypassed instances stay in their authored position with a dimmed label and retain their mix and typed parameters; toggles are layer-local canonical edits covered by project Undo and Redo.
 4. **Implemented:** analysis publishes determinate workflow stages, while rendering publishes current scene/chunk, completed and total frames, elapsed time, and an estimated remaining duration once measured rendered frames exist. The CLI emits optional line-oriented progress records and the native task area consumes fragmented process output without blocking or weakening cancellation.
 5. **Implemented:** form, palette-based background, and ribbons select stable palettes independently through `renderer.palette`, `background.palette`, and `renderer.decor.ribbons.palette`. Omitted background and ribbon values inherit the form palette during resolution. Procedural background stops are rebalanced above the reference renderer's near-black levels, and `background.intensity` provides a layer-local black-through-vivid control without altering image skins. The native controls participate in project Undo and Redo.
 6. **Implemented:** Dazzle's eight indexed ramps were audited against Metalheart's static lighting model. `rainbow`, `ice`, `electric`, `neon`, and `grayscale` are owned stable adaptations with deterministic distinct-frame coverage; `fire` and `lava` are intentionally represented by `ember`, while `ocean` overlaps the retained `steel` and adapted `ice` families. The adaptations do not import Dazzle at runtime or imply indexed palette cycling.
 7. **Implemented:** versioned 128×72 thumbnails are generated offline from one deterministic fixed fixture for every form, camera, palette, and effect. Cameras and effects also provide 16-frame PNG spritesheet loops in larger 256×144 native preview panels: camera studies compress a representative ten-second path, while effect studies include temporal preroll and changing source/audio inputs. A checked-in manifest pins the renderer revision, complete catalog fingerprint, animation timing, fixture settings, file inventory, and content hashes. Native selectors and panels load these packaged images without video codecs or renderer work during navigation and fall back cleanly when the asset set is absent, incomplete, or stale.
 8. **Implemented:** the inspector receives a wider default splitter allocation and suppresses horizontal scrolling. Long effect names shrink inside the picker with full tooltips so the Add action remains visible. Radial-only style controls use the validator's exact bounds, disable for other geometries, and are omitted from non-radial authored scenes rather than leaving a predictable validation error.
+9. **Implemented:** a scene-local in/out selection renders up to eight seconds of audio-synchronized preview frames through the same bounded production services as still preview. The interval is spatially anchored to the audio waveform with a shaded selection and draggable, color-coded IN/OUT handles synchronized with the precise range controls. Playback uses native Qt frame timing and source audio without a browser or temporary full-quality export. Project edits, Undo/Redo, playhead changes, range changes, and scene changes preserve the most recent successful result and mark it visibly stale rather than clearing it.
 
 Acceptance criteria:
 
@@ -293,11 +301,18 @@ Visual studies should have no overlays unless text is specifically under test. R
 
 ## Recommended sequence
 
-1. Define and implement the typed ordered-effects contract, beginning with the existing finishing controls.
-2. Build the PySide6 audio-led application slice: create from audio, select a scene on the waveform, edit layer controls and effects, preview a still, save, and render.
-3. Expand the scene inspector to the full public renderer and reactivity vocabulary.
-4. Add waveform boundary editing, effect reordering, final export, and per-scene export.
-5. Add scene-aware preview caching and incremental final-render reuse.
-6. Complete the remaining PSX finish candidates and reusable presets through the same effect/UI contracts.
+The ordered-effects contract, audio-led PySide6 application, effect reordering,
+selected-range preview, final export, and initial PSX Finish controls are implemented.
+Continue from that proven vertical slice in this order:
 
-This sequence proves the effects and UI architecture early while keeping the tested headless renderer and canonical JSON contract intact.
+1. Add waveform boundary editing plus scene split, merge, duplicate, add, and delete actions. Expose re-analysis so an existing audio project can adopt a different automatic-scene maximum without being recreated.
+2. Expand the structured inspector to plates, overlay items, and the complete typed reactivity vocabulary. Preserve Advanced JSON as an escape hatch rather than a required workflow.
+3. Add explicit preview/draft/final quality selection and native per-scene export actions with detailed progress. The existing final-video action and CLI `--scene-clips` path remain the underlying production services.
+4. Add scene-aware preview caching and reuse unchanged scene renders during final export, with particular attention to the target older machine.
+5. Complete the remaining PSX candidates and a small reusable preset vocabulary through the same public configuration and UI contracts.
+6. Perform release hardening on the target Python 3.8 runtime: clean-environment installation, dependency and external-tool diagnostics, documentation review, representative performance measurements, and final integration renders.
+
+Keyframes, automation lanes, renderer plugins, external FFmpeg effect recipes,
+plate-scoped post effects, and unrestricted audio-to-effect-property binding remain
+post-version 1 candidates unless hands-on authoring shows that one is necessary for
+the initial release.

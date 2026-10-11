@@ -123,6 +123,7 @@ def testAnalyzeCommandAcceptsSceneModes() -> None:
         ["analyze", "song.wav", "-o", "song.json", "--scene-mode", "single"]
     )
     assert defaultArgs.scene_mode == "phrases"
+    assert defaultArgs.max_scene_sec == 5.0
     assert singleArgs.scene_mode == "single"
 
 

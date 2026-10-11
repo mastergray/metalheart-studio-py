@@ -47,6 +47,47 @@ def testPlansContiguousNeutralScenes(tmp_path: Path) -> None:
 
 
 # :: PATH -> NONE
+# Verifies the maximum is a hard balanced cap even when one bar is longer
+def testMaximumSceneLengthEvenlyCapsMusicalSections(tmp_path: Path) -> None:
+    analysis = _analysis()
+    analysis.bpm = 30.0
+    planner = ScenePlanner.init(fps=10, maxSceneSec=5.0)
+    config = planner.plan(
+        analysis,
+        str(tmp_path / "audio.wav"),
+        str(tmp_path / "project.json"),
+        8,
+        str(tmp_path / "features.npz"),
+    )
+    durations = [
+        scene["end_sec"] - scene["start_sec"]
+        for scene in config["scenes"]
+    ]
+    assert max(durations) <= 5.0
+    assert min(durations) >= 4.9
+
+
+# :: PATH -> NONE
+# Verifies a delayed first downbeat does not create a tiny opening fragment
+def testShortOpeningBeforeFirstDownbeatIsFoldedIntoPhrase(tmp_path: Path) -> None:
+    analysis = _analysis()
+    analysis.downbeat_times = np.arange(0.7, 40.0, 2.0, dtype=np.float32)
+    planner = ScenePlanner.init(fps=10, maxSceneSec=5.0)
+    config = planner.plan(
+        analysis,
+        str(tmp_path / "audio.wav"),
+        str(tmp_path / "project.json"),
+        4,
+        str(tmp_path / "features.npz"),
+    )
+    scenes = config["scenes"]
+    durations = [scene["end_sec"] - scene["start_sec"] for scene in scenes]
+    assert scenes[0]["end_sec"] != 0.7
+    assert min(durations) >= 3.5
+    assert max(durations) <= 5.0
+
+
+# :: PATH -> NONE
 # Verifies single mode retains full-track analysis without automatic segmentation
 def testPlansOneFullTrackScene(tmp_path: Path) -> None:
     planner = ScenePlanner.init(fps=10, template="builtins/ferro-impact", maxSceneSec=1.0)

@@ -47,7 +47,7 @@ class AudioFormCore:
     # Stores deterministic per-frame owned-form modulation values
     def setSignals(self, signals: Dict[str, float]) -> None:
         self._signals = {
-            key: float(signals.get(key, 0.0))
+            key: float(signals[key])
             for key in (
                 "form_scale",
                 "form_deformation",
@@ -57,6 +57,7 @@ class AudioFormCore:
                 "form_jaggedness",
                 "form_jagged_scale",
             )
+            if key in signals
         }
 
     # :: FLOAT, ARRAY<STRING, FLOAT>, ANY -> ARRAY<STRING, ANY>
@@ -70,9 +71,20 @@ class AudioFormCore:
         low = float(np.mean(thirds[0])) if thirds[0].size else 0.0
         mid = float(np.mean(thirds[1])) if thirds[1].size else 0.0
         high = float(np.mean(thirds[2])) if thirds[2].size else 0.0
-        scale = min(max(self._signals.get("form_scale", 0.0), 0.0), 0.45)
-        deformation = min(max(self._signals.get("form_deformation", 0.0), 0.0), 1.0)
-        ripple = min(max(self._signals.get("form_ripple", 0.0), 0.0), 0.35)
+        mappedBass = min(max(float(getattr(params, "bass", 0.0)), 0.0), 1.0)
+        mappedMid = min(max(float(getattr(params, "mid", 0.0)), 0.0), 1.0)
+        mappedHigh = min(max(float(getattr(params, "high", 0.0)), 0.0), 1.0)
+        mappedOnset = min(max(float(getattr(params, "onset", 0.0)), 0.0), 1.0)
+        mappedTotal = mappedBass + mappedMid + mappedHigh
+        mappedAmplitude = mappedTotal / 3.0
+        mappedCentroid = (
+            (mappedBass * 0.15 + mappedMid * 0.5 + mappedHigh * 0.85) / mappedTotal
+            if mappedTotal > 0.0
+            else 0.0
+        )
+        scale = min(max(self._signals.get("form_scale", 0.18 * mappedAmplitude), 0.0), 0.45)
+        deformation = min(max(self._signals.get("form_deformation", 0.55 * mappedCentroid), 0.0), 1.0)
+        ripple = min(max(self._signals.get("form_ripple", 0.08 * mappedOnset), 0.0), 0.35)
         radialSpectrum = self._radialSpectrum(spectrum)
         return {
             "base": self._base.frame(timeSec, weights, params),
@@ -87,8 +99,8 @@ class AudioFormCore:
             "low": low,
             "mid": mid,
             "high": high,
-            "extent": min(max(self._signals.get("form_extent", 0.0), 0.0), 1.2),
-            "rotation": float(self._signals.get("form_rotation", 0.0)) % (2.0 * math.pi),
+            "extent": min(max(self._signals.get("form_extent", 0.65 * mappedAmplitude), 0.0), 1.2),
+            "rotation": float(self._signals.get("form_rotation", mappedCentroid * math.tau)) % math.tau,
             "radial_spectrum": radialSpectrum,
             "faceting": min(max(float(self._formStyle["faceting"]), 0.0), 1.0),
             "jaggedness": min(

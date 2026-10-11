@@ -197,10 +197,14 @@ class DecorController:
     # Produces one decor frame with explicit or backward-compatible audio response
     def frame(self, timeSec: float, params: Any) -> Dict[str, Any]:
         ribbons = []
-        width = self._signal("ribbon_width", 0.35 * float(params.bass), -0.5, 1.5)
-        twist = self._signal("ribbon_twist", 1.2 * float(params.mid), -0.8, 3.0)
-        wave = self._signal("ribbon_wave", 0.0, -0.5, 1.5)
-        speed = self._signal("ribbon_speed", 0.0, -0.9, 3.0)
+        bass = min(max(float(getattr(params, "bass", 0.0)), 0.0), 1.0)
+        mid = min(max(float(getattr(params, "mid", 0.0)), 0.0), 1.0)
+        high = min(max(float(getattr(params, "high", 0.0)), 0.0), 1.0)
+        amplitude = (bass + mid + high) / 3.0
+        width = self._signal("ribbon_width", 0.45 * bass, -0.5, 1.5)
+        twist = self._signal("ribbon_twist", 1.5 * mid, -0.8, 3.0)
+        wave = self._signal("ribbon_wave", 0.55 * amplitude, -0.5, 1.5)
+        speed = self._signal("ribbon_speed", 0.4 * high, -0.9, 3.0)
         for ribbon in self._decor.ribbons:
             rotation = self._liquidModule._rotmat(*(ribbon["eul"] + ribbon["spin"] * timeSec))
             amplitudeY = ribbon["A"] * (1.0 + wave)
@@ -228,8 +232,8 @@ class DecorController:
                 )
             )
         plates = []
-        orbit = self._signal("plate_orbit", 0.0, -0.9, 3.0)
-        displacement = self._signal("plate_displacement", 0.06 * float(params.bass), -0.4, 0.4)
+        orbit = self._signal("plate_orbit", 0.25 * high, -0.9, 3.0)
+        displacement = self._signal("plate_displacement", 0.08 * bass, -0.4, 0.4)
         for plate in self._decor.plates:
             angle = plate["orbit"] * timeSec * (1.0 + orbit)
             orbitRotation = np.asarray(

@@ -48,10 +48,7 @@
       },
       "finish": {
         "psx": {
-          "render_scale": 0.5,
-          "color_levels": 16,
-          "dither": "bayer4",
-          "dither_strength": 0.75
+          "preset": "combined"
         }
       },
       "overlay": {

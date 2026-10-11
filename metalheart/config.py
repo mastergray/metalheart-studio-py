@@ -21,6 +21,7 @@ from metalheart.catalog import DESTINATIONS  # Supported renderer signal destina
 from metalheart.catalog import FORMS  # Supported Metalheart form identifiers
 from metalheart.catalog import MODULATORS  # Supported frame-space audio destinations
 from metalheart.catalog import PALETTES  # Supported Metalheart palettes
+from metalheart.catalog import PSX_FINISH_PRESETS  # Expand named PSX finishing recipes
 from metalheart.catalog import QUALITY_PROFILES  # Concrete render-quality settings
 from metalheart.catalog import QUALITY_RENDERER_PROFILES  # Concrete renderer-quality settings
 from metalheart.catalog import REACTIVITY_PRESETS  # Built-in audio binding presets
@@ -225,7 +226,14 @@ class ConfigResolver:
                 background["image"] = self._resolvePath(background["image"], basePath)
             background["post"] = self._resolvePost(background.get("post", []))
         legacyFinish = self._deepMerge(templateFinish, authoredFinish)
-        scene["finish"] = self._deepMerge(DEFAULT_FINISH, self._deepMerge(legacyFinish, scene.get("finish", {})))
+        finishOverride = self._deepMerge(legacyFinish, scene.get("finish", {}))
+        psxOverride = finishOverride.get("psx", {})
+        if isinstance(psxOverride, dict):
+            psxPresetId = str(psxOverride.get("preset", "custom"))
+            psxPreset = PSX_FINISH_PRESETS.get(psxPresetId, {})
+            finishOverride["psx"] = self._deepMerge(psxPreset, psxOverride)
+            finishOverride["psx"]["preset"] = psxPresetId
+        scene["finish"] = self._deepMerge(DEFAULT_FINISH, finishOverride)
         reactivity = copy.deepcopy(scene.get("reactivity", {}))
         presetId = reactivity.get("preset", "balanced")
         preset = REACTIVITY_PRESETS.get(presetId, {"bindings": {}})
@@ -851,6 +859,12 @@ class ConfigResolver:
         if not isinstance(psx, dict):
             report.addError("{0}: expected an object".format(psxPath))
             return
+        self._validateEnum(
+            psx.get("preset"),
+            ["custom"] + sorted(PSX_FINISH_PRESETS),
+            psxPath + ".preset",
+            report,
+        )
         renderScale = psx.get("render_scale")
         if isinstance(renderScale, bool) or not isinstance(renderScale, (int, float)) or not 0.125 <= renderScale <= 1.0:
             report.addError("{0}.render_scale: expected 0.125 through 1.0".format(psxPath))

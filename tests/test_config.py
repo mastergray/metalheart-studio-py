@@ -53,6 +53,7 @@ def testResolvesTemplateAndPreset(tmp_path: Path) -> None:
     assert resolved["scenes"][0]["overlay"] == {"enabled": False, "reference_hud": False, "items": []}
     assert resolved["settings"]["crf"] == 23
     assert resolved["scenes"][0]["finish"]["psx"] == {
+        "preset": "custom",
         "render_scale": 1.0,
         "color_levels": 0,
         "dither": "none",
@@ -179,6 +180,7 @@ def testRejectsInvalidPsxFinishControls(tmp_path: Path) -> None:
     authored = _validConfig(tmp_path)
     authored["scenes"][0]["finish"] = {
         "psx": {
+            "preset": "missing",
             "render_scale": 0.1,
             "color_levels": 0,
             "dither": "bayer3",
@@ -188,6 +190,7 @@ def testRejectsInvalidPsxFinishControls(tmp_path: Path) -> None:
     resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
     report = resolver.validate(resolved)
     assert not report.isValid
+    assert any("finish.psx.preset" in error for error in report.errors)
     assert any("finish.psx.render_scale" in error for error in report.errors)
     assert any("finish.psx.dither" in error for error in report.errors)
     assert any("finish.psx.dither_strength" in error for error in report.errors)
@@ -203,6 +206,37 @@ def testRejectsDitherWithoutColorReduction(tmp_path: Path) -> None:
     report = resolver.validate(resolved)
     assert not report.isValid
     assert any("finish.psx.color_levels" in error for error in report.errors)
+
+
+# :: PATH -> NONE
+# Verifies the approved PSX recipe expands to ordinary reproducible values
+def testResolvesPsxFinishPreset(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["finish"] = {"psx": {"preset": "combined"}}
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    report = resolver.validate(resolved)
+    assert report.isValid, report.errors
+    assert resolved["scenes"][0]["finish"]["psx"] == {
+        "preset": "combined",
+        "render_scale": 0.5,
+        "color_levels": 16,
+        "dither": "bayer4",
+        "dither_strength": 0.75,
+    }
+
+
+# :: PATH -> NONE
+# Verifies authored values may override one constituent of a named PSX recipe
+def testOverridesPsxFinishPresetValue(tmp_path: Path) -> None:
+    resolver = ConfigResolver.init()
+    authored = _validConfig(tmp_path)
+    authored["scenes"][0]["finish"] = {
+        "psx": {"preset": "combined", "render_scale": 0.25}
+    }
+    resolved = resolver.resolve(authored, str(tmp_path / "project.json"))
+    assert resolved["scenes"][0]["finish"]["psx"]["render_scale"] == 0.25
+    assert resolved["scenes"][0]["finish"]["psx"]["color_levels"] == 16
 
 
 # :: PATH -> NONE

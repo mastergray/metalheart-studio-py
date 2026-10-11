@@ -166,12 +166,29 @@ DEFAULT_BACKGROUND: Dict[str, Any] = {
     "post": [],
 }
 
+DEFAULT_PSX_FINISH: Dict[str, Any] = {
+    "preset": "custom",
+    "render_scale": 1.0,
+    "color_levels": 0,
+    "dither": "none",
+    "dither_strength": 1.0,
+}
+
+PSX_FINISH_PRESETS: Dict[str, Dict[str, Any]] = {
+    "combined": {
+        "render_scale": 0.5,
+        "color_levels": 16,
+        "dither": "bayer4",
+        "dither_strength": 0.75,
+    },
+}
+
 DEFAULT_FINISH: Dict[str, Any] = {
     "bloom": 0.65,
     "wide_bloom": 0.35,
     "streaks": 0.7,
-    "onset_streaks": 1.5,
-    "flash": 0.04,
+    "onset_streaks": 0.45,
+    "flash": 0.012,
     "chroma": 0.0005,
     "chroma_onset": 0.002,
     "slice_glitch": False,
@@ -180,12 +197,7 @@ DEFAULT_FINISH: Dict[str, Any] = {
     "scanlines": False,
     "grain": 0.006,
     "grain_high": 0.006,
-    "psx": {
-        "render_scale": 1.0,
-        "color_levels": 0,
-        "dither": "none",
-        "dither_strength": 1.0,
-    },
+    "psx": dict(DEFAULT_PSX_FINISH),
 }
 
 REACTIVITY_PRESETS: Dict[str, Dict[str, Any]] = {
@@ -197,10 +209,10 @@ REACTIVITY_PRESETS: Dict[str, Dict[str, Any]] = {
             "onset": {"source": "onset", "amount": 1.0, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
         },
         "modulators": {
-            "pulse": {"source": "bass", "amount": 0.08, "bias": 0.0, "curve": "ease_out", "clamp": [0.0, 0.08]},
-            "shake": {"source": "onset", "amount": 0.012, "bias": 0.0, "curve": "ease_out", "threshold": 0.35, "clamp": [0.0, 0.012]},
-            "flash": {"source": "onset", "amount": 0.16, "bias": 0.0, "curve": "ease_out", "threshold": 0.45, "clamp": [0.0, 0.16]},
-            "chroma": {"source": "high", "amount": 0.004, "bias": 0.0, "curve": "linear", "threshold": 0.45, "clamp": [0.0, 0.004]},
+            "pulse": {"source": "bass", "amount": 0.025, "bias": 0.0, "curve": "ease_out", "clamp": [0.0, 0.025]},
+            "shake": {"source": "onset", "amount": 0.006, "bias": 0.0, "curve": "ease_out", "threshold": 0.35, "clamp": [0.0, 0.006]},
+            "flash": {"source": "onset", "amount": 0.035, "bias": 0.0, "curve": "ease_out", "threshold": 0.45, "clamp": [0.0, 0.035]},
+            "chroma": {"source": "high", "amount": 0.002, "bias": 0.0, "curve": "linear", "threshold": 0.45, "clamp": [0.0, 0.002]},
         },
     },
     "sub-heavy": {
@@ -211,8 +223,8 @@ REACTIVITY_PRESETS: Dict[str, Dict[str, Any]] = {
             "onset": {"source": "onset", "amount": 0.8, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
         },
         "modulators": {
-            "pulse": {"source": "bass", "amount": 0.11, "bias": 0.0, "curve": "ease_out", "clamp": [0.0, 0.11]},
-            "shake": {"source": "onset", "amount": 0.01, "bias": 0.0, "curve": "ease_out", "threshold": 0.4, "clamp": [0.0, 0.01]},
+            "pulse": {"source": "bass", "amount": 0.04, "bias": 0.0, "curve": "ease_out", "clamp": [0.0, 0.04]},
+            "shake": {"source": "onset", "amount": 0.004, "bias": 0.0, "curve": "ease_out", "threshold": 0.4, "clamp": [0.0, 0.004]},
         },
     },
     "percussive": {
@@ -223,10 +235,10 @@ REACTIVITY_PRESETS: Dict[str, Dict[str, Any]] = {
             "onset": {"source": "onset", "amount": 1.4, "bias": 0.0, "curve": "ease_out", "clamp": [0.0, 1.0]},
         },
         "modulators": {
-            "pulse": {"source": "bass", "amount": 0.07, "bias": 0.0, "curve": "ease_out", "clamp": [0.0, 0.07]},
-            "shake": {"source": "onset", "amount": 0.018, "bias": 0.0, "curve": "ease_out", "threshold": 0.3, "clamp": [0.0, 0.018]},
-            "flash": {"source": "onset", "amount": 0.22, "bias": 0.0, "curve": "ease_out", "threshold": 0.35, "clamp": [0.0, 0.22]},
-            "chroma": {"source": "high", "amount": 0.006, "bias": 0.0, "curve": "linear", "threshold": 0.4, "clamp": [0.0, 0.006]},
+            "pulse": {"source": "bass", "amount": 0.025, "bias": 0.0, "curve": "ease_out", "clamp": [0.0, 0.025]},
+            "shake": {"source": "onset", "amount": 0.008, "bias": 0.0, "curve": "ease_out", "threshold": 0.3, "clamp": [0.0, 0.008]},
+            "flash": {"source": "onset", "amount": 0.06, "bias": 0.0, "curve": "ease_out", "threshold": 0.35, "clamp": [0.0, 0.06]},
+            "chroma": {"source": "high", "amount": 0.003, "bias": 0.0, "curve": "linear", "threshold": 0.4, "clamp": [0.0, 0.003]},
         },
     },
     "ambient": {
@@ -237,7 +249,7 @@ REACTIVITY_PRESETS: Dict[str, Dict[str, Any]] = {
             "onset": {"source": "onset", "amount": 0.25, "bias": 0.0, "curve": "linear", "clamp": [0.0, 1.0]},
         },
         "modulators": {
-            "pulse": {"source": "energy", "amount": 0.035, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 0.035]},
+            "pulse": {"source": "energy", "amount": 0.015, "bias": 0.0, "curve": "smoothstep", "clamp": [0.0, 0.015]},
         },
     },
     "ferro-impact": {
@@ -248,10 +260,10 @@ REACTIVITY_PRESETS: Dict[str, Dict[str, Any]] = {
             "onset": {"source": "onset", "amount": 2.2, "bias": 0.0, "curve": "ease_out", "threshold": 0.15, "clamp": [0.0, 2.2]},
         },
         "modulators": {
-            "pulse": {"source": "bass", "amount": 0.12, "bias": 0.0, "curve": "ease_out", "clamp": [0.0, 0.12]},
-            "shake": {"source": "onset", "amount": 0.025, "bias": 0.0, "curve": "ease_out", "threshold": 0.25, "clamp": [0.0, 0.025]},
-            "flash": {"source": "onset", "amount": 0.3, "bias": 0.0, "curve": "ease_out", "threshold": 0.3, "clamp": [0.0, 0.3]},
-            "chroma": {"source": "onset", "amount": 0.012, "bias": 0.0, "curve": "ease_out", "threshold": 0.35, "clamp": [0.0, 0.012]},
+            "pulse": {"source": "bass", "amount": 0.04, "bias": 0.0, "curve": "ease_out", "clamp": [0.0, 0.04]},
+            "shake": {"source": "onset", "amount": 0.01, "bias": 0.0, "curve": "ease_out", "threshold": 0.25, "clamp": [0.0, 0.01]},
+            "flash": {"source": "onset", "amount": 0.1, "bias": 0.0, "curve": "ease_out", "threshold": 0.3, "clamp": [0.0, 0.1]},
+            "chroma": {"source": "onset", "amount": 0.005, "bias": 0.0, "curve": "ease_out", "threshold": 0.35, "clamp": [0.0, 0.005]},
         },
     },
     "camera-driven": {
@@ -537,6 +549,7 @@ CONFIG_SCHEMA: Dict[str, Any] = {
                 "psx": {
                     "type": "object",
                     "properties": {
+                        "preset": {"enum": ["custom"] + sorted(PSX_FINISH_PRESETS)},
                         "render_scale": {"type": "number", "minimum": 0.125, "maximum": 1.0},
                         "color_levels": {
                             "anyOf": [

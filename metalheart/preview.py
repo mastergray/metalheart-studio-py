@@ -4,7 +4,7 @@ from __future__ import annotations  # Preserve forward-compatible annotations on
 
 import copy  # Build an isolated preview profile without mutating the project
 from pathlib import Path  # Locate the project-local analysis cache
-from typing import Any, Callable, Dict, Optional, Tuple  # Python 3.8-compatible annotations
+from typing import Any, Callable, Dict, List, Optional, Tuple  # Python 3.8-compatible annotations
 
 import cv2  # Convert renderer BGR output into display-ready RGB
 import numpy as np  # Type the returned preview frame
@@ -20,6 +20,8 @@ PREVIEW_MAX_WIDTH = 480
 PREVIEW_MAX_HEIGHT = 270
 PREVIEW_MAX_FPS = 12
 PREVIEW_CORE_SCALE = 0.2
+PREVIEW_DEFAULT_RANGE_SEC = 4.0
+PREVIEW_MAX_RANGE_SEC = 8.0
 
 
 # Carries one display frame and the effective preview context
@@ -100,6 +102,123 @@ class PreviewResult:
         height: int,
     ) -> PreviewResult:
         return cls(frame, sceneIndex, timeSec, sceneId, width, height)
+
+
+# Carries a bounded sequence of display frames and synchronized source-audio timing
+class PreviewClipResult:
+
+    # CONSTRUCTOR :: [ANY], INT, FLOAT, FLOAT, STRING, STRING, INT, INT, INT -> previewClipResult
+    # Stores RGB frames and the exact selected global range they represent
+    def __init__(
+        self,
+        frames: List[np.ndarray],
+        sceneIndex: int,
+        startSec: float,
+        endSec: float,
+        sceneId: str,
+        audioPath: str,
+        width: int,
+        height: int,
+        fps: int,
+    ) -> None:
+        self._frames = frames
+        self._sceneIndex = sceneIndex
+        self._startSec = startSec
+        self._endSec = endSec
+        self._sceneId = sceneId
+        self._audioPath = audioPath
+        self._width = width
+        self._height = height
+        self._fps = fps
+
+    #
+    # Properties
+    #
+
+    # PROPERTY :: VOID -> [ANY]
+    # Returns the ordered RGB preview frames
+    @property
+    def frames(self) -> List[np.ndarray]:
+        return self._frames
+
+    # PROPERTY :: VOID -> INT
+    # Returns the rendered scene index
+    @property
+    def sceneIndex(self) -> int:
+        return self._sceneIndex
+
+    # PROPERTY :: VOID -> FLOAT
+    # Returns the first represented global project time
+    @property
+    def startSec(self) -> float:
+        return self._startSec
+
+    # PROPERTY :: VOID -> FLOAT
+    # Returns the exclusive selected-range end time
+    @property
+    def endSec(self) -> float:
+        return self._endSec
+
+    # PROPERTY :: VOID -> STRING
+    # Returns the rendered scene identifier
+    @property
+    def sceneId(self) -> str:
+        return self._sceneId
+
+    # PROPERTY :: VOID -> STRING
+    # Returns the source audio synchronized with the selected range
+    @property
+    def audioPath(self) -> str:
+        return self._audioPath
+
+    # PROPERTY :: VOID -> INT
+    # Returns the effective preview width
+    @property
+    def width(self) -> int:
+        return self._width
+
+    # PROPERTY :: VOID -> INT
+    # Returns the effective preview height
+    @property
+    def height(self) -> int:
+        return self._height
+
+    # PROPERTY :: VOID -> INT
+    # Returns the effective preview playback rate
+    @property
+    def fps(self) -> int:
+        return self._fps
+
+    #
+    # Class Methods
+    #
+
+    # Class Factory Method :: [ANY], INT, FLOAT, FLOAT, STRING, STRING, INT, INT, INT -> previewClipResult
+    # Creates a bounded display-ready range result
+    @classmethod
+    def init(
+        cls,
+        frames: List[np.ndarray],
+        sceneIndex: int,
+        startSec: float,
+        endSec: float,
+        sceneId: str,
+        audioPath: str,
+        width: int,
+        height: int,
+        fps: int,
+    ) -> PreviewClipResult:
+        return cls(
+            frames,
+            sceneIndex,
+            startSec,
+            endSec,
+            sceneId,
+            audioPath,
+            width,
+            height,
+            fps,
+        )
 
 
 # Resolves, analyzes, and renders one deliberately bounded still preview
@@ -208,6 +327,127 @@ class PreviewService:
             str(scene["id"]),
             int(preview["settings"]["width"]),
             int(preview["settings"]["height"]),
+        )
+
+    # :: ARRAY<STRING, ANY>, STRING, INT, FLOAT, FLOAT, (() -> BOOL)?, (INT, INT -> NONE)? -> previewClipResult
+    # Renders one bounded scene-local selection with temporal-effect preroll
+    def renderRange(
+        self,
+        authored: Dict[str, Any],
+        configPath: str,
+        sceneIndex: int,
+        startPosition: float,
+        endPosition: float,
+        cancelled: Optional[Callable[[], bool]] = None,
+        progress: Optional[Callable[[int, int], None]] = None,
+    ) -> PreviewClipResult:
+        resolved = self._resolver.resolve(authored, configPath)
+        report = self._resolver.validate(resolved)
+        if not report.isValid:
+            raise ConfigError("project is invalid:\n- " + "\n- ".join(report.errors))
+        if sceneIndex < 0 or sceneIndex >= len(resolved["scenes"]):
+            raise ConfigError("scene index is out of range: {0}".format(sceneIndex))
+        preview = self._previewConfig(resolved)
+        scene = preview["scenes"][sceneIndex]
+        boundedStart = min(max(float(startPosition), 0.0), 1.0)
+        boundedEnd = min(max(float(endPosition), 0.0), 1.0)
+        if boundedEnd <= boundedStart:
+            raise ConfigError("preview range end must be greater than its start")
+        sceneStartSec = float(scene["start_sec"])
+        sceneEndSec = float(scene["end_sec"])
+        sceneDurationSec = sceneEndSec - sceneStartSec
+        requestedDurationSec = sceneDurationSec * (boundedEnd - boundedStart)
+        if requestedDurationSec > PREVIEW_MAX_RANGE_SEC + 1e-9:
+            raise ConfigError(
+                "preview range must be {0:.0f} seconds or shorter".format(
+                    PREVIEW_MAX_RANGE_SEC
+                )
+            )
+        fps = int(preview["settings"]["fps"])
+        sceneFirstFrame = int(round(sceneStartSec * fps))
+        sceneLastFrame = max(
+            sceneFirstFrame + 1,
+            int(round(sceneEndSec * fps)),
+        )
+        firstFrame = min(
+            max(int(round((sceneStartSec + sceneDurationSec * boundedStart) * fps)), sceneFirstFrame),
+            sceneLastFrame - 1,
+        )
+        lastFrame = min(
+            max(int(round((sceneStartSec + sceneDurationSec * boundedEnd) * fps)), firstFrame + 1),
+            sceneLastFrame,
+        )
+        historyFrames = RenderPipeline.init(backend=self._backend)._historyFrames(preview)
+        warmupFirstFrame = max(sceneFirstFrame, firstFrame - historyFrames)
+        totalFrames = lastFrame - warmupFirstFrame
+        if cancelled is not None and cancelled():
+            raise InterruptedError("preview cancelled")
+        cacheRoot = Path(configPath).resolve().parent / ".metalheart-cache"
+        analysisResult = AudioAnalysisCache.init(self._backend, cacheRoot).get(
+            preview["audio"],
+            float(fps),
+            0.0,
+            None,
+        )
+        session = self._backend.createRenderer(
+            preview["settings"],
+            scene,
+            preview.get("post", []),
+        )
+        frames: List[np.ndarray] = []
+        for completed, sourceFrame in enumerate(
+            range(warmupFirstFrame, lastFrame),
+            1,
+        ):
+            if cancelled is not None and cancelled():
+                raise InterruptedError("preview cancelled")
+            relativeTimeSec = sourceFrame / float(fps)
+            params = self._backend.createParams(
+                analysisResult.analysis,
+                sourceFrame,
+                relativeTimeSec,
+                scene["reactivity"],
+            )
+            modulators = self._backend.createModulators(
+                analysisResult.analysis,
+                sourceFrame,
+                relativeTimeSec,
+                scene["reactivity"],
+            )
+            effectSignals = self._backend.createEffectSignals(
+                analysisResult.analysis,
+                sourceFrame,
+                sceneFirstFrame,
+            )
+            rendererTime = (
+                sourceFrame / float(fps)
+                if scene.get("time_mode", preview["settings"]["time_mode"]) == "global"
+                else (sourceFrame - sceneFirstFrame) / float(fps)
+            )
+            frame = session.render(
+                rendererTime,
+                params,
+                modulators,
+                sourceFrame,
+                sourceFrame - sceneFirstFrame,
+                effectSignals,
+            )
+            if sourceFrame >= firstFrame:
+                frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            if progress is not None:
+                progress(completed, totalFrames)
+        if not frames:
+            raise RuntimeError("preview renderer produced no range frames")
+        return PreviewClipResult.init(
+            frames,
+            sceneIndex,
+            firstFrame / float(fps),
+            lastFrame / float(fps),
+            str(scene["id"]),
+            str(preview["audio"]),
+            int(preview["settings"]["width"]),
+            int(preview["settings"]["height"]),
+            fps,
         )
 
     #

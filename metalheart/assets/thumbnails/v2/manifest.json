@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "thumbnail_version": "2026-10-01-v2",
-  "renderer_version": "audioReactive-2026-10-01-visible-backgrounds-v15",
+  "renderer_version": "audioReactive-2026-10-01-structural-response-v16",
   "catalog_fingerprint": "b89d3c6f050cb1f3e8f37488bdf896e740da73a345e3045eac9f3751171d0d23",
   "width": 128,
   "height": 72,
@@ -25,612 +25,612 @@
       "mercury": {
         "label": "Mercury",
         "file": "forms/mercury.png",
-        "sha256": "618f92bf31e5fad524d55eae632c8900e27e49550cd984c0e3100029b245cda4"
+        "sha256": "a9f13a8b22824c9af8c2bcea91c190cbd6a111e085e9559e43de3e34ccdd2020"
       },
       "wring": {
         "label": "Wring",
         "file": "forms/wring.png",
-        "sha256": "8a859b699da5b89a12c515ce0f8b2fd8ec11f748993783e6d03e36e878430072"
+        "sha256": "e35ecb03dfd384f1b147acbdf984708cb08cbf2606cef9f5e13e946d955fa876"
       },
       "ferro": {
         "label": "Ferro",
         "file": "forms/ferro.png",
-        "sha256": "70bc2770ec728dd21c3e19b2337ba0c1c81bea4cbf0fcbd0bafc810430eebec6"
+        "sha256": "9d229090cbb87e60cad8cb3e040015b5e36c766f754442c61920a0fba149400c"
       },
       "drip": {
         "label": "Drip",
         "file": "forms/drip.png",
-        "sha256": "7b727583aeaef9352502a4fb5cb2b3e66f614737fc3a1142d8002f5c9b18209a"
+        "sha256": "01de57fefccfc5f994ee464e2e1417d9a792b868fabe1cac018295ab7de21d68"
       },
       "split": {
         "label": "Split",
         "file": "forms/split.png",
-        "sha256": "230639253e32d83760ca2c8e84711066dacaafaa9d0cf0c4228c5eabeb7b6035"
+        "sha256": "71c1ef80da1f68a66ca61b09168e6a9646b33ea71acdfdf4441003ba480eb17e"
       },
       "fold": {
         "label": "Fold",
         "file": "forms/fold.png",
-        "sha256": "91ce2b567114458358e9f719f3fd2a524197b819ee8821ac21c1f891f45c1865"
+        "sha256": "cfc1145e48eb0b6a45d8ee88d9135bcd903c9e1337af6ec28ee1519d3a9f77a3"
       },
       "morph": {
         "label": "Morph",
         "file": "forms/morph.png",
-        "sha256": "2a1564ea3f22c365c2cb81d6844488299c1605f5329b658835f67504e7042101"
+        "sha256": "3119decad111a2387b136074c2e39d713c7dd05769d628aa1da7c26f7fccd272"
       },
       "gyro": {
         "label": "Gyro",
         "file": "forms/gyro.png",
-        "sha256": "f1bf50546a2baf9b1606195dfbaf4841de51bdbcc66e07dc9803fdf6c14d9dcd"
+        "sha256": "fcba7413557bbf1aeff194e852b8319e21bf5afb5a595ecf7194030481ee595c"
       },
       "chaos": {
         "label": "Chaos",
         "file": "forms/chaos.png",
-        "sha256": "65345613de2d6f5ec9e253e36b60c5abe8825a1b457550bc9396af2c8cd44beb"
+        "sha256": "a503b8bbf2a4b46ef29056d764a0c94544a126661605b56a15a38c3e56a00b2b"
       },
       "resonance": {
         "label": "Resonance",
         "file": "forms/resonance.png",
-        "sha256": "a3beb9061370a6fcc20982acca4946590cde489b6cf97e079fee0a28b5f51296"
+        "sha256": "66d6663e1943b5d1f672b73199bc2252f74464e8325e0f3ec47fff716d3d9831"
       },
       "radial": {
         "label": "Radial",
         "file": "forms/radial.png",
-        "sha256": "acbf60fbfc3e2bed7813c851db70c17f0e9eab033cb28bfe5e8b076f10c0ee9b"
+        "sha256": "837f07e34be4b398ad1a81cc5172ab72181a10c5575f6bd18a7fc280809a32cc"
       }
     },
     "cameras": {
       "orbit": {
         "label": "Orbit",
         "file": "cameras/orbit.png",
-        "sha256": "8cf43c17082c42bf0f6aa303dd0c1445bedc601b1e3183dbccee0e52a6d0d0f2",
+        "sha256": "03ec6263a29a4c4553edcdb198757d70161c7fde269ec23a229e1535758e4b7b",
         "animation_file": "previews/cameras/orbit.png",
-        "animation_sha256": "0d7ef9c977fe863778563fbf752288f2e00739e9966e22454a72cf92b5d05d21"
+        "animation_sha256": "3d136c59d4782a26bdaae614662d1c91ec39b6d8be9da35fe3270ea0576284bf"
       },
       "crane": {
         "label": "Crane",
         "file": "cameras/crane.png",
-        "sha256": "b230ba3212fb7b282486c0337a310f1b66fb780c3476b37567e3db558dd782ed",
+        "sha256": "5faa4a0f8f3322faca3e56ae767fc4c82f7c48c9e7bcbc9d5df8081502ab357a",
         "animation_file": "previews/cameras/crane.png",
-        "animation_sha256": "bdf6514e093d45731f7d4771e43cda94e153d76b2558cd7276cf78435d77d8fe"
+        "animation_sha256": "e8d4a65d237836323282302190be521c727794dff879ead4021eadaff4104b37"
       },
       "dolly": {
         "label": "Dolly",
         "file": "cameras/dolly.png",
-        "sha256": "ddaeedb67506190ee6cb36071c9ea1e9a4aec280f424c7153751f095d5fd1510",
+        "sha256": "41db303c609ef76d3324e8749ba63d2873efe4c9427adf2fc05fa31f35bb8cbe",
         "animation_file": "previews/cameras/dolly.png",
-        "animation_sha256": "11047ba6c05df664e84679aaeb969c5d54c95ec3f327e8ebb323edb233103944"
+        "animation_sha256": "05fde9ae4186b84460ee451ec62812675ca330cb0aca22f6b628fd84b4421a6f"
       },
       "low": {
         "label": "Low",
         "file": "cameras/low.png",
-        "sha256": "bc4f9deeb7ce642b0214e04415fa13bd1958944e65802bf26755e3b927c20339",
+        "sha256": "1a3352cb74ef7eaba2ffa963b16aa1aa8b99150b80bb7fc293d2c0ffba1c5013",
         "animation_file": "previews/cameras/low.png",
-        "animation_sha256": "545ca6a1a9c286b4e07315dc8314e344fe89ae25ffe620c64a82afa5949f62cb"
+        "animation_sha256": "aaea98a07755071b8838028ce8377373bfd47fca8aee881956c7d0faf916effa"
       },
       "top": {
         "label": "Top",
         "file": "cameras/top.png",
-        "sha256": "706e26b5c983f7fe706e10ac76e7a21e7afd93c66c5f25c3a602b2cce947b4a2",
+        "sha256": "4223ce0b84a031400a84302155177d2b9d1e559fa1e7ba6d8fe161fda9ba2dd6",
         "animation_file": "previews/cameras/top.png",
-        "animation_sha256": "e1efbfc540c8bdf1de957a94ec178b2ef752193c96a96ea6f6fb018626a8dbc6"
+        "animation_sha256": "2648470ad932ce1483cdcbfa8a98323c5c647bd0c6360ebed715dc1d039cf8a9"
       },
       "macro": {
         "label": "Macro",
         "file": "cameras/macro.png",
-        "sha256": "913e8af20658b74e874efeed621188928c9a6d5c87a7cbbe464425e9ca33bb3a",
+        "sha256": "eabc38680ebd1eb653c5e8d8d0d92d0c382b65c429a55c1465ebb46422a6b023",
         "animation_file": "previews/cameras/macro.png",
-        "animation_sha256": "2f1293cda9abe71ae7dffeb22b0a8b4cb28a1e1606a48eaa2df4327a500ffc8c"
+        "animation_sha256": "68c55ba6096f3818a85b12594555bc673971f577801a5e9b3b4a49cf440784dd"
       },
       "dutch": {
         "label": "Dutch",
         "file": "cameras/dutch.png",
-        "sha256": "6bf63475475d638932da5e6766a8adb2ad893394e67c7c281e1f09cd692fe7a4",
+        "sha256": "6d718c7de8b44c934d48ba32c147b58b0aa22e44b4ff2dc93cec218b4d709c63",
         "animation_file": "previews/cameras/dutch.png",
-        "animation_sha256": "bfd775ae1901d787c61819cb1768dfed7566d658155c8349d515fc89854f26a3"
+        "animation_sha256": "2170492ed0bbcad5b5cbceadd3097c1a3edb55cc8a1a4aec899c25ccd292e936"
       },
       "drift": {
         "label": "Drift",
         "file": "cameras/drift.png",
-        "sha256": "fc8ff18b3f433f4dfe029757e28d44412b425e555ab140cd420d6ec20f401458",
+        "sha256": "09efa5b4af1600905486286ebe9e6e8bb224fe94dbdf39f29fcd3102a5c10bc9",
         "animation_file": "previews/cameras/drift.png",
-        "animation_sha256": "a8ab31277fdde289ec7846050289ec7863da634c9c6d348f66e2d174895bb4b8"
+        "animation_sha256": "15dbd1e60701ea0a619ef2facb562f705959c4a2b835d4b6e19fc7f5b54962d6"
       }
     },
     "palettes": {
       "steel": {
         "label": "Steel",
         "file": "palettes/steel.png",
-        "sha256": "ead5273675c69bdc06a81a5cf62adaddbe343ed9e76875fd73006b9c1406c6b1"
+        "sha256": "2deea24fa7a11cbeaf5c687d44f90d5f1aa73d90d36db03fbe0a72fad1cde81b"
       },
       "acid": {
         "label": "Acid",
         "file": "palettes/acid.png",
-        "sha256": "088e3cec1068949c03e9478b95c5afbc8e7988b3c39af30680dab7a915de278a"
+        "sha256": "58a888ffebabda121eaa38f5ccfc569e8c44eeeb798541e99233913f33533237"
       },
       "ember": {
         "label": "Ember",
         "file": "palettes/ember.png",
-        "sha256": "cdd93e1d1b24731956b8ded31cda73525bb9609d7d839fc1b754448eee234ac5"
+        "sha256": "f3e0d357d1bbec65f23b051b270b141c694a846dc84ec28ef990ff2010ec021c"
       },
       "jungle": {
         "label": "Jungle",
         "file": "palettes/jungle.png",
-        "sha256": "4e04f002bb46c4063c36b48f8d4a7b3a4020ed4643121d69ff79d9d9461dc00f"
+        "sha256": "ff03b0c5478c89ee4f77059f7f1ba5409d7b95b3994a3bd4928d9447d0577a41"
       },
       "rainbow": {
         "label": "Rainbow",
         "file": "palettes/rainbow.png",
-        "sha256": "057888726393f9e5f4d739ee48a1ff034c2c85f3394f1e463e3590b521810ca4"
+        "sha256": "19f7fd60adf49451cb2bcb479ce41fd8024a0dc75e4652c9ee9f6cfae63479dd"
       },
       "ice": {
         "label": "Ice",
         "file": "palettes/ice.png",
-        "sha256": "eb56ef6f6ab4ab8c1d195ffca30f49bb1508d6a4d294e67d00693fe08ac74736"
+        "sha256": "654fd18bb09e4dfaff4fe026092ac93542cbce1818b40f885313a00f3f11c8bd"
       },
       "electric": {
         "label": "Electric",
         "file": "palettes/electric.png",
-        "sha256": "fe571259aa3ceacaf6131423cbab60a09ffcf6b9971c6dd4d5e033da12b99b51"
+        "sha256": "6fcbc47638f8ea30dd585bfbec06a53de3c55956342c711df31ce17bc84455ba"
       },
       "neon": {
         "label": "Neon",
         "file": "palettes/neon.png",
-        "sha256": "1cdd5771dd5b98f540982b268b5338d928faa2abd9b4592917f603ac1862513a"
+        "sha256": "040a98b5f0c28b1be98125eab8e8969b04460225c216f418762db4a9419a4061"
       },
       "grayscale": {
         "label": "Grayscale",
         "file": "palettes/grayscale.png",
-        "sha256": "256493e3dcf735b18fc5b977e89befcf4a4567fa60380def226033cadc76d6a3"
+        "sha256": "7fe05fd2d01dc80f6d9d7b77ef5751d233285a0255b5f63ba6c2f35d406a83c4"
       }
     },
     "effects": {
       "aged_tape_decay_like": {
         "label": "Aged Tape Decay",
         "file": "effects/aged_tape_decay_like.png",
-        "sha256": "455cfb0f1f29e2e02fa9c15f160d45148500131e38ee746ce426bf3b70674ba9",
+        "sha256": "48374b5582b08f6acbb230c9e1032692e1067b888bcf8ef368c9bb230bb039bc",
         "animation_file": "previews/effects/aged_tape_decay_like.png",
-        "animation_sha256": "f707004f38271a2fd51c083e14fc1d44e42963455e333d9fcd9de447c6f00e14"
+        "animation_sha256": "70a2b93cbe31094d4ebb5b280610eac8d3876b1c3aa798db430cbd6b1581a934"
       },
       "arcade": {
         "label": "Arcade",
         "file": "effects/arcade.png",
-        "sha256": "e0d71bf2c70fe23cab8ad31df9684782ec8addbe73d7c108e1240022e63510f7",
+        "sha256": "0bbb0aba02feaf550f9433ee91c712bc608d549c254f08a19cb049d546f654d9",
         "animation_file": "previews/effects/arcade.png",
-        "animation_sha256": "d5463e44af7b526f63ad00f62ad25fd8d471659d670c2006688315980036ba3b"
+        "animation_sha256": "86619fbde9bf5e05b540e93255748f2431bd1cfb2e71b0d4b420c5dfe942fbf1"
       },
       "arcade_night_like": {
         "label": "Arcade Night",
         "file": "effects/arcade_night_like.png",
-        "sha256": "e3d9cf81c369164d97039b6f2e4713aa6d39d69d00f88a1c41368b7594ecc618",
+        "sha256": "eb914a4cd41fbb1177e8eb16a903ca0957025563d726568bd0e3979fb13d0abd",
         "animation_file": "previews/effects/arcade_night_like.png",
-        "animation_sha256": "7a3712177011773077a6ad10bb6df559baad908a1b0153b9d93cf85843794968"
+        "animation_sha256": "55a863fd5304d1698178319f68af3812fa5f7be50087ea10acb3ea05c7da4135"
       },
       "arcade_phosphor_like": {
         "label": "Arcade Phosphor",
         "file": "effects/arcade_phosphor_like.png",
-        "sha256": "148bc7de636c5cfb479eea9e4dd7cfbcabd39dfe726cea7b9f02844c0a93399a",
+        "sha256": "5bd6b17a937c2e57b0f8710c1a392de0f6f8ca290113f2313df2dce372ef5fef",
         "animation_file": "previews/effects/arcade_phosphor_like.png",
-        "animation_sha256": "ac04cfbb5e3e4c554323cf416039e0faff5bf808a270acfaa72a70a0e7c78174"
+        "animation_sha256": "2986f3d92a5265eca1c2c2a19ba7d9042278da30ea16721992011390eae3d3bc"
       },
       "bitplane_scramble_like": {
         "label": "Bitplane Scramble",
         "file": "effects/bitplane_scramble_like.png",
-        "sha256": "39703774343e6ea33212c4828c23df76597640e008877f02a37c1799f9860797",
+        "sha256": "1c55266f9111473bcde3b78067a492e5c65612efcd608102332818a9725d06e9",
         "animation_file": "previews/effects/bitplane_scramble_like.png",
-        "animation_sha256": "8e2926ae56f4fef6db2291ab89d4779541b3279bc75b80a87a53686148549615"
+        "animation_sha256": "7c8bae8e6df8807da6fa7ae2d762f0edca9f04f8d0834f10ea942d7dc9ebc491"
       },
       "block_corrupt_like": {
         "label": "Block Corrupt",
         "file": "effects/block_corrupt_like.png",
-        "sha256": "36f44cc72d29fb063f54a3284118a0bf46eb1cf2fdd00af098fdd30b3489d309",
+        "sha256": "c137f649cfd38090a9e787131c8aa2abb28c48fa5450c8ec4695af9e14857d42",
         "animation_file": "previews/effects/block_corrupt_like.png",
-        "animation_sha256": "1cea92f37e42068b17d38c6ccc0750a39fca0ee24c3aaa9a479a3de059c99b2d"
+        "animation_sha256": "a24ae4a996e4be7f2bc28c9faa441631b23545dba859d54bf83d2d50aa9041b2"
       },
       "block_jitter": {
         "label": "Block Jitter",
         "file": "effects/block_jitter.png",
-        "sha256": "e62a2f0f957f98f2a14d4da9bd8fd9d66d12a794786ca798a3adbf0137c559e4",
+        "sha256": "0490945678006de3f4ae6fed28a53dab3884ab5c63b987f85e8b65a0b7e43a8c",
         "animation_file": "previews/effects/block_jitter.png",
-        "animation_sha256": "df18e2ff1a9e08e6c4ffee76e6e99decc15026398f009ff584d4bd208704511f"
+        "animation_sha256": "9e048490b67f42cb7c7889fbb2eac46779972b0a3bae5708b730e528e8e28092"
       },
       "blur": {
         "label": "Blur",
         "file": "effects/blur.png",
-        "sha256": "c0f79c0a9229e80820981c42561e7b9abc7eb126f6c269ebaf539a6864377799",
+        "sha256": "0797a6d86961582fec297f5667d8e16329a288242fa184a87bf0aaf5ff95d317",
         "animation_file": "previews/effects/blur.png",
-        "animation_sha256": "03a823077f6ac608c1384ee7992c25953289214901256451eb087075f3ff589d"
+        "animation_sha256": "37ac2760ddb8684d33eded252a5ae4f8e0f6e9d09453ed4e057baad9dec4af10"
       },
       "broken_mux_like": {
         "label": "Broken Mux",
         "file": "effects/broken_mux_like.png",
-        "sha256": "4e4624b8fa28c3f853d00cd1818bfe18676ac2bb1999b3eba622ac70c7f46abd",
+        "sha256": "2a841412210e38324a5c3fad13f5e6b0370d06cb2578bf3b39d892ad9b42c38c",
         "animation_file": "previews/effects/broken_mux_like.png",
-        "animation_sha256": "92358eb7cd9c1c688e7d486e032d9d6dd34431797b436ad245dabf187ef0029b"
+        "animation_sha256": "0f203df7bb6fcdb706af6ce5b61433f784ee52e522db4c514021d1251b134ba0"
       },
       "channel_drift_like": {
         "label": "Channel Drift",
         "file": "effects/channel_drift_like.png",
-        "sha256": "0a5851d3f18bd09b34514b5c125dd98127e687ffe40fbf599196cf60c796298d",
+        "sha256": "2c8ea0d6b0d0fc59c8365c0ab50610c34065a07d6984a9bd539a846f85a0e4ae",
         "animation_file": "previews/effects/channel_drift_like.png",
-        "animation_sha256": "9ed3d4984b3623c4d6f3a640a77b9e1be701e16f23a3ac3f9edc37e18bfacfd5"
+        "animation_sha256": "fb5303d5dcd9292bcf70b148fc38a875173e883d1fbb37c21dd326f93976bad3"
       },
       "channel_smear_like": {
         "label": "Channel Smear",
         "file": "effects/channel_smear_like.png",
-        "sha256": "a1694b6ee8542dc2ad8b2a200df4919b19328d388e25631c701e81b9ad2b0e50",
+        "sha256": "9ed96c2614a030a16bea8ea4b7e2f3a0fdee539ef598b454413456516ddbb220",
         "animation_file": "previews/effects/channel_smear_like.png",
-        "animation_sha256": "d53983530b0b522f3c9fc0a9e98b65070f26b72c37f1622503be6a2da890f9ed"
+        "animation_sha256": "f956417e634fd0dbcb972e3e1895f61e3a1cf1bbc8423c421b3e76d0344e694d"
       },
       "channels": {
         "label": "Channels",
         "file": "effects/channels.png",
-        "sha256": "f1161181f321709b63d9d334f5f47316c206e6aac345ee62e3aeb0f15e503ab3",
+        "sha256": "612e2eaae0a03c9d76dd2db208f60e7923b78ffac52208cc27675b8c14acfcf2",
         "animation_file": "previews/effects/channels.png",
-        "animation_sha256": "ba5456b0cf1c6c338d3d3117acfa08623a3d40f7073931512c5245d95edf6284"
+        "animation_sha256": "f64f9b73b18db76e9db4063e0567e9416f6505e267531405510040f8f6371b41"
       },
       "chaos_breach_like": {
         "label": "Chaos Breach",
         "file": "effects/chaos_breach_like.png",
-        "sha256": "e29b341bd2e85b6a2136888321771590b30be6b49d2c0ccecd40d4b6757af327",
+        "sha256": "3da67b5dc03c7b9335099b369869dc8cd358025654b27c95b1fd248583987662",
         "animation_file": "previews/effects/chaos_breach_like.png",
-        "animation_sha256": "e9fac47aea7fc88315bc0e4f0f77f15945adcb853f8e09c46839ab5fc4223d73"
+        "animation_sha256": "4fc020b31f0c317e3854d41cdfa093e7e40d514d04ff890ff29becc0e235b5ad"
       },
       "chaos_vortex_like": {
         "label": "Chaos Vortex",
         "file": "effects/chaos_vortex_like.png",
-        "sha256": "5f522fb17643ec8f932e16ce7f4911e01487cd5add75b9eab779b7b56022834d",
+        "sha256": "00a89fa36acf0e025f8ecd07d807624929aa0336df749940de9471873a0acce5",
         "animation_file": "previews/effects/chaos_vortex_like.png",
-        "animation_sha256": "12ca47a03fc7884823e5c8b401b578b36b25019d65c64654b1577039b1189a04"
+        "animation_sha256": "da9533ac423c5db5d46365d3c020ceeff8ca2b381b1965c7e26a0376ee41f93d"
       },
       "chromatic": {
         "label": "Chromatic (Glitzle)",
         "file": "effects/chromatic.png",
-        "sha256": "fd53a070647f4ac8911f98aa25f5179392910e899d8953dd5740d53dc63a06e7",
+        "sha256": "33ef944f0389d11c4767b52395c5f84e609f0b176420b7c2f4d8b921cea9a0cd",
         "animation_file": "previews/effects/chromatic.png",
-        "animation_sha256": "68bed0dbc282b566fba0f689d76c1d96a36090c754f842c5dd38fd0eb438cf6d"
+        "animation_sha256": "6845772f9f6c0b4108dc07790a329bd4dad4b11e37dbfcdbdae5bcf7061cced5"
       },
       "codec_crush_like": {
         "label": "Codec Crush",
         "file": "effects/codec_crush_like.png",
-        "sha256": "6b067696ffe3c3fb86348fb17cd3b6f9a8826e9387fe2fae5923e120ec5979df",
+        "sha256": "751b093ea9d2f618e59c61f8bc46bbe2f9a25d3f215634b053e5bd559d2bcfa6",
         "animation_file": "previews/effects/codec_crush_like.png",
-        "animation_sha256": "35813134910d95b560cda172fdc02f7656fb7e6a649c7f4409ef6d5146b73281"
+        "animation_sha256": "dbdd92a9ff506aab40ad4a68a9c8e2d36f4313e322b7d8c9038d37ebeb35c9c0"
       },
       "compression_spike_like": {
         "label": "Compression Spike",
         "file": "effects/compression_spike_like.png",
-        "sha256": "aea4b958078fdfb5a9c6ac45083d51e48da66b6da5858a3c73d0dcba9a728514",
+        "sha256": "59c6671cd12034c340cb9fe4a5cfc4475155cb61ca02131c926ea19bab898186",
         "animation_file": "previews/effects/compression_spike_like.png",
-        "animation_sha256": "4b9e7a931742eb571beb3c0f94a854cc57023dc080102f8f37f0b73002af7b8f"
+        "animation_sha256": "d2a58c285501bc5286cb6bc3f95674717544fd716ca43399b305e9b545f5d43c"
       },
       "contrast": {
         "label": "Contrast",
         "file": "effects/contrast.png",
-        "sha256": "10a5c72c2dffe0b296ce3eb06155d410f0c53846d50ddbd53e033d7bd49d337d",
+        "sha256": "b760036ca6d09b99c1aab2a380f3e4c8bafa9ba3b84129151ffda87fd238de94",
         "animation_file": "previews/effects/contrast.png",
-        "animation_sha256": "a2059acbe16a318e6db609567f41de2a47615c1e4ee62193364a44aa11f2ad9e"
+        "animation_sha256": "08e774556b3aeaa3cd38a77fd412681a8f2913504b4bec81cb14ed46ee2530ea"
       },
       "datamosh_breakup_like": {
         "label": "Datamosh Breakup",
         "file": "effects/datamosh_breakup_like.png",
-        "sha256": "45c237a41e726e8a4c3390bdae2b5706e4b852f86c66d7da9349a73f9792790c",
+        "sha256": "abcd0a3a15f34f9455138ec8e774498f0b3d4157b0ac92cb63c2a23c4036785c",
         "animation_file": "previews/effects/datamosh_breakup_like.png",
-        "animation_sha256": "bfe382415d7d40122925876389b944ce26384bf781bdd71f7a7f6361055f20d8"
+        "animation_sha256": "61db07951b1bc283b561166656dfcb030a7281203c8e50f0346eae291c42ec9d"
       },
       "datamosh_drift_like": {
         "label": "Datamosh Drift",
         "file": "effects/datamosh_drift_like.png",
-        "sha256": "a0d94fd7759d4482e2e85f3ba627b7fdfcc8cf27c1254cc0169570c658c7bc53",
+        "sha256": "ee448eab46a10441a613a4fac8e3f20778b07f400aa2c688f32e0a24278f5a86",
         "animation_file": "previews/effects/datamosh_drift_like.png",
-        "animation_sha256": "c1f10bff3ef62533b204c7e1de20d064c693b5ad2d0ccd7b12cf55debe95ebab"
+        "animation_sha256": "1c2d332391a4ee79501c84fa5cc910e915cffb05dce12d8e04b820dfe1f39f2c"
       },
       "destructive_shatter_corrupt_like": {
         "label": "Destructive Shatter Corrupt",
         "file": "effects/destructive_shatter_corrupt_like.png",
-        "sha256": "09dfe591f0c28e6f877c92b0ddf749c6048be3fa05ed8d284024bb59d9e66c30",
+        "sha256": "f8038fc5ac1cba068e09d35d3fae71e824e4a66d44b65597a1bb99a6d3d13558",
         "animation_file": "previews/effects/destructive_shatter_corrupt_like.png",
-        "animation_sha256": "b0715604f605a90bbc19b034e89d5d38f0bd35e3a2d057b93bd693e2ec2c47b1"
+        "animation_sha256": "f51bfa8d7ffb4e6523a456ee8f64db8427f739fb5d3e33478dfb4478a915a40d"
       },
       "digital_tear_like": {
         "label": "Digital Tear",
         "file": "effects/digital_tear_like.png",
-        "sha256": "2ee5784fed64cb75d8d1b3cd4f452240cf4e77f4f36cdf155aca7e0d3d6edfe9",
+        "sha256": "087558374367dace329242963edaf8a409c5856b88363b801504f552bddffb24",
         "animation_file": "previews/effects/digital_tear_like.png",
-        "animation_sha256": "6491a15ba1e12365b22ec75fba84f5fbae6777f253f15a545352f9d90e0214b3"
+        "animation_sha256": "38fa6409260290277286b67d165b9b87cfd39f9c8671ab6a79d4cff88410815e"
       },
       "film_decay_like": {
         "label": "Film Decay",
         "file": "effects/film_decay_like.png",
-        "sha256": "f29bc52b30f10661163f073acd8ba673b472cba24fccee56321eed7905b01d39",
+        "sha256": "35dc20bec1b7f9098bce89a87e594d3850aa226920f0466f74d2b6566ffbf2a9",
         "animation_file": "previews/effects/film_decay_like.png",
-        "animation_sha256": "4ce5eae5e57a954da41aff5577aab8c91339eaced12384f90fca2578eab36354"
+        "animation_sha256": "d180b06df4eeb26449529158a78b8d8b704b02ecf21809e7585821ca4dfd114f"
       },
       "glitch_warpfield_like": {
         "label": "Glitch Warpfield",
         "file": "effects/glitch_warpfield_like.png",
-        "sha256": "b486747faf2d738f62af4f1a8ae4dd40fecc05a05a44f9cb53725bebf92b7633",
+        "sha256": "30d38b3b1010fecd403904f0a31f76f1f211adf46b0fce7eaaf1f77a77ad8f2f",
         "animation_file": "previews/effects/glitch_warpfield_like.png",
-        "animation_sha256": "13906361efdbef57b6ab4a1da8e19f5953ed1c27baa5910985da43f325845a43"
+        "animation_sha256": "bf2f723f270eaab2870f863c550a48179e5d7c6b52208ddb27569736dd6307ac"
       },
       "grayscale": {
         "label": "Grayscale",
         "file": "effects/grayscale.png",
-        "sha256": "5ec2c454c43a60b8912536c2933cb72cf7e6df243e837ff3649190d7c887d709",
+        "sha256": "8ac7bbf810b2177866df190b7ecaf8c0b543f543f9201d4290a7ac5a9739e65a",
         "animation_file": "previews/effects/grayscale.png",
-        "animation_sha256": "aa6b1f702ecbdb74e300c9131697c91a74c7da7e9479862ac6dd3ac01418e09d"
+        "animation_sha256": "81123f972f5298632e1f9102617a5ed6ffff488d85875628c3dfedd90e7c48b7"
       },
       "hyper_glitch_like": {
         "label": "Hyper Glitch",
         "file": "effects/hyper_glitch_like.png",
-        "sha256": "538214153b285b5766903ca7fd9fa12580a9bd7690fd29ec88a7111abeb89038",
+        "sha256": "b91b51cfe5349fb9ceb16559eb1f6fc2ceccf7f7ddc58b244c397024b1fba9e1",
         "animation_file": "previews/effects/hyper_glitch_like.png",
-        "animation_sha256": "53d1bd58eae4a6c27195f0db22d1d9ca68c6f322be7c104b49af2a1e9187ef24"
+        "animation_sha256": "e73bf1bd47dcbe608161a20c6ff2d2e8c9ae4c002af91c44db475d1e4861184e"
       },
       "invert": {
         "label": "Invert",
         "file": "effects/invert.png",
-        "sha256": "5e25a332a0c30e6d4fd73c2827b6b89817aa404d4720b32d803572a7f9060bce",
+        "sha256": "cf70ebc577045300174ce89fa996e60960be1660061893f7c3fa159ab3d6d426",
         "animation_file": "previews/effects/invert.png",
-        "animation_sha256": "5291221bfc647ae900d7bfed9bf30391bba27ff2f87767e452d042251ee45b5c"
+        "animation_sha256": "6e4b5c6db78415d31f975a93a51a9a0676ed6686db6b6037f2aa8bb89a902482"
       },
       "mirror_diamond": {
         "label": "Diamond Mirror",
         "file": "effects/mirror_diamond.png",
-        "sha256": "ae5018776585a9acbf1e47e88b536c3ec2de2ea90f2f6c8c74426cb4ca9fe31f",
+        "sha256": "98593345c55be35ce5996a257f1255d738728aaae53a748ec062d1dbb01f6010",
         "animation_file": "previews/effects/mirror_diamond.png",
-        "animation_sha256": "bbf7da32cfacb6b101225b866f7aa6e1411bd5e43dce767cd66cf2f8a2ad3d17"
+        "animation_sha256": "8997f79771b3a809a8fdae2482306313bd4b6a4d9bf2a7cabfb3377b7188a801"
       },
       "mirror_h": {
         "label": "Horizontal Mirror",
         "file": "effects/mirror_h.png",
-        "sha256": "e4381b5b21bd603408e7fba18ec891e6c5fb96483dcd48e44d442522fd8866fa",
+        "sha256": "f9109415f7d578ac25d3c068313086587d000cea2df1a796c22cd0d441f14b05",
         "animation_file": "previews/effects/mirror_h.png",
-        "animation_sha256": "9df33a0a874072a150d6bd12f0edbf30098a4245adbb309105f8f914817284ad"
+        "animation_sha256": "c41d935a1bca5afacb07a6e218d48e66ffb647bf16892249606c6a47d8ed69ae"
       },
       "mirror_quad": {
         "label": "Quad Mirror",
         "file": "effects/mirror_quad.png",
-        "sha256": "ace2f792181ad6222c8be546d543104dafbca9808a346e5303a906422c867b79",
+        "sha256": "2474474fbc7d7396e2ee7142a1fb971e3805e38bd53b98ab8b8f760bc65f0975",
         "animation_file": "previews/effects/mirror_quad.png",
-        "animation_sha256": "3bf63cb98b3fbfa48061cc71f134114e8ae25ea94c1ccc98dc7887daa2501e90"
+        "animation_sha256": "5ea6680d42cf4b55a95b98eb2271aef64dfd9b2b33f61040c2a495a63cbd7533"
       },
       "mirror_v": {
         "label": "Vertical Mirror",
         "file": "effects/mirror_v.png",
-        "sha256": "72dd1ca2007d2b439a417ac34978624d79588d20a027a43a663bf5380e523b72",
+        "sha256": "65f5b427421c23f014248679dc87f47df585a27402c25caa7b1821b98c61b4bd",
         "animation_file": "previews/effects/mirror_v.png",
-        "animation_sha256": "91ca30a3cb724c94e4baae07c8a893f23632cb59d50f6f77a5e21307153bfef0"
+        "animation_sha256": "2549b22241e30d2d1853bc4ef98ba1e5755a76751d3dd1bf57747a6e49f6651b"
       },
       "noise": {
         "label": "Noise",
         "file": "effects/noise.png",
-        "sha256": "d329d5a08e160945ac47025bfe2fba25b6b73111d0f3e0ba1edfc6eefb38cc18",
+        "sha256": "29cad0ae58f5d85cb7496325c5d4e2bdaaeb901d0413976a54d439dedec7e8dd",
         "animation_file": "previews/effects/noise.png",
-        "animation_sha256": "fc304788c6add6e8bfeae70f15ee80654096d5d0ba536034b5953e1dad83f6d8"
+        "animation_sha256": "38653517d0891c8b35231c945142d78f531cb0b4b5068291e9af81ed6531f9e5"
       },
       "packet_desync_like": {
         "label": "Packet Desync",
         "file": "effects/packet_desync_like.png",
-        "sha256": "3ea28f4b3bba6e1d729d6df01a5ba2ddc93d78d1906435ea2ee1a6257745a77d",
+        "sha256": "e8e99c7224a52bb99500783bce8e42b2143588fe29f77456db34aa9e67b9c805",
         "animation_file": "previews/effects/packet_desync_like.png",
-        "animation_sha256": "cdde8266df6b8006c1af216c415e5650b4beebf0ab9cc8b8268c4f35052480f0"
+        "animation_sha256": "f6b0e118284411b01e9b971a79cf96a9d467eb05159eb8c2bac8a76f5c634e0f"
       },
       "packet_loss_like": {
         "label": "Packet Loss",
         "file": "effects/packet_loss_like.png",
-        "sha256": "c44ca1ea983d678070b3309216f29418c4a79d154613e7e83a3163ac2cb4b32b",
+        "sha256": "cc14b9c3b6473a08ada4ee7bc4d2e2ae7153f5fdb433aed23d29f78b966081aa",
         "animation_file": "previews/effects/packet_loss_like.png",
-        "animation_sha256": "57539499859fbcedfc2b1746e8c0b7852fb34062dc19fc47cd73782e76c6d09a"
+        "animation_sha256": "e44c41fa2f7eb8c6021d437327e301f7e08a51e47b34a02335f898913fdbbf2e"
       },
       "phase_error_like": {
         "label": "Phase Error",
         "file": "effects/phase_error_like.png",
-        "sha256": "0320d9d8dc63bc7cdec9c0b8f18bbaaf1a3d2b30e7231f1ac28212a8cc6a07d7",
+        "sha256": "5ba90991e1f6c2e229240572b13c68297051945508209ffc50a5500e1a397763",
         "animation_file": "previews/effects/phase_error_like.png",
-        "animation_sha256": "ac6e9549790872697f530d246675b2a0c47284648e86bd4e2a7a8ac5bb339670"
+        "animation_sha256": "a6f5c7f83eb662f59aca404cc20105d1f6c21f712f48b9c5ff91ead4b72a6275"
       },
       "pixel_sort": {
         "label": "Pixel Sort (Glitzle)",
         "file": "effects/pixel_sort.png",
-        "sha256": "c8e7305f22c8e68d255ab5f29de03a3d8fb916a64385ac7b71e6914bda99392d",
+        "sha256": "487c4e1d377088730f3d9bd32d8c1eb3c27bc000880ca44e309daa7b70a50d38",
         "animation_file": "previews/effects/pixel_sort.png",
-        "animation_sha256": "d430f78de74b8d27d7c9ce1477555f660f6227b94d966cc6c73f6394df579ae4"
+        "animation_sha256": "d2ff6a49417b1c4e5dbe956169ef1016302a7a3f3abb0fbc42d6f5ffdc025a5f"
       },
       "pixelate": {
         "label": "Pixelate",
         "file": "effects/pixelate.png",
-        "sha256": "a2eb8d22fd44046d2f1b416bc2fa20be078df6b58a9b4792bb6fc17e67ad105d",
+        "sha256": "ccdc654665d1f4741a49890d37ff2e558e9ef3705d36cacfde61503b56f60533",
         "animation_file": "previews/effects/pixelate.png",
-        "animation_sha256": "6a2b918d98ecefed6d66ed7dff68504c92f13ec53e20f59941f88634a8271f44"
+        "animation_sha256": "f2df110b0b172a502a94f9c60265e4301d866e1174137c973183d627cb9d5efe"
       },
       "posterize": {
         "label": "Posterize",
         "file": "effects/posterize.png",
-        "sha256": "6958c89ff5852ed5d2f42f104f4adca93500a1694f28551651efe843ad27c0e4",
+        "sha256": "990d5ff63445126dba2b5356fd2203affa5b8c5e88e546a69169ecd228494cb6",
         "animation_file": "previews/effects/posterize.png",
-        "animation_sha256": "5a8ad11ca990eb3226eea057fa7f672823e74ea17074c3c57448ba506764272e"
+        "animation_sha256": "be00f88eb6b4e69865839ecfbf651b1b3fde8efa6ce24f24231f3a34f4eaeffc"
       },
       "rectangles": {
         "label": "Rectangles",
         "file": "effects/rectangles.png",
-        "sha256": "fe47060cf11af422f740bea610ddc4492d26243f8b6553b9268c8723ff3fd202",
+        "sha256": "95b7542f56e6144eeb8d1e3cec1dcd69763049f510185b561267c030ff7cb889",
         "animation_file": "previews/effects/rectangles.png",
-        "animation_sha256": "99bb5545bf813069bcb3333c6c8f69b6decbb9becead17e75648342c39218f60"
+        "animation_sha256": "c195992f651141e17a68eea2272c64f93392fcb94ff155a6caeb95348f02bf50"
       },
       "retro_crt_like": {
         "label": "Retro CRT",
         "file": "effects/retro_crt_like.png",
-        "sha256": "f508ec9b53a3d9f352b8df2ac1b35b46c600721b2e58bce424ad33843d1a9d3a",
+        "sha256": "db8e45dd12be7823318b6d877d897a9be7722e8ea2c3af9bc1138d6ac88a63be",
         "animation_file": "previews/effects/retro_crt_like.png",
-        "animation_sha256": "72c5dc494b07acf030ffab7fa7bc9c982e64dd92bac998799a65ed2abc514c62"
+        "animation_sha256": "1c77ab9debf4e1fd52fca6b3030525db88c128fa5dfe5d15c14454499f312d94"
       },
       "rgb_shift": {
         "label": "RGB Shift",
         "file": "effects/rgb_shift.png",
-        "sha256": "b623f4a4ada613061d84148b7bd7b5bbc9207c83d7ef4ee3f1c1c65c9dc9c608",
+        "sha256": "626750dcc2a1281b31252247bcfd5cc2da1ad5a6bbdab3bb211b48db2eaef50c",
         "animation_file": "previews/effects/rgb_shift.png",
-        "animation_sha256": "b5242455973ffd4200d9bd84b03eb5f71c62e2289640a7f8d6ba8722f92642e7"
+        "animation_sha256": "0c66d80f837305d954fb940c19b423372c9a03732b3913d19a6cabc7b89258c5"
       },
       "saturation": {
         "label": "Saturation",
         "file": "effects/saturation.png",
-        "sha256": "7e2e61a392052e4abbb9d5caa660ed352db462a05fcadba09f3f277bb9cc2376",
+        "sha256": "562d1b36f99b75c84100e7c642288f5cdc26370f638dbb2fa89274cf920ead57",
         "animation_file": "previews/effects/saturation.png",
-        "animation_sha256": "a107f88662050a8ac0c7bf00196e38a09b9fc0bceb9cf5c84b63c910e1b3c8d3"
+        "animation_sha256": "0dd4d8e812bc6d8d440ad94e31401f1a65b3f2686131f41eaef7333f4791adab"
       },
       "scale": {
         "label": "Scale",
         "file": "effects/scale.png",
-        "sha256": "be726b3207b28830a2fea32e27f200cc63fa60b2652825356b712ac48acdcb11",
+        "sha256": "c2417ef54bd20dbbbadb0901ff2f853a5ab075afb0495976ec350a7476e33cdc",
         "animation_file": "previews/effects/scale.png",
-        "animation_sha256": "9599833a9870117e81e1641b2ee17bcbc233e72237a96fbadba7a1c067a7c82a"
+        "animation_sha256": "6888ae0964cb25ab79b82a4d320fe291ff02e52f080748570fa8cc1b854b8034"
       },
       "scan_corrupt_like": {
         "label": "Scan Corrupt",
         "file": "effects/scan_corrupt_like.png",
-        "sha256": "f6d5e9b73bf5d5523ab508096c82003a4ea718bca8eb29cbdf92973d9616f34d",
+        "sha256": "1f6a214dfe31ce493f181fe3d23cca83db6c72ad7b997fe0c2bcc4412d3b9eeb",
         "animation_file": "previews/effects/scan_corrupt_like.png",
-        "animation_sha256": "32ebcad6c418dd78b13718e858455d2561c36238eb832cee8dccf54f3f2e2ec4"
+        "animation_sha256": "b11615babd978fc7ebf470aafa831b8da649df60f298f4f372b839546619ac86"
       },
       "scanline_corrupt": {
         "label": "Scanline Corrupt",
         "file": "effects/scanline_corrupt.png",
-        "sha256": "6778d7b0893ca932edbfb0243fb00289221b925c2b5530f4a368bda07fa6d8be",
+        "sha256": "6e52003b54a0e2418765f0985f300db4a65fa3bb1677d696f4cd3e1da72557b0",
         "animation_file": "previews/effects/scanline_corrupt.png",
-        "animation_sha256": "6d48ee10b44f68fab0d6bf1ede0d47dac06f1ec054604842584cc5a784ba5494"
+        "animation_sha256": "4ae5df747eaed7582fd8d380dda2a5f914e9c83758264f705870bbe42945f35e"
       },
       "scanline_desync_like": {
         "label": "Scanline Desync",
         "file": "effects/scanline_desync_like.png",
-        "sha256": "6cef2bcd0924d9b734a62568f9af65e698f5f954c744d1227b5000e983bf3934",
+        "sha256": "ef924d9adc09a91adb65d2b26435726c91236ee6cfa3b5ebacbb88a73efe3960",
         "animation_file": "previews/effects/scanline_desync_like.png",
-        "animation_sha256": "bfc707f3c8234b7b87872b920077b81f98450f95f53d90de331e358d65cdb993"
+        "animation_sha256": "d26aee8d53ada1a1ae2eff37d615eba9bd40235f4d7e3fd803b1906b9bb23e88"
       },
       "scanlines": {
         "label": "Scanlines",
         "file": "effects/scanlines.png",
-        "sha256": "4cfa4564adc5792904b196bc668f53f49815e0b1624082f0c8cad70ac758c541",
+        "sha256": "ab8e92f61a1234d2670916b851ede8b1a94fde941796b49d7e61265e2e79e98d",
         "animation_file": "previews/effects/scanlines.png",
-        "animation_sha256": "206e1228d2ac0857a549cb0f83d1435b1dd1d43497104716987cad4f345e3830"
+        "animation_sha256": "b0bd1a0850e9ac8cf9d2cd3b9a5760d9d14227ba47f467bd0bca4ea6f7966e82"
       },
       "signal_bleed_like": {
         "label": "Signal Bleed",
         "file": "effects/signal_bleed_like.png",
-        "sha256": "ca510a291de52c0c0bc33ac1f7fa92fafdc5a0b03f3a6fac7792b06608fe7a15",
+        "sha256": "31308e05e52936736bdc2fa08a789c239a61cc16f32b62c80278043ea604e2be",
         "animation_file": "previews/effects/signal_bleed_like.png",
-        "animation_sha256": "df9db48d67a28cc85b1640345a27617971d05b36b4d0dd0b0fbb1617386c7c4e"
+        "animation_sha256": "c4c0cd06960d24cf50d1751319a417d710eab6b537563d7bd2a4e39309323276"
       },
       "slice_shift_x": {
         "label": "Vertical Slice Shift",
         "file": "effects/slice_shift_x.png",
-        "sha256": "1bbf2e8a4593be2a14c1ae01a67e303dda10e3f5e28060bb21839d157d8e7e65",
+        "sha256": "2e3a01094dde303ef1fa6012da7dc009560b2678e47af9e47f0a2b6a19a5818d",
         "animation_file": "previews/effects/slice_shift_x.png",
-        "animation_sha256": "2aefdd5a1a42aeb96ff0f4ab9b4590be7bf1c3409977a26e64a98dc11b2542e3"
+        "animation_sha256": "7e7b9184cb6dab961a709a3eafefca0c5ba75ac695a4fb8c44d2609ef00b9e84"
       },
       "slice_shift_y": {
         "label": "Horizontal Slice Shift",
         "file": "effects/slice_shift_y.png",
-        "sha256": "17fee7e70e2fd1c7b662d3220c6ad7be5ffd711295ed79735667699349c25121",
+        "sha256": "86978d5a74663dcf0ea633e2e9d0b7e2594a75c57d2eab66d0c2422094d4068d",
         "animation_file": "previews/effects/slice_shift_y.png",
-        "animation_sha256": "4319cefe3046d02acd0b7cd0a0367bd88b25879edb083c0ae92f8f103dff9dca"
+        "animation_sha256": "05bd23e84512c6d091a7b5d0c5ff38e6c47a33a3a7f2537a96616d9d40164fdb"
       },
       "slitscan": {
         "label": "Slitscan (Glitzle)",
         "file": "effects/slitscan.png",
-        "sha256": "c3438eaf821683864da1f02615e995815ddaa6379e8312ec4fa7ceef79c3ce11",
+        "sha256": "01360cb1f74ec7614bf14204a52239fdcb581a40ba9f23aa8f519c190f6767c6",
         "animation_file": "previews/effects/slitscan.png",
-        "animation_sha256": "693473d771523b5e626055a4926e6269bf761e2b92e46467847ed828a2d34e7e"
+        "animation_sha256": "570e5269514e751a71c75129d8d6ec9f95a985b001dc2d245c810384edb9bdc3"
       },
       "stutter_tear_like": {
         "label": "Stutter Tear",
         "file": "effects/stutter_tear_like.png",
-        "sha256": "41f2d35b1e26f6ea1da9572c20e0849cbd7df8df1590beb3649d10daf1bfcd54",
+        "sha256": "f823baede1eda269568f7a8966d9b4ee31ba88ab0e08692f951191dbd7a5526f",
         "animation_file": "previews/effects/stutter_tear_like.png",
-        "animation_sha256": "620e7b93e6ff2567612fd41a664418ac8df2e5bf490d71d8506fadce81ad88dd"
+        "animation_sha256": "b787394021bc79cdc967ba229fd782991237a02ff046fe15139903cf91089f54"
       },
       "tear": {
         "label": "Tear",
         "file": "effects/tear.png",
-        "sha256": "5da7344119264b98140b1f50f269f9109f358f9bd91ecfddf842924d90de7446",
+        "sha256": "7be12bb67f2a33221fea50b3ebd818849e859c6e4b2eef5aef4c0c2c9729ff76",
         "animation_file": "previews/effects/tear.png",
-        "animation_sha256": "d492d0da47f17f56537027cbe8f7b90ab5b26e022d64729f9b4287f8781cdc7e"
+        "animation_sha256": "09fb15cc8e67bb6589652ff4742a5b3e515a9d0e777038541ad6b12b944a5e5d"
       },
       "tetrys": {
         "label": "Tetrys",
         "file": "effects/tetrys.png",
-        "sha256": "c18cf16835a69cb419f7ec576f43293114eabd2b184097b51f90df41c3a154b6",
+        "sha256": "9c5408935ebd38c80345444f066c0e12878fbeeff35911c39920870bc0b5c9e2",
         "animation_file": "previews/effects/tetrys.png",
-        "animation_sha256": "9c9e766402fe27bca216dc585c37f9ea887cf744e92f286a6485fe4cd09a05d8"
+        "animation_sha256": "9ad402190fcea6d704d8e1c16b9ffb6b257091e72d6a275bedd324bdb81f8ad1"
       },
       "total_entropy_like": {
         "label": "Total Entropy",
         "file": "effects/total_entropy_like.png",
-        "sha256": "1c109081300f5a87bf7b4696207bca9c7317e8916f2752e86715c5ac8d776e13",
+        "sha256": "6d06746d2c39b023a0ddb667f09352dd84cc5a1e84650ae44141b667b76d0bab",
         "animation_file": "previews/effects/total_entropy_like.png",
-        "animation_sha256": "37e5a210907f052988ff42cad7ae1d6124f897ff20ab0d8fbbbf2aa89d144e41"
+        "animation_sha256": "203f4b3940072d3f77e24fb1de0f3bbc5dd7790bfe3b9389b1e21c1bee1a3ee5"
       },
       "tube_tv_soft_like": {
         "label": "Tube TV Soft",
         "file": "effects/tube_tv_soft_like.png",
-        "sha256": "7893a8fb26a5c740d85c0b0666b29e1562b5c2f6a16479693701dc30fc08c2ee",
+        "sha256": "f2c25aaa3f03e8937753e742a26b4d2dfbfe0e34baeeee79274c454865a0f9f3",
         "animation_file": "previews/effects/tube_tv_soft_like.png",
-        "animation_sha256": "8b032fb4e1e1a3593a9b5de2ff57ffe0c6543eaa2c47e110a267c38bfedc0ffc"
+        "animation_sha256": "8d0ec9d7fba5e4c75b5b9ba021d11c0ba15c5914fa3423bec57adbcd696dac13"
       },
       "vhs": {
         "label": "VHS",
         "file": "effects/vhs.png",
-        "sha256": "c0c77a4e28f049c98c09abd1c383b4c41f8ca14c1bc62e7674631d74af3e7f52",
+        "sha256": "0fcd45b288f098725671d34617996e54a8b4b84810b992f180d484e17bba8c67",
         "animation_file": "previews/effects/vhs.png",
-        "animation_sha256": "30442cf196c65c9dcb0a0bf12c598b974e773e7610bf7c57244ad5d89a99fefa"
+        "animation_sha256": "712398c55e3a82c5a5db7344a5a947489171009349554a39541d151d4ed04a25"
       },
       "vhs_soft_bleed_like": {
         "label": "VHS Soft Bleed",
         "file": "effects/vhs_soft_bleed_like.png",
-        "sha256": "5cabdc6f63c32f4971561f753fa460638e9229bacb4976cafe378b5f0232134b",
+        "sha256": "08b657b7e8ff733a2ff3b10b30b944a9e380fb9d7438f3db69e3246742ba8d1d",
         "animation_file": "previews/effects/vhs_soft_bleed_like.png",
-        "animation_sha256": "48036636f348cbbfed16b683683033736b63cc6831d4ddb6801b3b6249c2b1ca"
+        "animation_sha256": "72c46ac157c8da8d77fbd7492a0d7b4dc16c3eb341ea05ce65c880e9fe3ae68f"
       },
       "vignette": {
         "label": "Vignette",
         "file": "effects/vignette.png",
-        "sha256": "25de2d6953296f8da587588ace557ba4b9199a338bd9c424d83cc7188f804d50",
+        "sha256": "379e758d774054e2fd2307ceb264325bacd4a1fed01f9b875e33b592e602f3c5",
         "animation_file": "previews/effects/vignette.png",
-        "animation_sha256": "a95b5108e7228c6d9e2c3adf746cd4840fd3ac4435d3744936ae5c07c0fb72d2"
+        "animation_sha256": "77c0cf6d7027e5c2837a04b8df288b048179aa418a57114cf6d64b1e5f5f8103"
       },
       "violent_impact_like": {
         "label": "Violent Impact",
         "file": "effects/violent_impact_like.png",
-        "sha256": "0038fa3ef26726a1714aab0ef4534706f4be30c6d911dfd705e0ddd67ac0737d",
+        "sha256": "d2ce0bb01ad5d752dbf1d5d8201cb36764a6dff89ff27b9eb5552ca67cd4c71c",
         "animation_file": "previews/effects/violent_impact_like.png",
-        "animation_sha256": "e6024678132b5c137a20e4fb2323a5b625caf331cd2a3a7101fd3c0fdcef9e79"
+        "animation_sha256": "905e530c7aba2ddd0e52c5b8f2ba7a10c4ef287b66dae53f6b0e6d93d9f85208"
       },
       "violent_like": {
         "label": "Violent",
         "file": "effects/violent_like.png",
-        "sha256": "eea3c1e0186d11e53b9414f917bd5ae635689c87cf47efdf4b3e795bf14c86d9",
+        "sha256": "f1f96545d071ea4d7ebb07c5e3558af039a8a63944b1b879b1365ea4a3925115",
         "animation_file": "previews/effects/violent_like.png",
-        "animation_sha256": "dc4a229fa013c9d037d21918fd0c61fb6dabd1679c52c26d835122fd75dd24ff"
+        "animation_sha256": "20717d86b757849365634c720ef022aec816a6528bd81bbc65c9e8d4c742c85b"
       },
       "xor": {
         "label": "XOR Interference",
         "file": "effects/xor.png",
-        "sha256": "3ac5e13b68ace8bdc5147a453afe2c7aa6013ba5f5cec8c6b0f5d203130d1c4c",
+        "sha256": "d6125852541c9352aa0434c91c183c64e113179278803f1b456a4f8d6695d188",
         "animation_file": "previews/effects/xor.png",
-        "animation_sha256": "71eec9fcf6ad250b83a43597ea5ff8f8a9b26a5f2798764cf5ae434ae7b451a8"
+        "animation_sha256": "ff30fd6a0e2f4c183150f918ada905391be0cf976c92ccb4fdcc561cb37f6de5"
       },
       "ziti": {
         "label": "Ziti",
         "file": "effects/ziti.png",
-        "sha256": "56e826d2f67bc563a0aed46d00e01d11ec86a92c37a68954508e773375f6e96d",
+        "sha256": "4128822727e7c5c9a69192ccf38b713ceb000b1e848d463b480a2c18d95f4dc6",
         "animation_file": "previews/effects/ziti.png",
-        "animation_sha256": "290e7eba7d3ff2797ecc9f6ab616a76eb686a2d9c5473b573ba4276e8ff23607"
+        "animation_sha256": "93ad6034ab03236ac07e8593b2b76f38e4261684157bee0af58e16c7c676c9e0"
       },
       "zoom_shake": {
         "label": "Zoom Shake",
         "file": "effects/zoom_shake.png",
-        "sha256": "b3bf37ced08eaa290b26ca4c950bf9729be1d00b9e7d270731f90f897bd0be8e",
+        "sha256": "89faa7011fa1e5f33309f28798661a584d240bd63cd6a82d62a0470a79db2b5e",
         "animation_file": "previews/effects/zoom_shake.png",
-        "animation_sha256": "e5bba5ec1049a101de9519c0ab9ac891d59f8e57d5de38b90fc85e8b46a67ac1"
+        "animation_sha256": "3a344a951a860e97c84f6943c50ae5996dabb1e615f9a710879c9707e745146f"
       }
     }
   }
