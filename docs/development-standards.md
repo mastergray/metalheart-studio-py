@@ -52,8 +52,8 @@ This is a personal project, so CTG organization-specific values are adapted as f
 | Local Git identity | `mastergray <me@mastergray.com>` |
 | Default branch | `main` |
 | SSH host alias | `github-mastergray` |
-| Future remote | `git@github-mastergray:mastergray/metalheart-studio-py.git` |
+| Remote | `git@github-mastergray:mastergray/metalheart-studio-py.git` |
 
-No remote repository exists yet. Local initialization must not add a guessed remote or create a GitHub repository. Before the first push, verify branch, local author identity, working tree, commit authors, and the explicitly chosen remote URL.
+The local `main` branch tracks `origin/main` in the personal [`mastergray/metalheart-studio-py`](https://github.com/mastergray/metalheart-studio-py) repository. Before every push, verify the branch, repository-local author identity, working tree, commit authors, and exact remote destination. Do not replace the remote, push another branch, or use the CTG organization identity without explicit approval.
 
 Commit messages use a short summary line, followed by a blank line and details when useful. Do not add automated `Co-Authored-By` trailers.

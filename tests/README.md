@@ -12,3 +12,19 @@ Markers configured in `pyproject.toml`:
 
 Reference files under `ref/` are test inputs and baselines, not production modules.
 
+Run the complete default suite from the repository root with:
+
+```bash
+uv run --with pytest --with pytest-asyncio pytest
+```
+
+Focused and release-oriented selections use the same environment:
+
+```bash
+uv run --with pytest --with pytest-asyncio pytest tests/test_ui.py
+uv run --with pytest --with pytest-asyncio pytest -m "integration or visual"
+uv run --with pytest --with pytest-asyncio pytest -m slow
+```
+
+The full local release pass additionally requires the machine's Python 3.8 runtime and the documented FFmpeg tools. Tests that require an unavailable optional binary must skip with a precise reason rather than silently passing.
+

@@ -1,6 +1,6 @@
 # Metalheart Studio Roadmap
 
-Status: active implementation roadmap, 2026-10-11
+Status: active implementation roadmap, 2026-10-13
 
 This roadmap covers the visual system, ordered effects, and native authoring application. JSON remains canonical and the renderer remains headless-capable, but the product includes a PySide6/Qt desktop UI for previewing and producing visuals. Each visual milestone begins with a small study and an agreed configuration contract.
 
@@ -213,13 +213,13 @@ The integration render should use the existing 30-second audio clip and demonstr
 
 Multi-scene work uses hard cuts. Transition authoring is not planned. The implemented `--scene-clips` mode exports every scene as an independent, audio-synchronized clip without changing its scene-local form, background, ribbon, or plate image skins.
 
-## Milestone 6: Ordered effects system (first slice implemented)
+## Milestone 6: Ordered effects system (catalog and native controls implemented)
 
-Replace the currently empty public effect catalog with typed, ordered scene and global effect chains. The existing fixed `finish` controls provide the first owned implementations but do not, by themselves, satisfy this milestone.
+The former empty public effect catalog has been replaced with typed, ordered scene and global effect chains. The fixed `finish` controls remain a compatible owned path but are no longer the only effect system.
 
-The implemented library owns Glitzle's configurable primitives, the complete 19-preset Glitzle Glitch category, five of seven Retro/CRT presets, a curated cross-category preset set, four Dazzle mirrors, Dazzle XOR, four-direction Ziti, four-direction VidGlitch-compatible Tetrys, Glitzle Studio's Glitch Maker chromatic aberration and pixel sort, finite-history Slitscan, and scanline corruption. Audited Glitchstation controls include the six-effect Color family, RGB Shift, Tear, Block Jitter, Rectangles, VHS, and Arcade; Blister, Randomize, and Handheld are deliberately excluded. Six visually distinct Glitch recipes carry featured metadata for the future Qt browser. Effects run deterministically inside render workers, support global and scene chains plus 3D background, form-surface, and ribbon chains, and expose typed metadata for the future Qt inspector. Material masks captured from the immutable ray marcher let spatial effects carry form and ribbon alpha without filtering unrelated layers or the final text overlay. Slitscan workers preroll their declared history window so parallel chunks remain continuous. External process integration, audited FFmpeg recipes, plate-scoped effects, and fully general audio-to-effect-property bindings remain subsequent slices.
+The implemented library owns Glitzle's configurable primitives, the complete 19-preset Glitzle Glitch category, five of seven Retro/CRT presets, a curated cross-category preset set, four Dazzle mirrors, Dazzle XOR, four-direction Ziti, four-direction VidGlitch-compatible Tetrys, Glitzle Studio's Glitch Maker chromatic aberration and pixel sort, finite-history Slitscan, and scanline corruption. Audited Glitchstation controls include the six-effect Color family, RGB Shift, Tear, Block Jitter, Rectangles, VHS, and Arcade; Blister, Randomize, and Handheld are deliberately excluded. Six visually distinct Glitch recipes carry featured catalog metadata. Effects run deterministically inside render workers, support global and scene chains plus 3D background, form-surface, and ribbon chains, and expose typed metadata to the native Qt inspector. Material masks captured from the immutable ray marcher let spatial effects carry form and ribbon alpha without filtering unrelated layers or the final text overlay. Slitscan workers preroll their declared history window so parallel chunks remain continuous. External process integration, audited FFmpeg recipes, plate-scoped effects, and fully general audio-to-effect-property bindings remain subsequent slices.
 
-The first catalog should expose audited versions of bloom, streaks, flash, chroma displacement, slice glitch, vignette, scanlines, and grain. Each effect declares its stable ID, display metadata, typed properties and ranges, determinism, temporal requirements, supported quality profiles, and estimated cost. Existing `finish` documents continue to resolve compatibly while new documents may author ordered effect instances with enable/bypass controls.
+The initial catalog exposes audited versions of bloom, streaks, flash, chroma displacement, slice glitch, vignette, scanlines, and grain alongside the expanded library. Each effect declares its stable ID, display metadata, typed properties and ranges, determinism, temporal requirements, supported quality profiles, and estimated cost. Existing `finish` documents continue to resolve compatibly while new documents may author ordered effect instances with enable/bypass controls.
 
 Effects use the same registry in schema generation, validation, `list effects`, rendering, and the desktop inspector. Audio-reactive effect parameters are supported through typed public destinations rather than arbitrary access to implementation fields.
 

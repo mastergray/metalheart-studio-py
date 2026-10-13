@@ -120,7 +120,7 @@ Edit the JSON to select the audio file, output settings, scene ranges, Metalhear
 An explicit analysis command is available for inspecting a track or generating suggested scene boundaries:
 
 ```bash
-python3 studio.py analyze song.wav -o song.analysis.json
+uv run python studio.py analyze song.wav -o song.analysis.json
 ```
 
 Analysis produces or refreshes:
@@ -138,16 +138,16 @@ The feature cache should be stored beside the source audio or in the render cach
 ### 4.2 Validate the JSON
 
 ```bash
-python3 studio.py validate song.metalheart.json
+uv run python studio.py validate song.metalheart.json
 ```
 
 Validation resolves templates and defaults, then reports all problems before rendering. Supporting CLI commands should expose legal values without requiring source inspection:
 
 ```bash
-python3 studio.py list forms
-python3 studio.py list cameras
-python3 studio.py list effects
-python3 studio.py schema
+uv run python studio.py list forms
+uv run python studio.py list cameras
+uv run python studio.py list effects
+uv run python studio.py schema
 ```
 
 For each scene, the JSON selects:
@@ -163,7 +163,7 @@ For each scene, the JSON selects:
 ### 4.3 Render
 
 ```bash
-python3 studio.py render song.metalheart.json \
+uv run python studio.py render song.metalheart.json \
   --output song.mp4 \
   --quality final \
   --workers auto \
@@ -176,11 +176,11 @@ Optional `--quality preview` and `--range START:END` flags provide fast, low-res
 
 ### 4.4 Author in the desktop application
 
-The PySide6/Qt application opens and saves the same versioned JSON documents accepted by the CLI. It presents the audio waveform and hard-cut scene timeline, scene renderer and reactivity controls, ordered scene/global effect stacks, still-frame previews, short range previews, and final or per-scene export actions. It calls the same resolver, validator, analyzer, renderer, and effect registry used by the CLI; UI-only project state must not become a second rendering contract. Range-preview audio is isolated in a disposable FFplay child process so PulseAudio, PipeWire, ALSA, or codec stalls cannot block the Qt GUI. Stop, mute, range looping, and widget shutdown terminate the current child without waiting on its backend; missing FFplay degrades to silent visual playback.
+The PySide6/Qt application opens and saves the same versioned JSON documents accepted by the CLI. It presents the audio waveform and hard-cut scene timeline, structured Form, Background, Ribbons, and Finish controls, ordered form/background/ribbon effect stacks, still-frame previews, selected-range previews, and final-video export. The CLI additionally exposes independent scene-clip export through `render --scene-clips`; a native action for that existing service remains version 1 work. The application calls the same resolver, validator, analyzer, renderer, and effect registry used by the CLI; UI-only project state must not become a second rendering contract. Range-preview audio is isolated in a disposable FFplay child process so PulseAudio, PipeWire, ALSA, or codec stalls cannot block the Qt GUI. Stop, mute, range looping, and widget shutdown terminate the current child without waiting on its backend; missing FFplay degrades to silent visual playback.
 
-The implemented first shell exposes the canonical authored JSON directly, resolved scene selection, effect counts for form, ribbon, background, scene, and global scopes, persistent validation feedback, and a normalized scene-time control. Still previews run in a worker thread through the production resolver, analysis cache, renderer adapter, and effect-history calculation. They are capped at 480×270, 12 fps, 0.2 core scale, and disabled antialiasing; these preview-only cost settings never mutate the authored export profile. Full video export runs as a cancellable child CLI process so the Qt event loop remains responsive.
+The implemented audio-led workspace creates either a single full-track scene or phrase-aligned automatic scenes with a configurable hard maximum duration. Scene selection drives structured controls and a waveform timeline with precise scene-local preview ranges. Copy Scene and Paste Scene transfer authored visuals while preserving destination identity, timing, detected events, and analysis metadata. Undo and Redo cover structured edits, effect-stack changes, scene paste, and applied Advanced JSON. Canonical JSON remains available as an optional advanced dock rather than the primary workflow.
 
-Preview is progressive rather than full-resolution real-time playback. A playhead change may request a low-cost still immediately, while an explicit preview action renders a selected range with the preview quality profile. Preview work must be cancellable and must never replace a valid final output.
+Still and range previews run in a worker thread through the production resolver, analysis cache, renderer adapter, and effect-history calculation. They are explicit, cancellable, and capped at 480×270, 12 fps, 0.2 core scale, and disabled antialiasing; these preview-only cost settings never mutate the authored export profile. A successful result remains visible after an edit or selection change and is marked `STALE PREVIEW` until explicitly restored. Full video export runs as a cancellable child CLI process so the Qt event loop remains responsive and never replaces a valid final output before successful completion.
 
 ## 5. Architecture
 
@@ -656,7 +656,7 @@ Three-dimensional scenes may place the same ordered effect entries at `backgroun
 }
 ```
 
-The next owned catalog slice ports Dazzle's horizontal, vertical, quad, and diamond mirrors; VidGlitch's byte-equivalent Tetrys column drops; Dazzle's Ziti cylindrical projection; and animated XOR interference. Tetrys extends its original downward column motion to upward columns and left/right row motion while retaining `down` as the compatible default. Ziti likewise supports right, left, down, and up: `right` preserves the original horizontal projection, `left` reverses its phase, and down/up transpose the cylinder vertically with matching phase direction. Spatial effects retain their source geometry on Metalheart BGR frames. XOR operates per BGR channel rather than on Dazzle palette indices, so it is an intentional Metalheart adaptation rather than pixel identity with the Dazzle output. The complete 19-preset Glitzle Glitch post-filter category is represented as exact ordered operation recipes; Datamosh Breakup, Stutter Tear, Bitplane Scramble, Channel Smear, Scanline Desync, and Glitch Warpfield carry featured catalog metadata. Glitchstation contributes a six-effect Color family: contrast, saturation, posterize, independent RGB channel gain, grayscale blending, and invert blending. Those controls retain Glitchstation's defaults, bounds, increments, semantic roles, Rec.601 luminance, and rounded byte behavior. Its selected utility pedals add wrapping or clamped RGB Shift, horizontal or vertical seeded Tear, seeded Block Jitter, deterministic rectangle swaps, configurable VHS tracking/chroma/noise/head-switch processing, and configurable Arcade curvature/mask/palette/scan processing. Legacy Glitzle compound recipes retain their prior RGB Shift and Block Jitter semantics because their owned operation definitions do not opt into the Glitchstation parameters. Blister, Randomize, and Handheld are intentionally excluded. Glitzle Studio's Glitch Maker stack separately contributes horizontal, vertical, or circular `chromatic` aberration, contiguous-run `pixel_sort`, and finite-history `slitscan`. `scanline_corrupt` remains a deterministic full-width tear-and-chromatic recipe distinct from the simpler alternating-row `scanlines` primitive. These audio-aware effects retain bounded `audio_scale` parameters; fully general effect-property bindings remain future work.
+A subsequent implemented catalog expansion added Dazzle's horizontal, vertical, quad, and diamond mirrors; VidGlitch's byte-equivalent Tetrys column drops; Dazzle's Ziti cylindrical projection; and animated XOR interference. Tetrys extends its original downward column motion to upward columns and left/right row motion while retaining `down` as the compatible default. Ziti likewise supports right, left, down, and up: `right` preserves the original horizontal projection, `left` reverses its phase, and down/up transpose the cylinder vertically with matching phase direction. Spatial effects retain their source geometry on Metalheart BGR frames. XOR operates per BGR channel rather than on Dazzle palette indices, so it is an intentional Metalheart adaptation rather than pixel identity with the Dazzle output. The complete 19-preset Glitzle Glitch post-filter category is represented as exact ordered operation recipes; Datamosh Breakup, Stutter Tear, Bitplane Scramble, Channel Smear, Scanline Desync, and Glitch Warpfield carry featured catalog metadata. Glitchstation contributes a six-effect Color family: contrast, saturation, posterize, independent RGB channel gain, grayscale blending, and invert blending. Those controls retain Glitchstation's defaults, bounds, increments, semantic roles, Rec.601 luminance, and rounded byte behavior. Its selected utility pedals add wrapping or clamped RGB Shift, horizontal or vertical seeded Tear, seeded Block Jitter, deterministic rectangle swaps, configurable VHS tracking/chroma/noise/head-switch processing, and configurable Arcade curvature/mask/palette/scan processing. Legacy Glitzle compound recipes retain their prior RGB Shift and Block Jitter semantics because their owned operation definitions do not opt into the Glitchstation parameters. Blister, Randomize, and Handheld are intentionally excluded. Glitzle Studio's Glitch Maker stack separately contributes horizontal, vertical, or circular `chromatic` aberration, contiguous-run `pixel_sort`, and finite-history `slitscan`. `scanline_corrupt` remains a deterministic full-width tear-and-chromatic recipe distinct from the simpler alternating-row `scanlines` primitive. These audio-aware effects retain bounded `audio_scale` parameters; fully general effect-property bindings remain future work.
 
 ## 11. Desktop, CLI, and JSON authoring contract
 
@@ -757,14 +757,14 @@ Tests use `pytest` and are divided by cost and dependency:
 The normal local command is:
 
 ```bash
-pytest
+uv run --with pytest --with pytest-asyncio pytest
 ```
 
 Release verification includes:
 
 ```bash
-pytest -m "integration or visual"
-pytest -m slow
+uv run --with pytest --with pytest-asyncio pytest -m "integration or visual"
+uv run --with pytest --with pytest-asyncio pytest -m slow
 ```
 
 Tests requiring optional binaries must skip with a precise reason when the dependency is absent; they must not silently pass. CI should install and exercise the supported FFmpeg version.
@@ -838,26 +838,29 @@ A small repository-owned AST/style check should enforce conventions that general
 
 Version 1 is complete when a user can:
 
-1. copy a supplied JSON template, change its audio path, and render a complete audio-reactive video with one command;
-2. validate, resolve, and inspect available template/look/camera/effect IDs entirely through the CLI;
-3. configure palette, look, camera, and reactivity without changing Python;
-4. render a multi-scene 1080p video with synchronized original audio;
-5. use at least one scene-level and one global post effect;
-6. reproduce the same render from the resolved profile and pinned inputs;
-7. receive clear validation errors before expensive rendering begins.
+1. create a full-track or bounded automatic-scene project from audio in the native application;
+2. configure the supported form, background, ribbon, finish, camera, palette, reactivity-preset, and ordered layer-effect controls without changing Python;
+3. copy a complete authored look between scenes without changing the destination audio range or analysis context;
+4. render cancellable still and audio-synchronized selected-range previews without blocking the UI;
+5. save a UI-authored canonical project and render it unchanged through the CLI;
+6. validate, resolve, and inspect available template, form, camera, palette, effect, and reactivity IDs entirely through the CLI;
+7. render a synchronized multi-scene final video and independent scene clips through the shared render pipeline;
+8. receive clear validation errors before expensive preview or rendering begins;
+9. select preview/draft/final export quality and launch final-video or scene-clip export from the native UI;
+10. edit plates, overlays, and custom typed reactivity bindings through structured native controls.
 
 ## 15. Delivery phases
 
-### Phase 0 — renderer extraction and baseline
+### Phase 0 — renderer boundary and baseline (implemented)
 
-- Move the reference renderer into an importable production package.
-- Preserve `ref/` outputs as visual regression fixtures.
-- Add version metadata, typed configuration, and a minimal adapter.
-- Benchmark stills and clips across preview/draft/final settings.
+- Keep `ref/` immutable and load it behind production-owned adapters.
+- Preserve reference outputs as visual regression fixtures.
+- Provide versioned renderer metadata, typed configuration, and a stable backend boundary.
+- Retain representative preview/draft/final studies; complete release performance measurement remains hardening work.
 
 Phases 0 through 3 constitute version 1. Phase 4 is explicitly outside the first release.
 
-### Phase 1 — audio-reactive headless renderer
+### Phase 1 — audio-reactive headless renderer (implemented)
 
 - Implement the feature cache and sampler.
 - Map analyzed signals into `Params`.
@@ -866,19 +869,17 @@ Phases 0 through 3 constitute version 1. Phase 4 is explicitly outside the first
 - Mux audio and write resolved profiles/manifests.
 - Ship minimal and representative JSON config templates plus JSON Schema.
 
-### Phase 2 — post ecosystem and robustness
+### Phase 2 — post ecosystem and robustness (core implemented)
 
-- Port and audit selected Glitzle glitch/post/FFmpeg effects.
-- Add range/preview renders, global post, cancellation, conservative parallel rendering, and recovery behavior.
-- Complete visual regressions and duration/sync tests.
+- Port and audit selected owned Python effects from Glitzle, Glitchstation, Dazzle, and VidGlitch.
+- Provide range/preview renders, global and scoped post chains, cancellation, conservative parallel rendering, and recovery behavior.
+- Maintain deterministic renderer, timing, duration, synchronization, and effect-history coverage.
+- Defer external glitch processes and broad FFmpeg effect recipes to a separately audited future slice.
 
-### Phase 3 — effects and native desktop authoring
+### Phase 3 — effects and native desktop authoring (in progress)
 
-- implement the typed, ordered scene and global effect registry;
-- expose effect metadata and parameters to both CLI and desktop UI;
-- build the PySide6/Qt project window, waveform, hard-cut scene timeline, and inspectors;
-- add cancellable playhead stills and selected-range preview renders;
-- launch final and per-scene exports through the shared render pipeline.
+- **Implemented:** typed ordered effects, shared CLI/UI metadata, the PySide6 project window, waveform timeline, structured core layer inspectors, thumbnails and animated studies, Undo/Redo, Scene Copy/Paste, cancellable still/range previews, and final-video export.
+- **Remaining for version 1:** structured plate, overlay, and custom reactivity controls; explicit preview/draft/final export selection; native scene-clip export; scene-aware preview caching; and incremental reuse of unchanged scene renders.
 
 ### Phase 4 — advanced authoring
 
@@ -898,10 +899,10 @@ The following decisions are accepted for the initial build:
 5. Default animation time to global song time, with a per-scene restart option.
 6. Use hard cuts between scenes; transitions are not part of the authoring model.
 7. Port a curated, tested subset of Glitzle's post catalog rather than all recipes at once.
-8. Treat `ref/` as the baseline and create a production-owned renderer package.
+8. Treat `ref/` as the immutable baseline and isolate it behind production-owned adapters and extensions.
 9. Design the default templates for 16:9 landscape while continuing to accept arbitrary even dimensions.
 10. Default to automatic look/camera choreography and allow explicit scene-level overrides.
-11. Enable the HUD by default and expose a scene-level setting to disable it.
+11. Render no text by default. `overlay.enabled` is the scene-level master switch, and the reference HUD requires the separate `overlay.reference_hud` opt-in.
 12. Begin with owned Python post filters and a small audited glitch subset; defer the broad FFmpeg recipe catalog.
 13. Require a fixed seed for final renders and guarantee repeatability on the pinned local software stack. Cross-machine pixel identity is not a v1 requirement.
 14. Make the first implementation checkpoint a deterministic 3–5 second low-resolution render from one JSON config with synchronized generated audio.
