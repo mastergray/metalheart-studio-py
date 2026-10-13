@@ -46,10 +46,13 @@ This is a personal project, so CTG organization-specific values are adapted as f
 | Practice | Metalheart value |
 |---|---|
 | Owner | `mastergray` |
+| Repository name | `metalheart-studio-py` |
+| Python distribution | `metalheart-studio` |
+| Python import package | `metalheart` |
 | Local Git identity | `mastergray <me@mastergray.com>` |
 | Default branch | `main` |
 | SSH host alias | `github-mastergray` |
-| Future remote form | `git@github-mastergray:mastergray/<repo-name>.git` |
+| Future remote | `git@github-mastergray:mastergray/metalheart-studio-py.git` |
 
 No remote repository exists yet. Local initialization must not add a guessed remote or create a GitHub repository. Before the first push, verify branch, local author identity, working tree, commit authors, and the explicitly chosen remote URL.
 
