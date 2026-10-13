@@ -57,6 +57,15 @@ from metalheart.ui.waveform_widget import WaveformTimelineWidget  # Navigate aud
 PROJECT_FILTER = "Metalheart Projects (*.json);;JSON (*.json)"
 AUDIO_FILTER = "Audio (*.wav *.mp3 *.flac *.ogg *.m4a *.aac *.aiff *.aif);;All Files (*)"
 VIDEO_FILTER = "MPEG-4 Video (*.mp4)"
+SCENE_CONTEXT_FIELDS = (
+    "id",
+    "name",
+    "start_sec",
+    "end_sec",
+    "beats",
+    "downbeats",
+    "analysis",
+)
 
 
 # Hosts audio-led project creation, scene authoring, previews, and export
@@ -72,6 +81,7 @@ class MainWindow(QMainWindow):
         self._projectPath: Optional[Path] = None
         self._authored: Optional[Dict[str, Any]] = None
         self._resolved: Optional[Dict[str, Any]] = None
+        self._copiedScene: Optional[Dict[str, Any]] = None
         self._dirty = False
         self._advancedDirty = False
         self._loadingUi = False
@@ -221,6 +231,22 @@ class MainWindow(QMainWindow):
         self._sceneList.setObjectName("sceneList")
         self._sceneList.currentRowChanged.connect(self._sceneChanged)
         layout.addWidget(self._sceneList, 1)
+        sceneActions = QHBoxLayout()
+        self._copySceneButton = QPushButton("Copy Scene")
+        self._copySceneButton.setEnabled(False)
+        self._copySceneButton.setToolTip(
+            "Copy the selected scene's visual configuration"
+        )
+        self._copySceneButton.clicked.connect(self._copyScene)
+        self._pasteSceneButton = QPushButton("Paste Scene")
+        self._pasteSceneButton.setEnabled(False)
+        self._pasteSceneButton.setToolTip(
+            "Replace the selected scene's visual configuration while keeping its timing"
+        )
+        self._pasteSceneButton.clicked.connect(self._pasteScene)
+        sceneActions.addWidget(self._copySceneButton)
+        sceneActions.addWidget(self._pasteSceneButton)
+        layout.addLayout(sceneActions)
         hint = QLabel("Select a musical scene to configure its visual layers.")
         hint.setObjectName("summary")
         hint.setWordWrap(True)
@@ -353,6 +379,14 @@ class MainWindow(QMainWindow):
         self._undoAction.setShortcut(QKeySequence.StandardKey.Undo)
         self._redoAction = self._undoStack.createRedoAction(self, "&Redo")
         self._redoAction.setShortcut(QKeySequence.StandardKey.Redo)
+        self._copySceneAction = QAction("Copy &Scene", self)
+        self._copySceneAction.setShortcut("Ctrl+Shift+C")
+        self._copySceneAction.setEnabled(False)
+        self._copySceneAction.triggered.connect(self._copyScene)
+        self._pasteSceneAction = QAction("Paste Sc&ene", self)
+        self._pasteSceneAction.setShortcut("Ctrl+Shift+V")
+        self._pasteSceneAction.setEnabled(False)
+        self._pasteSceneAction.triggered.connect(self._pasteScene)
         self._previewAction = QAction("Render &Still", self)
         self._previewAction.setShortcut("Ctrl+R")
         self._previewAction.triggered.connect(self._requestPreview)
@@ -379,6 +413,8 @@ class MainWindow(QMainWindow):
         fileMenu.addAction(quitAction)
         editMenu = self.menuBar().addMenu("&Edit")
         editMenu.addActions((self._undoAction, self._redoAction))
+        editMenu.addSeparator()
+        editMenu.addActions((self._copySceneAction, self._pasteSceneAction))
         previewMenu = self.menuBar().addMenu("&Preview")
         previewMenu.addActions((self._previewAction, self._rangePreviewAction))
         renderMenu = self.menuBar().addMenu("&Render")
@@ -637,6 +673,7 @@ class MainWindow(QMainWindow):
         self._projectPath = path.resolve()
         self._authored = authored
         self._resolved = resolved
+        self._copiedScene = None
         self._selectedScene = 0
         self._projectRevision += 1
         self._previewKind = None
@@ -653,6 +690,7 @@ class MainWindow(QMainWindow):
         self._setDirty(False)
         self._populateProject()
         self._showValidation(report.warnings)
+        self._updateSceneClipboardActions()
         self.statusBar().showMessage("Opened {0}".format(self._projectPath.name), 4000)
 
     # :: VOID -> NONE
@@ -722,6 +760,7 @@ class MainWindow(QMainWindow):
         if self._loadingUi or self._resolved is None or self._authored is None or index < 0:
             return
         self._selectedScene = index
+        self._updateSceneClipboardActions()
         position = self._timeSlider.value() / 1000.0
         self._timeline.selectScene(index, position)
         self._inspector.loadScene(
@@ -978,6 +1017,76 @@ class MainWindow(QMainWindow):
             self._applyAuthoredCommand,
         )
         self._undoStack.push(command)
+
+    # :: VOID -> NONE
+    # Copies the selected authored scene for reuse within the current project
+    def _copyScene(self) -> None:
+        if self._advancedDirty and not self._applyAdvancedEditor():
+            return
+        if self._authored is None:
+            return
+        index = self._sceneList.currentRow()
+        if index < 0 or index >= len(self._authored.get("scenes", [])):
+            return
+        scene = self._authored["scenes"][index]
+        self._copiedScene = copy.deepcopy(scene)
+        self._updateSceneClipboardActions()
+        self.statusBar().showMessage(
+            "Copied scene {0}: {1}".format(
+                index + 1,
+                scene.get("name", scene.get("id", "Scene")),
+            ),
+            4000,
+        )
+
+    # :: VOID -> NONE
+    # Pastes copied visual configuration while retaining destination audio context
+    def _pasteScene(self) -> None:
+        if self._advancedDirty and not self._applyAdvancedEditor():
+            return
+        if self._authored is None or self._copiedScene is None:
+            return
+        index = self._sceneList.currentRow()
+        if index < 0 or index >= len(self._authored.get("scenes", [])):
+            return
+        authored = copy.deepcopy(self._authored)
+        target = authored["scenes"][index]
+        pasted = copy.deepcopy(self._copiedScene)
+        for field in SCENE_CONTEXT_FIELDS:
+            if field in target:
+                pasted[field] = copy.deepcopy(target[field])
+            else:
+                pasted.pop(field, None)
+        if pasted == target:
+            self.statusBar().showMessage("Scene already matches the copied scene", 3000)
+            return
+        authored["scenes"][index] = pasted
+        command = ProjectEditCommand(
+            "Paste Scene",
+            self._authored,
+            authored,
+            index,
+            self._applyAuthoredCommand,
+            True,
+        )
+        self._undoStack.push(command)
+        self.statusBar().showMessage(
+            "Pasted visual configuration into scene {0}".format(index + 1),
+            4000,
+        )
+
+    # :: VOID -> NONE
+    # Enables scene clipboard commands only when their required state exists
+    def _updateSceneClipboardActions(self) -> None:
+        sceneCount = len(self._authored.get("scenes", [])) if self._authored else 0
+        selected = 0 <= self._sceneList.currentRow() < sceneCount
+        self._copySceneButton.setEnabled(selected)
+        self._pasteSceneButton.setEnabled(selected and self._copiedScene is not None)
+        if hasattr(self, "_copySceneAction"):
+            self._copySceneAction.setEnabled(selected)
+            self._pasteSceneAction.setEnabled(
+                selected and self._copiedScene is not None
+            )
 
     # :: ARRAY<STRING, ANY>, INT, BOOL -> NONE
     # Applies one command snapshot and synchronizes every project representation

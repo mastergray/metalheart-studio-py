@@ -1,5 +1,6 @@
 # Optional offscreen smoke tests for the native PySide6 editor shell
 
+import copy  # Preserve target scene context for clipboard assertions
 import json  # Build portable temporary canonical projects
 import os  # Select Qt's headless platform before importing PySide6
 from pathlib import Path  # Locate a real canonical example project
@@ -358,6 +359,68 @@ def testMainWindowLoadsStructuredSceneWorkflow() -> None:
         effect["id"] for effect in window._authored["scenes"][0]["background"]["post"]
     ] == ["vhs", "invert"]
     window.undoStack.undo()
+    window.close()
+    window.deleteLater()
+    application.processEvents()
+
+
+# :: PATH -> NONE
+# Verifies scene copy/paste transfers authored visuals but retains audio context
+def testSceneCopyPasteIsContextSafeAndUndoable(tmp_path: Path) -> None:
+    application = QApplication.instance() or QApplication([])
+    repository = Path(__file__).resolve().parents[1]
+    sourcePath = repository / "examples" / "multi-scene.json"
+    authored = json.loads(sourcePath.read_text(encoding="utf-8"))
+    authored["audio"] = str(
+        (repository / "ref" / "audioReactive" / "metalheart_audio_test_small.mp4").resolve()
+    )
+    authored["scenes"][0]["background"] = {
+        "palette": "jungle",
+        "intensity": 2.0,
+    }
+    authored["scenes"][0]["overlay"] = {"enabled": False}
+    authored["scenes"][1]["beats"] = 8
+    authored["scenes"][1]["downbeats"] = 2
+    authored["scenes"][1]["analysis"] = {"mean_energy": 0.625}
+    projectPath = tmp_path / "copy-paste.json"
+    projectPath.write_text(json.dumps(authored), encoding="utf-8")
+    window = MainWindow.init(str(projectPath))
+    originalTarget = copy.deepcopy(window._authored["scenes"][1])
+    assert window._copySceneButton.isEnabled()
+    assert not window._pasteSceneButton.isEnabled()
+    window._copySceneButton.click()
+    assert window._pasteSceneButton.isEnabled()
+    window._pasteSceneButton.click()
+    assert not window.dirty
+    assert not window.undoStack.canUndo()
+    window._sceneList.setCurrentRow(1)
+    window._pasteSceneButton.click()
+    application.processEvents()
+    pasted = window._authored["scenes"][1]
+    source = window._authored["scenes"][0]
+    for field in (
+        "id",
+        "name",
+        "start_sec",
+        "end_sec",
+        "beats",
+        "downbeats",
+        "analysis",
+    ):
+        assert pasted[field] == originalTarget[field]
+    for field in ("template", "renderer", "reactivity", "background", "overlay"):
+        assert pasted[field] == source[field]
+    assert window.dirty
+    assert window.undoStack.undoText() == "Paste Scene"
+    window.undoStack.undo()
+    application.processEvents()
+    assert window._authored["scenes"][1] == originalTarget
+    window.undoStack.redo()
+    application.processEvents()
+    assert window._authored["scenes"][1]["background"] == source["background"]
+    window.undoStack.undo()
+    application.processEvents()
+    assert not window.dirty
     window.close()
     window.deleteLater()
     application.processEvents()

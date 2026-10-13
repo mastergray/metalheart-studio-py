@@ -238,13 +238,12 @@ Acceptance criteria:
 
 Build a native desktop application over the existing JSON contract and application services. It must not contain a webview or require an HTTP server.
 
-The implemented authoring slice begins with audio selection and background analysis into either one uninterrupted full-track composition or phrase-aligned automatic scenes. Both project modes retain the same analyzed feature cache and canonical scene contract. The primary workspace combines a cached-energy waveform/hard-cut timeline, scene navigation, an explicit production-backed still preview, and structured per-scene Form, Background, Ribbons, and Finish inspectors. The first three layers have independent ordered effect stacks with catalog-generated controls for bypass, mix, order, and typed parameters. Finish exposes the reviewed PSX preset plus independent render-scale, color-level, Bayer-pattern, and dither-strength controls. Canonical JSON is an optional advanced dock rather than the primary workflow.
+The implemented authoring slice begins with audio selection and background analysis into either one uninterrupted full-track composition or phrase-aligned automatic scenes. Both project modes retain the same analyzed feature cache and canonical scene contract. The primary workspace combines a cached-energy waveform/hard-cut timeline, scene navigation, an explicit production-backed still preview, and structured per-scene Form, Background, Ribbons, and Finish inspectors. The first three layers have independent ordered effect stacks with catalog-generated controls for bypass, mix, order, and typed parameters. Finish exposes the reviewed PSX preset plus independent render-scale, color-level, Bayer-pattern, and dither-strength controls. Scene Copy and Paste transfer the complete authored visual configuration while retaining the destination's ID, name, time range, detected-event counts, and analysis metadata. Paste is one reversible project-history operation. Canonical JSON is an optional advanced dock rather than the primary workflow.
 
 Analysis, preview, and full export run outside the GUI thread and support cancellation. Still and selected-range preview work is explicit and capped at 480×270, 12 fps, 0.2 core scale, and no antialiasing for older hardware. Selected ranges default to four seconds and are bounded to eight seconds, retain temporal-effect preroll, loop with the matching source-audio interval, and publish determinate frame progress. The uncluttered transport row provides Play, Stop, and audio-only Mute controls; Stop also cancels preview generation while it is active. Edits and selection changes retain the last successful still or range rather than replacing it with an empty state; a single amber `STALE PREVIEW` badge remains visible during playback until a current preview completes, and a right-aligned `Restore Preview` action regenerates the same preview type from the current configuration. PySide6 6.4 through 6.6 retains the Python 3.8 runtime target and is a normal application dependency.
 
 The remaining vertical-slice work includes:
 
-- timeline boundary editing;
 - structured controls for plates, overlay items, and custom reactivity bindings;
 - explicit preview/final quality selection and per-scene export actions with detailed progress.
 
@@ -273,6 +272,7 @@ This milestone incorporates the first hands-on feedback from the audio-led deskt
 7. **Implemented:** versioned 128×72 thumbnails are generated offline from one deterministic fixed fixture for every form, camera, palette, and effect. Cameras and effects also provide 16-frame PNG spritesheet loops in larger 256×144 native preview panels: camera studies compress a representative ten-second path, while effect studies include temporal preroll and changing source/audio inputs. A checked-in manifest pins the renderer revision, complete catalog fingerprint, animation timing, fixture settings, file inventory, and content hashes. Native selectors and panels load these packaged images without video codecs or renderer work during navigation and fall back cleanly when the asset set is absent, incomplete, or stale.
 8. **Implemented:** the inspector receives a wider default splitter allocation and suppresses horizontal scrolling. Long effect names shrink inside the picker with full tooltips so the Add action remains visible. Radial-only style controls use the validator's exact bounds, disable for other geometries, and are omitted from non-radial authored scenes rather than leaving a predictable validation error.
 9. **Implemented:** a scene-local in/out selection renders up to eight seconds of audio-synchronized preview frames through the same bounded production services as still preview. The interval is spatially anchored to the audio waveform with a shaded selection and draggable, color-coded IN/OUT handles synchronized with the precise range controls. Playback uses native Qt frame timing and source audio without a browser or temporary full-quality export. Project edits, Undo/Redo, playhead changes, range changes, and scene changes preserve the most recent successful result and mark it visibly stale rather than clearing it.
+10. **Implemented:** scene Copy and Paste move all authored visual settings between scenes without replacing the destination scene's identity, timing, detected-event counts, or analysis metadata. Paste reloads the structured inspector, marks retained previews stale, and participates in Undo and Redo as one canonical project edit.
 
 Acceptance criteria:
 
@@ -305,14 +305,16 @@ The ordered-effects contract, audio-led PySide6 application, effect reordering,
 selected-range preview, final export, and initial PSX Finish controls are implemented.
 Continue from that proven vertical slice in this order:
 
-1. Add waveform boundary editing plus scene split, merge, duplicate, add, and delete actions. Expose re-analysis so an existing audio project can adopt a different automatic-scene maximum without being recreated.
-2. Expand the structured inspector to plates, overlay items, and the complete typed reactivity vocabulary. Preserve Advanced JSON as an escape hatch rather than a required workflow.
-3. Add explicit preview/draft/final quality selection and native per-scene export actions with detailed progress. The existing final-video action and CLI `--scene-clips` path remain the underlying production services.
-4. Add scene-aware preview caching and reuse unchanged scene renders during final export, with particular attention to the target older machine.
-5. Complete the remaining PSX candidates and a small reusable preset vocabulary through the same public configuration and UI contracts.
-6. Perform release hardening on the target Python 3.8 runtime: clean-environment installation, dependency and external-tool diagnostics, documentation review, representative performance measurements, and final integration renders.
+1. Expand the structured inspector to plates, overlay items, and the complete typed reactivity vocabulary. Preserve Advanced JSON as an escape hatch rather than a required workflow.
+2. Add explicit preview/draft/final quality selection and native per-scene export actions with detailed progress. The existing final-video action and CLI `--scene-clips` path remain the underlying production services.
+3. Add scene-aware preview caching and reuse unchanged scene renders during final export, with particular attention to the target older machine.
+4. Complete the remaining PSX candidates and a small reusable preset vocabulary through the same public configuration and UI contracts.
+5. Perform release hardening on the target Python 3.8 runtime: clean-environment installation, dependency and external-tool diagnostics, documentation review, representative performance measurements, and final integration renders.
 
 Keyframes, automation lanes, renderer plugins, external FFmpeg effect recipes,
 plate-scoped post effects, and unrestricted audio-to-effect-property binding remain
 post-version 1 candidates unless hands-on authoring shows that one is necessary for
-the initial release.
+the initial release. Waveform boundary editing, scene split/merge, scene creation or
+deletion, and re-analysis of an existing project's scene plan are also future
+considerations; version 1 uses the tested automatic scene planner plus scene-level
+Copy and Paste.
