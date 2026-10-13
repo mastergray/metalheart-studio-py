@@ -325,6 +325,12 @@ the applicable canonical object. The UI should visually separate whole-frame
 `flash`, `chroma`, `shake`, and `pulse` destinations from geometry-driven
 destinations so flashing is not presented as the primary form of audio response.
 
+Before implementing this editor, reconcile per-binding smoothing. The specification
+currently describes `attack_ms` and `release_ms`, but the schema, validator, and
+runtime do not implement them. Either implement the complete contract with runtime,
+validation, UI, and focused test coverage, or explicitly defer the controls and
+revise the specification so it does not claim unsupported behavior.
+
 Acceptance criteria for this slice:
 
 - all three editors round-trip a CLI-authored project without semantic changes;
