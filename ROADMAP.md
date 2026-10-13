@@ -247,6 +247,99 @@ The remaining vertical-slice work includes:
 - structured controls for plates, overlay items, and custom reactivity bindings;
 - explicit preview/final quality selection and per-scene export actions with detailed progress.
 
+### Structured plates, overlays, and reactivity UI
+
+This slice completes native editing for scene data that currently requires the
+Advanced Project JSON dock. It extends the existing inspector rather than adding a
+second project format or a separate workflow. Every change writes directly to the
+selected scene's canonical configuration, participates in Undo and Redo as one
+meaningful edit, preserves the last successful preview with a `STALE PREVIEW`
+indicator, and passes through the shared validator before rendering.
+
+#### Plates
+
+Add a dedicated **Plates** tab beside **Ribbons**. It edits
+`renderer.decor.plates` and exposes:
+
+- an enable switch and an integer count slider from zero through eight;
+- the shared decor seed, with an automatic/default state and precise integer entry;
+- `metallic` or `matte` material selection;
+- an optional scene-relative image skin with Browse and Clear actions;
+- image scale and rotation, `bilinear` or `nearest` sampling, texture-coordinate
+  steps, and lighting steps;
+- concise help explaining that plate mapping is planar and that an image replaces
+  the plate's base color rather than tinting it.
+
+The controls use the same surface-editor behavior and validation vocabulary as the
+existing form and ribbon skins. Disabling plates retains their authored settings
+but removes them from rendering. Plate-scoped post effects are not introduced by
+this slice; they remain a post-version 1 candidate.
+
+#### Overlays
+
+Add a dedicated **Overlay** tab with a scene-level **Enable overlay** switch and a
+separate **Reference HUD** opt-in. The master switch remains the absolute no-text
+control: when it is off, neither custom items nor the reference HUD may render.
+
+Custom overlay items use an ordered list with Add, Duplicate, Remove, Up, and Down
+actions. Selecting an item exposes:
+
+- non-empty text;
+- normalized X and Y position sliders with precise number entry;
+- anchor selection from the seven schema-defined positions;
+- normalized text size from `0.005` through `0.25`;
+- an `#RRGGBB` color field paired with a native color picker;
+- opacity from zero through one.
+
+List selection and reordering do not alter the rendered content until a property or
+order actually changes. Newly created scenes continue to default to overlays off,
+and visual studies continue to render without text unless overlay behavior is the
+subject of the test.
+
+#### Custom reactivity
+
+Expand the existing preset selector into a dedicated **Reactivity** tab. Presets
+remain the fast path, while a custom-binding editor makes both inherited preset
+mappings and scene overrides visible without JSON. The list is grouped by
+destination family and each row summarizes `source -> destination`, with an
+**Inherited** or **Override** status. Add, Remove, and Reset Override actions manage
+the canonical destination-keyed mappings; reordering is intentionally absent
+because binding order has no render meaning. Selecting a row exposes:
+
+- one analyzed source from `bass`, `mid`, `high`, `amplitude`, `energy`,
+  `spectral_centroid`, `onset`, `beat`, `downbeat`, and `tension`;
+- one typed destination from the native renderer bindings and the complete public
+  modulator catalog, grouped as form, camera, background, ribbon, plate, and
+  restrained frame-space controls;
+- amount, bias, curve, threshold, and minimum/maximum clamp values;
+- sliders wherever the catalog publishes a safe bounded range, with precise number
+  entry retained for every numeric value.
+
+The catalog must first publish user-facing labels, family, numeric bounds, and steps
+for every destination so the editor does not duplicate renderer knowledge. Applying
+a preset retains the compact preset reference. Editing an inherited row creates an
+override for only that destination; Reset Override reveals the inherited mapping
+again. Selecting `manual` starts from explicit mappings without silently retaining
+an earlier preset's values. Add prevents choosing a destination already present in
+the applicable canonical object. The UI should visually separate whole-frame
+`flash`, `chroma`, `shake`, and `pulse` destinations from geometry-driven
+destinations so flashing is not presented as the primary form of audio response.
+
+Acceptance criteria for this slice:
+
+- all three editors round-trip a CLI-authored project without semantic changes;
+- disabling overlays guarantees a frame with no text, including the reference HUD;
+- plate enablement, count, material, surface settings, orbit, and displacement can
+  be authored without opening Advanced Project JSON;
+- every currently supported source and destination can be selected through the
+  custom-binding editor;
+- preset inheritance, destination overrides, override reset, and transition to
+  manual bindings are deterministic and covered by Undo and Redo;
+- invalid paths, colors, ranges, clamps, and duplicate destinations are identified
+  before expensive preview or render work;
+- focused UI tests cover control loading, canonical edits, retained disabled data,
+  Undo and Redo, stale-preview state, and CLI-compatible save/load round trips.
+
 The UI must call the same resolver, validator, analyzer, effect registry, and render pipeline as the CLI. Widget state is never an alternative project format. Long analysis, preview, and render operations run outside the Qt UI thread and support cancellation. Full-resolution real-time ray-marched playback is not required.
 
 Acceptance criteria:

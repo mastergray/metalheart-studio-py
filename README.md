@@ -8,7 +8,7 @@ The implementation provides an audio-led native authoring workflow alongside JSO
 
 Metalheart Studio is a functional pre-1.0 vertical slice. The CLI can analyze audio, validate and resolve projects, render complete videos, and export synchronized scene clips. The native editor can create full-track or automatically segmented projects, author the supported form/background/ribbon/finish controls and ordered layer effects, copy looks between scenes, render still and selected-range previews with audio, and launch a cancellable final-video export.
 
-The main remaining version 1 work is structured editing for plates, overlays, and custom reactivity bindings; preview/draft/final selection and scene-clip export in the native UI; scene-aware preview caching and incremental final-render reuse; and release verification on the target Python 3.8 machine. Timeline boundary editing and structural scene operations beyond Copy/Paste are future considerations. See [ROADMAP.md](ROADMAP.md) for the maintained sequence.
+See [ROADMAP.md](ROADMAP.md) for remaining work, implementation order, and future considerations.
 
 ## Requirements
 
